@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection - users can read/write their own data
+    // Also allow authenticated users to read all users for doctor selection
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null; // Allow reading all users for doctor queries
+    }
+    
+    // Doctors collection - authenticated users can read all doctors
+    match /doctors/{doctorId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == doctorId;
+    }
+    
+    // Patients collection - authenticated users can read/write based on user ID
+    match /patients/{patientId} {
+      allow read, write: if request.auth != null && request.auth.uid == patientId;
+    }
+    
+    // Patient-Doctor assignments - both patient and doctor can read/write
+    match /patient_doctor_assignments/{assignmentId} {
+      allow read, write: if request.auth != null && 
+        (resource.data.patientId == request.auth.uid || 
+         resource.data.doctorId == request.auth.uid);
+      allow create: if request.auth != null;
+    }
+    
+    // Appointments - both patient and doctor can read/write their appointments
+    match /appointments/{appointmentId} {
+      allow read, write: if request.auth != null && 
+        (resource.data.patientId == request.auth.uid || 
+         resource.data.doctorId == request.auth.uid);
+      allow create: if request.auth != null;
+    }
+    
+    // Medical records - both patient and doctor can read/write
+    match /medical_records/{recordId} {
+      allow read, write: if request.auth != null && 
+        (resource.data.patientId == request.auth.uid || 
+         resource.data.doctorId == request.auth.uid);
+      allow create: if request.auth != null;
+    }
+    
+    // Notifications - users can read/write their own notifications
+    match /notifications/{notificationId} {
+      allow read, write: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null;
+    }
+  }
+}
