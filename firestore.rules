@@ -49,5 +49,19 @@ service cloud.firestore {
         resource.data.userId == request.auth.uid;
       allow create: if request.auth != null;
     }
+
+    // Follow requests between patients and doctors
+    // Allow create when the authenticated user is either the patient or the doctor
+    // Allow read/update/delete when the authenticated user is either the patient or the doctor on the document
+    match /follow_requests/{requestId} {
+      allow create: if request.auth != null && (
+        request.resource.data.patientId == request.auth.uid ||
+        request.resource.data.doctorId == request.auth.uid
+      );
+      allow read, update, delete: if request.auth != null && (
+        resource.data.patientId == request.auth.uid ||
+        resource.data.doctorId == request.auth.uid
+      );
+    }
   }
 }

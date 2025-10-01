@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../components/buttons/primary_button.dart';
-import '../../../data/models/user_model.dart';
 import '../../../data/models/doctor_model.dart';
 import '../../../data/resources/gene/app_colors.dart';
-import '../../../router/app_router.dart';
 import '../../../providers/doctor_specialty_selection_provider.dart';
+import '../../home/home_page.dart';
+import '../../../data/models/user_model.dart';
 
 class DoctorSpecialtySelectionScreen extends ConsumerStatefulWidget {
   final String doctorId;
@@ -20,10 +20,12 @@ class DoctorSpecialtySelectionScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<DoctorSpecialtySelectionScreen> createState() => _DoctorSpecialtySelectionScreenState();
+  ConsumerState<DoctorSpecialtySelectionScreen> createState() =>
+      _DoctorSpecialtySelectionScreenState();
 }
 
-class _DoctorSpecialtySelectionScreenState extends ConsumerState<DoctorSpecialtySelectionScreen> {
+class _DoctorSpecialtySelectionScreenState
+    extends ConsumerState<DoctorSpecialtySelectionScreen> {
   @override
   void initState() {
     super.initState();
@@ -122,8 +124,8 @@ class _DoctorSpecialtySelectionScreenState extends ConsumerState<DoctorSpecialty
               ),
               const SizedBox(height: 16),
 
-              ...Specialty.allSpecialties.map((specialty) => 
-                _buildSpecialtyCard(specialty, selectionState),
+              ...Specialty.allSpecialties.map(
+                (specialty) => _buildSpecialtyCard(specialty, selectionState),
               ),
 
               const SizedBox(height: 32),
@@ -131,7 +133,8 @@ class _DoctorSpecialtySelectionScreenState extends ConsumerState<DoctorSpecialty
               // Continue Button
               PrimaryButton(
                 text: 'Hoàn thành đăng ký',
-                onPressed: selectionState.canProceed && !selectionState.isLoading
+                onPressed:
+                    selectionState.canProceed && !selectionState.isLoading
                     ? _handleContinue
                     : null,
                 isLoading: selectionState.isLoading,
@@ -143,7 +146,10 @@ class _DoctorSpecialtySelectionScreenState extends ConsumerState<DoctorSpecialty
     );
   }
 
-  Widget _buildSpecialtyCard(Specialty specialty, DoctorSpecialtySelectionState state) {
+  Widget _buildSpecialtyCard(
+    Specialty specialty,
+    DoctorSpecialtySelectionState state,
+  ) {
     final isSelected = state.selectedSpecialty == specialty;
 
     return Card(
@@ -158,7 +164,8 @@ class _DoctorSpecialtySelectionScreenState extends ConsumerState<DoctorSpecialty
       ),
       child: InkWell(
         onTap: () {
-          ref.read(doctorSpecialtySelectionProvider.notifier)
+          ref
+              .read(doctorSpecialtySelectionProvider.notifier)
               .selectSpecialty(specialty);
         },
         borderRadius: BorderRadius.circular(12),
@@ -181,7 +188,9 @@ class _DoctorSpecialtySelectionScreenState extends ConsumerState<DoctorSpecialty
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: isSelected ? AppColors.primaryColor : AppColors.textPrimary,
+                        color: isSelected
+                            ? AppColors.primaryColor
+                            : AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -189,7 +198,9 @@ class _DoctorSpecialtySelectionScreenState extends ConsumerState<DoctorSpecialty
                       _getSpecialtyDescription(specialty),
                       style: TextStyle(
                         fontSize: 14,
-                        color: isSelected ? AppColors.primaryColor : AppColors.textSecondary,
+                        color: isSelected
+                            ? AppColors.primaryColor
+                            : AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -209,7 +220,8 @@ class _DoctorSpecialtySelectionScreenState extends ConsumerState<DoctorSpecialty
   }
 
   Future<void> _handleContinue() async {
-    final result = await ref.read(doctorSpecialtySelectionProvider.notifier)
+    final result = await ref
+        .read(doctorSpecialtySelectionProvider.notifier)
         .completeDoctorSetup(
           doctorId: widget.doctorId,
           doctorName: widget.doctorName,
@@ -221,7 +233,12 @@ class _DoctorSpecialtySelectionScreenState extends ConsumerState<DoctorSpecialty
         _showSnackBar(result.message!, isError: false);
         await Future.delayed(const Duration(seconds: 1));
         if (mounted && context.mounted) {
-                                AppRouter.pushDashboard(context, userRole: UserRole.doctor);
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (_) => const HomePage(userRole: UserRole.doctor),
+            ),
+            (route) => false,
+          );
         }
       } else {
         _showSnackBar(result.message!);

@@ -8,6 +8,9 @@ class DoctorCard extends StatelessWidget {
   final VoidCallback? onTap;
   final bool showBookButton;
   final VoidCallback? onBookAppointment;
+  final String? primaryActionText;
+  final VoidCallback? onPrimaryAction;
+  final bool primaryActionDisabled;
 
   const DoctorCard({
     super.key,
@@ -15,6 +18,9 @@ class DoctorCard extends StatelessWidget {
     this.onTap,
     this.showBookButton = true,
     this.onBookAppointment,
+    this.primaryActionText,
+    this.onPrimaryAction,
+    this.primaryActionDisabled = false,
   });
 
   @override
@@ -38,7 +44,9 @@ class DoctorCard extends StatelessWidget {
                     backgroundImage: doctor.hasAvatar
                         ? NetworkImage(doctor.avatarUrl!)
                         : null,
-                    backgroundColor: AppColors.primaryColor.withValues(alpha: 0.1),
+                    backgroundColor: AppColors.primaryColor.withValues(
+                      alpha: 0.1,
+                    ),
                     child: !doctor.hasAvatar
                         ? Icon(
                             Icons.person,
@@ -48,7 +56,7 @@ class DoctorCard extends StatelessWidget {
                         : null,
                   ),
                   SizedBox(width: 16),
-                  
+
                   // Doctor Info
                   Expanded(
                     child: Column(
@@ -72,8 +80,9 @@ class DoctorCard extends StatelessWidget {
                           ),
                         ),
                         SizedBox(height: 2),
+                        SizedBox(height: 2),
                         Text(
-                          doctor.email,
+                          'Kinh nghiệm: ${doctor.yearsExperience != null ? '${doctor.yearsExperience} năm' : 'Chưa cập nhật'}',
                           style: TextStyle(
                             fontSize: 13,
                             color: AppColors.textSecondary,
@@ -82,7 +91,7 @@ class DoctorCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  
+
                   // Role indicator
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -101,9 +110,9 @@ class DoctorCard extends StatelessWidget {
                   ),
                 ],
               ),
-              
+
               SizedBox(height: 12),
-              
+
               // Specialization info
               Row(
                 children: [
@@ -122,8 +131,16 @@ class DoctorCard extends StatelessWidget {
                   ),
                 ],
               ),
-              
-              if (showBookButton) ...[
+
+              if (primaryActionText != null) ...[
+                const SizedBox(height: 12),
+                PrimaryButton(
+                  text: primaryActionText!,
+                  onPressed: primaryActionDisabled ? null : onPrimaryAction,
+                  height: 40,
+                  fontSize: 14,
+                ),
+              ] else if (showBookButton) ...[
                 const SizedBox(height: 12),
                 PrimaryButton(
                   text: 'Đặt lịch khám',
@@ -145,11 +162,7 @@ class DoctorCompactCard extends StatelessWidget {
   final DoctorModel doctor;
   final VoidCallback? onTap;
 
-  const DoctorCompactCard({
-    super.key,
-    required this.doctor,
-    this.onTap,
-  });
+  const DoctorCompactCard({super.key, required this.doctor, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -164,36 +177,23 @@ class DoctorCompactCard extends StatelessWidget {
               : null,
           backgroundColor: AppColors.primaryColor.withValues(alpha: 0.1),
           child: !doctor.hasAvatar
-              ? Icon(
-                  Icons.person,
-                  size: 20,
-                  color: AppColors.primaryColor,
-                )
+              ? Icon(Icons.person, size: 20, color: AppColors.primaryColor)
               : null,
         ),
         title: Text(
           doctor.name,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               doctor.specialty.vietnameseName,
-              style: TextStyle(
-                color: AppColors.primaryColor,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: AppColors.primaryColor, fontSize: 13),
             ),
             Text(
               doctor.email,
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
           ],
         ),

@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../components/buttons/primary_button.dart';
 import '../../../components/loading/loading_widget.dart';
-import '../../../data/models/user_model.dart';
 import '../../../data/models/doctor_model.dart';
 import '../../../data/resources/gene/app_colors.dart';
-import '../../../router/app_router.dart';
 import '../../../providers/disease_doctor_selection_provider.dart';
+import '../../home/home_page.dart';
+import '../../../data/models/user_model.dart';
 
 class DiseaseDoctorSelectionScreen extends ConsumerStatefulWidget {
   final String patientId;
@@ -21,11 +21,12 @@ class DiseaseDoctorSelectionScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<DiseaseDoctorSelectionScreen> createState() => _DiseaseDoctorSelectionScreenState();
+  ConsumerState<DiseaseDoctorSelectionScreen> createState() =>
+      _DiseaseDoctorSelectionScreenState();
 }
 
-class _DiseaseDoctorSelectionScreenState extends ConsumerState<DiseaseDoctorSelectionScreen> {
-
+class _DiseaseDoctorSelectionScreenState
+    extends ConsumerState<DiseaseDoctorSelectionScreen> {
   @override
   void initState() {
     super.initState();
@@ -125,8 +126,8 @@ class _DiseaseDoctorSelectionScreenState extends ConsumerState<DiseaseDoctorSele
               ),
               const SizedBox(height: 16),
 
-              ...DiseaseFocus.allFocuses.map((disease) => 
-                _buildDiseaseCard(disease, selectionState),
+              ...DiseaseFocus.allFocuses.map(
+                (disease) => _buildDiseaseCard(disease, selectionState),
               ),
 
               const SizedBox(height: 32),
@@ -148,8 +149,8 @@ class _DiseaseDoctorSelectionScreenState extends ConsumerState<DiseaseDoctorSele
                 else if (selectionState.availableDoctors.isEmpty)
                   _buildNoDoctorsCard()
                 else
-                  ...selectionState.availableDoctors.map((doctor) => 
-                    _buildDoctorCard(doctor, selectionState),
+                  ...selectionState.availableDoctors.map(
+                    (doctor) => _buildDoctorCard(doctor, selectionState),
                   ),
               ],
 
@@ -158,7 +159,8 @@ class _DiseaseDoctorSelectionScreenState extends ConsumerState<DiseaseDoctorSele
               // Continue Button
               PrimaryButton(
                 text: 'Hoàn thành đăng ký',
-                onPressed: selectionState.canProceed && !selectionState.isLoading
+                onPressed:
+                    selectionState.canProceed && !selectionState.isLoading
                     ? _handleContinue
                     : null,
                 isLoading: selectionState.isLoading,
@@ -170,7 +172,10 @@ class _DiseaseDoctorSelectionScreenState extends ConsumerState<DiseaseDoctorSele
     );
   }
 
-  Widget _buildDiseaseCard(DiseaseFocus disease, DiseaseDoctorSelectionState state) {
+  Widget _buildDiseaseCard(
+    DiseaseFocus disease,
+    DiseaseDoctorSelectionState state,
+  ) {
     final isSelected = state.selectedDiseaseFocus == disease;
 
     return Card(
@@ -185,7 +190,8 @@ class _DiseaseDoctorSelectionScreenState extends ConsumerState<DiseaseDoctorSele
       ),
       child: InkWell(
         onTap: () {
-          ref.read(diseaseDoctorSelectionProvider.notifier)
+          ref
+              .read(diseaseDoctorSelectionProvider.notifier)
               .selectDiseaseFocus(disease);
         },
         borderRadius: BorderRadius.circular(12),
@@ -208,7 +214,9 @@ class _DiseaseDoctorSelectionScreenState extends ConsumerState<DiseaseDoctorSele
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: isSelected ? AppColors.primaryColor : AppColors.textPrimary,
+                        color: isSelected
+                            ? AppColors.primaryColor
+                            : AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -216,7 +224,9 @@ class _DiseaseDoctorSelectionScreenState extends ConsumerState<DiseaseDoctorSele
                       _getDiseaseDescription(disease),
                       style: TextStyle(
                         fontSize: 14,
-                        color: isSelected ? AppColors.primaryColor : AppColors.textSecondary,
+                        color: isSelected
+                            ? AppColors.primaryColor
+                            : AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -235,7 +245,10 @@ class _DiseaseDoctorSelectionScreenState extends ConsumerState<DiseaseDoctorSele
     );
   }
 
-  Widget _buildDoctorCard(DoctorModel doctor, DiseaseDoctorSelectionState state) {
+  Widget _buildDoctorCard(
+    DoctorModel doctor,
+    DiseaseDoctorSelectionState state,
+  ) {
     final isSelected = state.selectedDoctor?.uid == doctor.uid;
 
     return Card(
@@ -250,7 +263,8 @@ class _DiseaseDoctorSelectionScreenState extends ConsumerState<DiseaseDoctorSele
       ),
       child: InkWell(
         onTap: () {
-          ref.read(diseaseDoctorSelectionProvider.notifier)
+          ref
+              .read(diseaseDoctorSelectionProvider.notifier)
               .selectDoctor(doctor);
         },
         borderRadius: BorderRadius.circular(12),
@@ -280,7 +294,9 @@ class _DiseaseDoctorSelectionScreenState extends ConsumerState<DiseaseDoctorSele
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: isSelected ? AppColors.primaryColor : AppColors.textPrimary,
+                        color: isSelected
+                            ? AppColors.primaryColor
+                            : AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -288,7 +304,9 @@ class _DiseaseDoctorSelectionScreenState extends ConsumerState<DiseaseDoctorSele
                       'Chuyên khoa: ${doctor.specialty.displayName}',
                       style: TextStyle(
                         fontSize: 14,
-                        color: isSelected ? AppColors.primaryColor : AppColors.textSecondary,
+                        color: isSelected
+                            ? AppColors.primaryColor
+                            : AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -310,18 +328,12 @@ class _DiseaseDoctorSelectionScreenState extends ConsumerState<DiseaseDoctorSele
   Widget _buildNoDoctorsCard() {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            Icon(
-              Icons.info_outline,
-              size: 48,
-              color: Colors.orange[600],
-            ),
+            Icon(Icons.info_outline, size: 48, color: Colors.orange[600]),
             const SizedBox(height: 12),
             const Text(
               'Chưa có bác sĩ chuyên khoa',
@@ -334,10 +346,7 @@ class _DiseaseDoctorSelectionScreenState extends ConsumerState<DiseaseDoctorSele
             const SizedBox(height: 8),
             const Text(
               'Hiện tại chưa có bác sĩ nào cho chuyên khoa này. Bạn vẫn có thể tiếp tục đăng ký.',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
           ],
@@ -347,7 +356,8 @@ class _DiseaseDoctorSelectionScreenState extends ConsumerState<DiseaseDoctorSele
   }
 
   Future<void> _handleContinue() async {
-    final result = await ref.read(diseaseDoctorSelectionProvider.notifier)
+    final result = await ref
+        .read(diseaseDoctorSelectionProvider.notifier)
         .completePatientSetup(
           patientId: widget.patientId,
           patientName: widget.patientName,
@@ -359,7 +369,12 @@ class _DiseaseDoctorSelectionScreenState extends ConsumerState<DiseaseDoctorSele
         _showSnackBar(result.message!, isError: false);
         await Future.delayed(const Duration(seconds: 1));
         if (mounted && context.mounted) {
-                                AppRouter.pushDashboard(context, userRole: UserRole.patient);
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (_) => const HomePage(userRole: UserRole.patient),
+            ),
+            (route) => false,
+          );
         }
       } else {
         _showSnackBar(result.message!);

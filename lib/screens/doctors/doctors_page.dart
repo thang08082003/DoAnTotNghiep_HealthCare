@@ -5,28 +5,31 @@ import '../../components/doctor/doctor_card.dart';
 import '../../components/loading/loading_widget.dart';
 import '../../data/models/doctor_model.dart';
 import '../../data/resources/gene/app_colors.dart';
+import '../../data/services/follow_request_service.dart';
+import '../../data/models/user_model.dart';
+import '../../providers/user_provider.dart';
 
 class DoctorsPage extends BasePage {
-  const DoctorsPage({
-    super.key,
-    required super.userRole,
-  }) : super(
-          title: 'Bác sĩ',
-        );
+  const DoctorsPage({super.key, required super.userRole})
+    : super(title: 'Bác sĩ');
 
   @override
   State<DoctorsPage> createState() => _DoctorsPageState();
 
   // Static method for HomePage to extract content
-  static Widget buildContent(BuildContext context, WidgetRef ref, dynamic user) {
-    return _DoctorsContent();
+  static Widget buildContent(
+    BuildContext context,
+    WidgetRef ref,
+    dynamic user,
+  ) {
+    return const DoctorsListContent();
   }
 }
 
 class _DoctorsPageState extends BasePageState<DoctorsPage> {
   @override
   List<Widget> buildPages() {
-    return [_DoctorsContent()];
+    return [const DoctorsListContent()];
   }
 
   @override
@@ -35,17 +38,19 @@ class _DoctorsPageState extends BasePageState<DoctorsPage> {
   }
 }
 
-class _DoctorsContent extends StatefulWidget {
+class DoctorsListContent extends ConsumerStatefulWidget {
+  const DoctorsListContent({super.key});
+
   @override
-  _DoctorsContentState createState() => _DoctorsContentState();
+  DoctorsListContentState createState() => DoctorsListContentState();
 }
 
-class _DoctorsContentState extends State<_DoctorsContent> {
+class DoctorsListContentState extends ConsumerState<DoctorsListContent> {
   List<DoctorModel> _doctors = [];
   bool _isLoading = false;
   String? _errorMessage;
   String _searchQuery = '';
-  String? _selectedSpecialty;
+  Map<String, String> _requestStatuses = {}; // doctorId -> status
 
   @override
   void initState() {
@@ -60,13 +65,25 @@ class _DoctorsContentState extends State<_DoctorsContent> {
         _errorMessage = null;
       });
 
-      // TODO: Implement API call to fetch doctors
-      // final response = await doctorService.getDoctors();
-      // final doctors = response.data;
-      
-      // For now, show empty list until API is implemented
-      final doctors = <DoctorModel>[];
-      
+      // Load doctors from users collection via repository
+      final userRepo = ref.read(userRepositoryProvider);
+      final users = await userRepo.getUsersByRole(UserRole.doctor);
+      final doctors = users.whereType<DoctorModel>().toList();
+
+      // Try to load follow request statuses, but don't fail page if denied
+      try {
+        final currentUser = await ref.read(currentUserProvider.future);
+        if (currentUser != null && currentUser.isPatient) {
+          _requestStatuses = await FollowRequestService.getRequestsForPatient(
+            currentUser.uid,
+          );
+        } else {
+          _requestStatuses = {};
+        }
+      } catch (_) {
+        _requestStatuses = {};
+      }
+
       if (mounted) {
         setState(() {
           _doctors = doctors;
@@ -105,7 +122,9 @@ class _DoctorsContentState extends State<_DoctorsContent> {
                   prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.primaryColor.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(
+                      color: AppColors.primaryColor.withValues(alpha: 0.3),
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -114,39 +133,12 @@ class _DoctorsContentState extends State<_DoctorsContent> {
                 ),
               ),
               const SizedBox(height: 12),
-              // Specialty filter
-              DropdownButtonFormField<String>(
-                value: _selectedSpecialty,
-                onChanged: (value) {
-                  setState(() {
-                    _selectedSpecialty = value;
-                  });
-                },
-                decoration: InputDecoration(
-                  hintText: 'Chọn chuyên khoa',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.primaryColor.withValues(alpha: 0.3)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.primaryColor),
-                  ),
-                ),
-                items: const [
-                  DropdownMenuItem(value: null, child: Text('Tất cả chuyên khoa')),
-                  DropdownMenuItem(value: 'stress', child: Text('Stress')),
-                  DropdownMenuItem(value: 'cardiology', child: Text('Tim mạch')),
-                  DropdownMenuItem(value: 'diagnosis', child: Text('Chuẩn đoán bệnh')),
-                ],
-              ),
+              // Removed specialty dropdown to show all doctors by default
             ],
           ),
         ),
         // Doctors list
-        Expanded(
-          child: _buildDoctorsList(),
-        ),
+        Expanded(child: _buildDoctorsList()),
       ],
     );
   }
@@ -175,9 +167,10 @@ class _DoctorsContentState extends State<_DoctorsContent> {
     }
 
     final filteredDoctors = _doctors.where((doctor) {
-      final matchesSearch = doctor.name.toLowerCase().contains(_searchQuery.toLowerCase());
-      final matchesSpecialty = _selectedSpecialty == null || doctor.specialty.name == _selectedSpecialty;
-      return matchesSearch && matchesSpecialty;
+      final matchesSearch = doctor.name.toLowerCase().contains(
+        _searchQuery.toLowerCase(),
+      );
+      return matchesSearch;
     }).toList();
 
     if (filteredDoctors.isEmpty) {
@@ -198,9 +191,7 @@ class _DoctorsContentState extends State<_DoctorsContent> {
             SizedBox(height: 8),
             Text(
               'Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -212,9 +203,55 @@ class _DoctorsContentState extends State<_DoctorsContent> {
       itemCount: filteredDoctors.length,
       itemBuilder: (context, index) {
         final doctor = filteredDoctors[index];
+        final status = _requestStatuses[doctor.uid];
+        final isPending = status == 'pending';
+        final isAccepted = status == 'accepted';
+
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
-          child: DoctorCard(doctor: doctor),
+          child: DoctorCard(
+            doctor: doctor,
+            showBookButton: false,
+            primaryActionText: isAccepted
+                ? 'Đang theo dõi'
+                : (isPending ? 'Đã gửi yêu cầu' : 'Request theo dõi'),
+            primaryActionDisabled: isPending || isAccepted,
+            onPrimaryAction: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final currentUser = await ref.read(currentUserProvider.future);
+              if (currentUser == null || !currentUser.isPatient) {
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Bạn cần đăng nhập bằng tài khoản bệnh nhân.',
+                    ),
+                  ),
+                );
+                return;
+              }
+              try {
+                final ok = await FollowRequestService.requestFollow(
+                  patientId: currentUser.uid,
+                  doctorId: doctor.uid,
+                );
+                if (ok) {
+                  if (!mounted) return;
+                  setState(() {
+                    _requestStatuses[doctor.uid] = 'pending';
+                  });
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('Đã gửi yêu cầu theo dõi đến bác sĩ.'),
+                    ),
+                  );
+                }
+              } catch (e) {
+                messenger.showSnackBar(
+                  SnackBar(content: Text('Gửi yêu cầu thất bại: $e')),
+                );
+              }
+            },
+          ),
         );
       },
     );

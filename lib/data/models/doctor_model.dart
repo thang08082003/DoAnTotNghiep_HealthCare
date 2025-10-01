@@ -14,8 +14,9 @@ enum Specialty {
 
   static Specialty fromString(String specialty) {
     return Specialty.values.firstWhere(
-      (s) => s.englishName.toLowerCase() == specialty.toLowerCase() ||
-             s.vietnameseName.toLowerCase() == specialty.toLowerCase(),
+      (s) =>
+          s.englishName.toLowerCase() == specialty.toLowerCase() ||
+          s.vietnameseName.toLowerCase() == specialty.toLowerCase(),
       orElse: () => Specialty.stress,
     );
   }
@@ -36,6 +37,7 @@ enum Specialty {
 
 class DoctorModel extends UserModel {
   final Specialty specialty;
+  final int? yearsExperience; // optional years of experience
 
   DoctorModel({
     required super.uid,
@@ -44,6 +46,7 @@ class DoctorModel extends UserModel {
     super.avatarUrl,
     required super.createdAt,
     required this.specialty,
+    this.yearsExperience,
     super.diseaseFocus,
     super.assignedDoctorId,
   }) : super(role: UserRole.doctor);
@@ -55,10 +58,15 @@ class DoctorModel extends UserModel {
       name: json['name'] ?? '',
       email: json['email'] ?? '',
       avatarUrl: json['avatarUrl'],
-      createdAt: json['createdAt'] != null 
+      createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
       specialty: Specialty.fromString(json['specialty'] ?? 'General Medicine'),
+      yearsExperience:
+          (json['yearsExperience'] ??
+                  json['experienceYears'] ??
+                  json['experience'])
+              as int?,
       diseaseFocus: json['diseaseFocus'],
     );
   }
@@ -81,6 +89,7 @@ class DoctorModel extends UserModel {
       avatarUrl: user.avatarUrl,
       createdAt: user.createdAt,
       specialty: mappedSpecialty,
+      yearsExperience: null,
       diseaseFocus: user.diseaseFocus,
       assignedDoctorId: user.assignedDoctorId,
     );
@@ -91,6 +100,7 @@ class DoctorModel extends UserModel {
   Map<String, dynamic> toJson() {
     final json = super.toJson();
     json['specialty'] = specialty.englishName;
+    if (yearsExperience != null) json['yearsExperience'] = yearsExperience;
     return json;
   }
 
@@ -106,6 +116,7 @@ class DoctorModel extends UserModel {
     DateTime? createdAt,
     UserRole? role, // Keep this for compatibility
     Specialty? specialty,
+    int? yearsExperience,
   }) {
     return DoctorModel(
       uid: uid ?? this.uid,
@@ -114,6 +125,7 @@ class DoctorModel extends UserModel {
       avatarUrl: avatarUrl ?? this.avatarUrl,
       createdAt: createdAt ?? this.createdAt,
       specialty: specialty ?? this.specialty,
+      yearsExperience: yearsExperience ?? this.yearsExperience,
       diseaseFocus: diseaseFocus ?? this.diseaseFocus,
     );
   }
@@ -124,6 +136,6 @@ class DoctorModel extends UserModel {
 
   @override
   String toString() {
-    return 'DoctorModel(uid: $uid, name: $name, specialty: ${specialty.vietnameseName})';
+    return 'DoctorModel(uid: $uid, name: $name, specialty: ${specialty.vietnameseName}, yearsExperience: ${yearsExperience ?? 'n/a'})';
   }
 }

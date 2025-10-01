@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:healthcare/data/resources/gene/app_colors.dart';
 import 'package:healthcare/router/app_router.dart';
 import 'package:healthcare/providers/auth_provider.dart';
+import 'package:healthcare/providers/user_provider.dart';
+import 'package:healthcare/screens/home/home_page.dart';
+import 'package:healthcare/data/models/user_model.dart';
 import '../../components/buttons/index.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -16,8 +19,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  
+
   bool _obscurePassword = true;
+
+  // Note: Do not use ref.listen in initState (Riverpod restriction). We'll listen in build.
 
   @override
   void dispose() {
@@ -39,21 +44,57 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
-    await ref.read(authProvider.notifier).login(
-      _emailController.text,
-      _passwordController.text,
-    );
+    await ref
+        .read(authProvider.notifier)
+        .login(_emailController.text, _passwordController.text);
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    
-    // Show error message if any
-    ref.listen<AuthState>(authProvider, (previous, next) {
-      if (next.errorMessage != null) {
-        _showSnackBar(next.errorMessage!);
+
+    // Listen to auth state changes (safe inside build)
+    ref.listen<AuthState>(authProvider, (previous, next) async {
+      // Show error only if changed
+      final errorChanged =
+          next.errorMessage != null &&
+          next.errorMessage!.isNotEmpty &&
+          next.errorMessage != previous?.errorMessage;
+      if (errorChanged) {
+        if (mounted) {
+          _showSnackBar(next.errorMessage!);
+        }
         ref.read(authProvider.notifier).clearError();
+      }
+
+      // Navigate only when becomes authenticated
+      final becameAuthenticated =
+          (previous?.isAuthenticated ?? false) == false &&
+          next.isAuthenticated == true &&
+          !next.isLoading &&
+          next.uid != null;
+      if (becameAuthenticated) {
+        final exists = await ref
+            .read(userRepositoryProvider)
+            .userExists(next.uid!);
+        if (!mounted) return;
+        if (exists) {
+          final user = await ref
+              .read(userRepositoryProvider)
+              .getUserById(next.uid!);
+          if (!mounted) return;
+          final role = user?.role ?? UserRole.patient;
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => HomePage(userRole: role)),
+            (route) => false,
+          );
+        } else {
+          AppRouter.pushUserSetup(
+            context,
+            uid: next.uid!,
+            email: next.email ?? '',
+          );
+        }
       }
     });
 
@@ -99,7 +140,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 32),
-                      
+
                       // Email field
                       TextFormField(
                         controller: _emailController,
@@ -122,15 +163,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           if (value == null || value.isEmpty) {
                             return 'Vui lòng nhập email';
                           }
-                          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                              .hasMatch(value)) {
+                          if (!RegExp(
+                            r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                          ).hasMatch(value)) {
                             return 'Email không hợp lệ';
                           }
                           return null;
                         },
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Password field
                       TextFormField(
                         controller: _passwordController,
@@ -172,7 +214,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         },
                       ),
                       const SizedBox(height: 24),
-                      
+
                       // Login button
                       PrimaryButton(
                         text: 'Đăng Nhập',
@@ -180,7 +222,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         isLoading: authState.isLoading,
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Register link
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,

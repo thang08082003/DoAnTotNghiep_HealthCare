@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../data/models/user_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
 import '../screens/login/login_screen.dart';
@@ -17,7 +16,7 @@ class AppRouter {
   static const String userSetup = '/user-setup';
   static const String diseaseDoctorSelection = '/disease-doctor-selection';
   static const String doctorSpecialtySelection = '/doctor-specialty-selection';
-  static const String dashboard = '/dashboard';
+  // static const String dashboard = '/dashboard'; // deprecated
 
   // Generate routes
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -27,13 +26,13 @@ class AppRouter {
           builder: (_) => const LoginScreen(),
           settings: settings,
         );
-      
+
       case register:
         return MaterialPageRoute(
           builder: (_) => const RegisterScreen(),
           settings: settings,
         );
-      
+
       case userSetup:
         final args = settings.arguments as Map<String, dynamic>?;
         return MaterialPageRoute(
@@ -43,7 +42,7 @@ class AppRouter {
           ),
           settings: settings,
         );
-      
+
       case diseaseDoctorSelection:
         final args = settings.arguments as Map<String, dynamic>?;
         return MaterialPageRoute(
@@ -54,7 +53,7 @@ class AppRouter {
           ),
           settings: settings,
         );
-      
+
       case doctorSpecialtySelection:
         final args = settings.arguments as Map<String, dynamic>?;
         return MaterialPageRoute(
@@ -65,53 +64,44 @@ class AppRouter {
           ),
           settings: settings,
         );
-      
-      case dashboard:
-        return MaterialPageRoute(
-          builder: (_) => const HomePage(),
-          settings: settings,
-        );
-      
 
-      
+      // case dashboard:
+      //   return MaterialPageRoute(
+      //     builder: (_) => const HomePage(),
+      //     settings: settings,
+      //   );
+
       default:
         return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(
-              child: Text('Không tìm thấy trang'),
-            ),
-          ),
+          builder: (_) =>
+              const Scaffold(body: Center(child: Text('Không tìm thấy trang'))),
         );
     }
   }
 
   // Navigation helpers
   static void pushLogin(BuildContext context) {
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      login,
-      (route) => false,
-    );
+    Navigator.of(context).pushNamedAndRemoveUntil(login, (route) => false);
   }
 
   static void pushRegister(BuildContext context) {
     Navigator.of(context).pushNamed(register);
   }
 
-  static void pushUserSetup(BuildContext context, {
+  static void pushUserSetup(
+    BuildContext context, {
     required String uid,
     required String email,
   }) {
     Navigator.of(context).pushNamedAndRemoveUntil(
       userSetup,
       (route) => false,
-      arguments: {
-        'uid': uid,
-        'email': email,
-      },
+      arguments: {'uid': uid, 'email': email},
     );
   }
 
-  static void pushDiseaseDoctorSelection(BuildContext context, {
+  static void pushDiseaseDoctorSelection(
+    BuildContext context, {
     required String patientId,
     required String patientName,
     required String patientEmail,
@@ -127,7 +117,8 @@ class AppRouter {
     );
   }
 
-  static void pushDoctorSpecialtySelection(BuildContext context, {
+  static void pushDoctorSpecialtySelection(
+    BuildContext context, {
     required String doctorId,
     required String doctorName,
     required String doctorEmail,
@@ -143,13 +134,13 @@ class AppRouter {
     );
   }
 
-  static void pushDashboard(BuildContext context, {required UserRole userRole}) {
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      dashboard,
-      (route) => false,
-      arguments: userRole,
-    );
-  }
+  // static void pushDashboard(BuildContext context, {required UserRole userRole}) {
+  //   Navigator.of(context).pushNamedAndRemoveUntil(
+  //     dashboard,
+  //     (route) => false,
+  //     arguments: userRole,
+  //   );
+  // }
 }
 
 // Auth Wrapper với logic điều hướng
@@ -159,15 +150,11 @@ class AuthWrapper extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
-    
+
     if (authState.isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    
+
     if (authState.isAuthenticated && authState.uid != null) {
       // User is authenticated, check if profile exists
       return Consumer(
@@ -177,29 +164,29 @@ class AuthWrapper extends ConsumerWidget {
             builder: (context, profileSnapshot) {
               if (profileSnapshot.connectionState == ConnectionState.waiting) {
                 return const Scaffold(
-                  body: Center(
-                    child: CircularProgressIndicator(),
-                  ),
+                  body: Center(child: CircularProgressIndicator()),
                 );
               }
-              
+
               if (profileSnapshot.data == true) {
                 // Profile exists, get user data and go to home page
                 return FutureBuilder(
-                  future: ref.read(userRepositoryProvider).getUserById(authState.uid!),
+                  future: ref
+                      .read(userRepositoryProvider)
+                      .getUserById(authState.uid!),
                   builder: (context, userSnapshot) {
-                    if (userSnapshot.connectionState == ConnectionState.waiting) {
+                    if (userSnapshot.connectionState ==
+                        ConnectionState.waiting) {
                       return const Scaffold(
-                        body: Center(
-                          child: CircularProgressIndicator(),
-                        ),
+                        body: Center(child: CircularProgressIndicator()),
                       );
                     }
-                    
+
                     if (userSnapshot.hasData && userSnapshot.data != null) {
-                      return const HomePage();
+                      final user = userSnapshot.data!;
+                      return HomePage(userRole: user.role);
                     }
-                    
+
                     return const LoginScreen();
                   },
                 );
@@ -215,7 +202,7 @@ class AuthWrapper extends ConsumerWidget {
         },
       );
     }
-    
+
     return const LoginScreen();
   }
 }
