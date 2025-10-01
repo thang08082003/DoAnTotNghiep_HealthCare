@@ -86,4 +86,19 @@ class FollowRequestService {
     }
     return map;
   }
+
+  /// Get patient IDs that a doctor is currently following (status == 'accepted').
+  static Future<List<String>> getAcceptedPatientIdsForDoctor(
+    String doctorId,
+  ) async {
+    final query = await _firestore
+        .collection(_collection)
+        .where('doctorId', isEqualTo: doctorId)
+        .where('status', isEqualTo: 'accepted')
+        .get();
+    return query.docs
+        .map((d) => (d.data()['patientId'] as String?))
+        .whereType<String>()
+        .toList();
+  }
 }

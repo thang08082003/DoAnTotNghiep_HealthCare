@@ -192,6 +192,17 @@ class PatientDashboardContent extends ConsumerWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+              _buildQuickAccessCard(
+                icon: Icons.chat_bubble_outline,
+                title: 'Trao đổi với bác sĩ',
+                subtitle: 'Nhắn tin & phản hồi',
+                color: AppColors.primaryColor.withValues(alpha: 0.08),
+                iconColor: AppColors.primaryColor,
+                onTap: () {
+                  // TODO: Navigate to chat with assigned doctor or doctor list if none
+                },
+              ),
             ],
           ),
         );
@@ -343,6 +354,8 @@ class PatientDashboardContent extends ConsumerWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
+        width: double.infinity,
+        constraints: const BoxConstraints(minHeight: 68),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: color,

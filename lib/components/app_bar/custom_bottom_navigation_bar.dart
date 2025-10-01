@@ -52,9 +52,9 @@ class CustomBottomNavigationBar extends StatelessWidget {
           label: 'Bệnh nhân',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.assignment_outlined),
-          activeIcon: Icon(Icons.assignment),
-          label: 'Báo cáo',
+          icon: Icon(Icons.notifications_outlined),
+          activeIcon: Icon(Icons.notifications),
+          label: 'Thông báo',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.person_outline),
@@ -78,9 +78,7 @@ class CustomBottomNavigationBar extends StatelessWidget {
         ],
       ),
       child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(20),
-        ),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         child: BottomNavigationBar(
           currentIndex: currentIndex,
           onTap: onTap,

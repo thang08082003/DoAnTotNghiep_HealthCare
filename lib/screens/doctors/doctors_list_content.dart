@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../components/base_page/base_page_scaffold.dart';
 import '../../components/doctor/doctor_card.dart';
 import '../../components/loading/loading_widget.dart';
 import '../../data/models/doctor_model.dart';
@@ -8,35 +7,6 @@ import '../../data/resources/gene/app_colors.dart';
 import '../../data/services/follow_request_service.dart';
 import '../../data/models/user_model.dart';
 import '../../providers/user_provider.dart';
-
-class DoctorsPage extends BasePage {
-  const DoctorsPage({super.key, required super.userRole})
-    : super(title: 'Bác sĩ');
-
-  @override
-  State<DoctorsPage> createState() => _DoctorsPageState();
-
-  // Static method for HomePage to extract content
-  static Widget buildContent(
-    BuildContext context,
-    WidgetRef ref,
-    dynamic user,
-  ) {
-    return const DoctorsListContent();
-  }
-}
-
-class _DoctorsPageState extends BasePageState<DoctorsPage> {
-  @override
-  List<Widget> buildPages() {
-    return [const DoctorsListContent()];
-  }
-
-  @override
-  void onNavigationTap(int index) {
-    // Navigation handled by HomePage
-  }
-}
 
 class DoctorsListContent extends ConsumerStatefulWidget {
   const DoctorsListContent({super.key});
@@ -65,12 +35,10 @@ class DoctorsListContentState extends ConsumerState<DoctorsListContent> {
         _errorMessage = null;
       });
 
-      // Load doctors from users collection via repository
       final userRepo = ref.read(userRepositoryProvider);
       final users = await userRepo.getUsersByRole(UserRole.doctor);
       final doctors = users.whereType<DoctorModel>().toList();
 
-      // Try to load follow request statuses, but don't fail page if denied
       try {
         final currentUser = await ref.read(currentUserProvider.future);
         if (currentUser != null && currentUser.isPatient) {
@@ -104,13 +72,11 @@ class DoctorsListContentState extends ConsumerState<DoctorsListContent> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Search and filter section
         Container(
           padding: const EdgeInsets.all(16),
           color: Colors.white,
           child: Column(
             children: [
-              // Search bar
               TextField(
                 onChanged: (value) {
                   setState(() {
@@ -133,11 +99,9 @@ class DoctorsListContentState extends ConsumerState<DoctorsListContent> {
                 ),
               ),
               const SizedBox(height: 12),
-              // Removed specialty dropdown to show all doctors by default
             ],
           ),
         ),
-        // Doctors list
         Expanded(child: _buildDoctorsList()),
       ],
     );

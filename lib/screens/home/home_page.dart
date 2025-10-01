@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../components/base_page/base_page_scaffold.dart';
-import '../doctors/doctors_page.dart';
+import '../doctors/doctors_list_content.dart';
 import '../../data/models/user_model.dart';
 import '../../components/loading/loading_widget.dart';
 import '../../components/buttons/primary_button.dart';
