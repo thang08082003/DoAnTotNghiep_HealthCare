@@ -9,6 +9,7 @@ import '../../data/services/chat_service.dart';
 import '../../data/models/chat_message.dart';
 import '../../data/services/doctor_orders_service.dart';
 import 'patient_orders_list_screen.dart';
+import '../call/video_call_screen.dart';
 
 class PatientDetailScreen extends ConsumerStatefulWidget {
   final String patientId;
@@ -393,6 +394,32 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
 
             return Column(
               children: [
+                // Call button
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.video_call),
+                      label: const Text('Gọi video'),
+                      onPressed: () {
+                        final channel = _buildChannelName(
+                          currentUser.uid,
+                          otherId,
+                        );
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                VideoCallScreen(channelName: channel),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
                 Expanded(
                   child: StreamBuilder<List<ChatMessage>>(
                     stream: stream,
@@ -470,6 +497,10 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
         );
       },
     );
+  }
+
+  String _buildChannelName(String a, String b) {
+    return (a.compareTo(b) <= 0) ? '${a}_$b' : '${b}_$a';
   }
 
   Widget _infoCard({required List<Widget> children}) {
