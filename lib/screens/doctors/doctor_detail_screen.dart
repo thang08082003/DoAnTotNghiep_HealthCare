@@ -8,16 +8,21 @@ import '../../data/services/chat_service.dart';
 import '../../data/models/chat_message.dart';
 import '../../data/services/doctor_orders_service.dart';
 import '../../data/models/doctor_order.dart';
+import '../../data/services/doctor_reviews_service.dart';
+import '../../data/models/doctor_review.dart';
 import '../patients/patient_orders_list_screen.dart';
 import '../call/video_call_screen.dart';
+import 'doctor_reviews_screen.dart';
 
 class DoctorDetailScreen extends ConsumerStatefulWidget {
   final String doctorId;
   final int initialTab; // 0: Thông tin bác sĩ, 1: Tin nhắn
+  final bool infoOnly; // when true, show only info tab and hide orders/chat
   const DoctorDetailScreen({
     super.key,
     required this.doctorId,
     this.initialTab = 0,
+    this.infoOnly = false,
   });
 
   @override
@@ -70,6 +75,50 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (widget.infoOnly) {
+      // Info-only view: no tabs, no chat, no orders
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Thông tin bác sĩ'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.rate_review),
+              tooltip: 'Nhận xét',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => DoctorReviewsScreen(
+                      doctorId: widget.doctorId,
+                      doctorName: _user?.name,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+        body: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : (_error != null)
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error, size: 64, color: AppColors.error),
+                    const SizedBox(height: 12),
+                    Text(_error!),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: _load,
+                      child: const Text('Thử lại'),
+                    ),
+                  ],
+                ),
+              )
+            : _buildInfoTab(infoOnly: true),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Thông tin bác sĩ'),
@@ -107,7 +156,7 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
     );
   }
 
-  Widget _buildInfoTab() {
+  Widget _buildInfoTab({bool infoOnly = false}) {
     final name = _user?.name ?? '';
     final email = _user?.email ?? '';
     final isDoctor = _user is DoctorModel;
@@ -136,9 +185,249 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
             _infoRow('Chuyên khoa', specialty),
             _infoRow('Kinh nghiệm (năm)', years),
             const SizedBox(height: 16),
-            _buildDoctorOrdersSection(),
+            _buildRatingsSection(),
+            const SizedBox(height: 16),
+            if (!infoOnly) _buildDoctorOrdersSection(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildRatingsSection() {
+    // Patients can see rating and reviews; doctors can also see but cannot add
+    return Consumer(
+      builder: (context, ref, _) {
+        final service = DoctorReviewsService();
+        return FutureBuilder(
+          future: ref.read(currentUserProvider.future),
+          builder: (context, snap) {
+            final currentUser = snap.data; // may be null initially
+            final isPatient = currentUser?.isPatient == true;
+            return Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => DoctorReviewsScreen(
+                            doctorId: widget.doctorId,
+                            doctorName: _user?.name,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Row(
+                      children: [
+                        const Icon(Icons.star, color: Colors.amber),
+                        const SizedBox(width: 8),
+                        FutureBuilder<double>(
+                          future: service.getAverageRating(widget.doctorId),
+                          builder: (context, avgSnap) {
+                            final avg = (avgSnap.data ?? 0).toStringAsFixed(1);
+                            return Text(
+                              'Đánh giá trung bình: $avg/5.0',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  StreamBuilder<List<DoctorReview>>(
+                    stream: service.watchReviews(widget.doctorId, limit: 5),
+                    builder: (context, rSnap) {
+                      final reviews = rSnap.data ?? const <DoctorReview>[];
+                      if (reviews.isEmpty) {
+                        return const Text(
+                          'Chưa có nhận xét nào. Hãy là người đầu tiên!',
+                          style: TextStyle(color: AppColors.textSecondary),
+                        );
+                      }
+                      return Column(
+                        children: [
+                          for (final r in reviews) ...[
+                            _reviewTile(r),
+                            const SizedBox(height: 8),
+                          ],
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showAddReviewSheet(DoctorReviewsService service) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        final commentCtl = TextEditingController();
+        int rating = 5;
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: Consumer(
+            builder: (context, ref, _) {
+              return FutureBuilder(
+                future: ref.read(currentUserProvider.future),
+                builder: (context, snap) {
+                  if (!snap.hasData) {
+                    return const SizedBox(
+                      height: 200,
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  final user = snap.data!;
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Đánh giá bác sĩ',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            for (int i = 1; i <= 5; i++)
+                              IconButton(
+                                icon: Icon(
+                                  i <= rating ? Icons.star : Icons.star_border,
+                                  color: Colors.amber,
+                                ),
+                                onPressed: () {
+                                  rating = i;
+                                  // force rebuild of sheet
+                                  (ctx as Element).markNeedsBuild();
+                                },
+                              ),
+                          ],
+                        ),
+                        TextField(
+                          controller: commentCtl,
+                          maxLines: 4,
+                          decoration: const InputDecoration(
+                            labelText: 'Nhận xét (tuỳ chọn)',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              try {
+                                await service.upsertReview(
+                                  doctorId: widget.doctorId,
+                                  patientId: user.uid,
+                                  patientName: user.name,
+                                  rating: rating,
+                                  comment: commentCtl.text.trim().isEmpty
+                                      ? null
+                                      : commentCtl.text.trim(),
+                                );
+                                if (!mounted) return;
+                                Navigator.of(ctx).pop();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Đã gửi đánh giá'),
+                                  ),
+                                );
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Gửi đánh giá thất bại: $e'),
+                                  ),
+                                );
+                              }
+                            },
+                            child: const Text('Gửi'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _reviewTile(DoctorReview r) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.person, color: AppColors.textSecondary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        r.patientName.isEmpty ? 'Người dùng' : r.patientName,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        const Icon(Icons.star, color: Colors.amber, size: 16),
+                        const SizedBox(width: 4),
+                        Text('${r.rating}/5'),
+                      ],
+                    ),
+                  ],
+                ),
+                if ((r.comment ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(r.comment!),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

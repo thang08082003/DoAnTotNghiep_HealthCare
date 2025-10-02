@@ -120,5 +120,15 @@ service cloud.firestore {
           resource.data.doctorId == request.auth.uid;
       }
     }
+    // Allow doctor reviews under users/{doctorId}/reviews/{patientId}
+    match /users/{doctorId}/reviews/{patientId} {
+      allow read: if true; // anyone can see reviews
+      allow create, update, delete: if request.auth != null
+        && request.auth.uid == patientId
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && request.resource.data.doctorId == doctorId
+        && request.resource.data.patientId == request.auth.uid;
+    }
   }
 }

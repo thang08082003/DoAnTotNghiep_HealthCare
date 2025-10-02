@@ -19,8 +19,6 @@ class VideoCallScreen extends ConsumerStatefulWidget {
 
 class _VideoCallScreenState extends ConsumerState<VideoCallScreen> {
   RtcEngine? _engine;
-  bool _joined = false;
-  int? _localUid;
   int? _remoteUid;
   String? _error;
 
@@ -44,7 +42,6 @@ class _VideoCallScreenState extends ConsumerState<VideoCallScreen> {
       }
       // Use a numeric uid for Agora (hash of user id)
       final uid = currentUser.uid.hashCode & 0x7fffffff;
-      _localUid = uid;
 
       // Validate App ID
       if (agoraAppId.isEmpty || agoraAppId == 'YOUR_AGORA_APP_ID') {
@@ -68,9 +65,7 @@ class _VideoCallScreenState extends ConsumerState<VideoCallScreen> {
 
       engine.registerEventHandler(
         RtcEngineEventHandler(
-          onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
-            setState(() => _joined = true);
-          },
+          onJoinChannelSuccess: (RtcConnection connection, int elapsed) {},
           onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
             setState(() => _remoteUid = remoteUid);
           },
