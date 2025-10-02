@@ -7,7 +7,6 @@ import '../../providers/user_provider.dart';
 import '../../data/services/follow_request_service.dart';
 import '../../components/doctor/doctor_card.dart';
 import 'doctor_detail_screen.dart';
-import 'doctor_reviews_screen.dart';
 
 class DoctorsFollowingListScreen extends ConsumerStatefulWidget {
   const DoctorsFollowingListScreen({super.key});
@@ -123,16 +122,6 @@ class _DoctorsFollowingListScreenState
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => DoctorDetailScreen(doctorId: d.uid),
-                          ),
-                        );
-                      },
-                      onRate: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => DoctorReviewsScreen(
-                              doctorId: d.uid,
-                              doctorName: d.name,
-                            ),
                           ),
                         );
                       },

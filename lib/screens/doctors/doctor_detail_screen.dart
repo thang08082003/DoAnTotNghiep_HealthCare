@@ -78,25 +78,7 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
     if (widget.infoOnly) {
       // Info-only view: no tabs, no chat, no orders
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Thông tin bác sĩ'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.rate_review),
-              tooltip: 'Nhận xét',
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => DoctorReviewsScreen(
-                      doctorId: widget.doctorId,
-                      doctorName: _user?.name,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
+        appBar: AppBar(title: const Text('Thông tin bác sĩ')),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
             : (_error != null)
@@ -202,8 +184,6 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
         return FutureBuilder(
           future: ref.read(currentUserProvider.future),
           builder: (context, snap) {
-            final currentUser = snap.data; // may be null initially
-            final isPatient = currentUser?.isPatient == true;
             return Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -277,7 +257,7 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
     );
   }
 
-  void _showAddReviewSheet(DoctorReviewsService service) {
+  void showAddReviewSheet(DoctorReviewsService service) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

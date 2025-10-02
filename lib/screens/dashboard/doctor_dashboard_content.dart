@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:healthcare/screens/patients/patients_list_content.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
 import '../../data/services/follow_request_service.dart';
@@ -298,7 +297,7 @@ class _AbnormalAlertsPreview extends StatelessWidget {
 }
 
 // Quick access card helper (matches the signature you requested)
-Widget _buildQuickAccessCard({
+Widget buildQuickAccessCard({
   required IconData icon,
   required String title,
   required String subtitle,

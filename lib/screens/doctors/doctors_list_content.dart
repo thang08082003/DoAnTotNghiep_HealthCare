@@ -8,7 +8,6 @@ import '../../data/services/follow_request_service.dart';
 import '../../data/models/user_model.dart';
 import '../../providers/user_provider.dart';
 import 'doctor_detail_screen.dart';
-import 'doctor_reviews_screen.dart';
 
 class DoctorsListContent extends ConsumerStatefulWidget {
   const DoctorsListContent({super.key});
@@ -246,16 +245,7 @@ class DoctorsListContentState extends ConsumerState<DoctorsListContent> {
                 ),
               );
             },
-            onRate: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => DoctorReviewsScreen(
-                    doctorId: doctor.uid,
-                    doctorName: doctor.name,
-                  ),
-                ),
-              );
-            },
+
             primaryActionText: () {
               switch (category) {
                 case _DoctorCategory.accepted:
