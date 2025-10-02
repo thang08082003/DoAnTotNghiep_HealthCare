@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:healthcare/screens/patients/patients_list_content.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
 import '../../data/services/follow_request_service.dart';
 import '../../data/models/user_model.dart';
+import '../patients/patient_detail_screen.dart';
 
 class DoctorDashboardContent extends ConsumerWidget {
   const DoctorDashboardContent({super.key});
@@ -102,28 +104,6 @@ class DoctorDashboardContent extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
               _AbnormalAlertsPreview(doctorId: user?.uid ?? ''),
-
-              const SizedBox(height: 24),
-
-              const Text(
-                'Truy cập nhanh',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 16),
-              _buildQuickAccessCard(
-                icon: Icons.chat_bubble_outline,
-                title: 'Trao đổi với bệnh nhân',
-                subtitle: 'Tin nhắn & phản hồi',
-                color: AppColors.primaryColor.withValues(alpha: 0.08),
-                iconColor: AppColors.primaryColor,
-                onTap: () {
-                  // TODO: Navigate to messaging/chat screen
-                },
-              ),
             ],
           ),
         );
@@ -263,7 +243,11 @@ class _FollowedPatientsListState extends ConsumerState<_FollowedPatientsList> {
                   color: AppColors.textSecondary,
                 ),
                 onPressed: () {
-                  // TODO: Navigate to patient detail
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => PatientDetailScreen(patientId: p.uid),
+                    ),
+                  );
                 },
               ),
             ],

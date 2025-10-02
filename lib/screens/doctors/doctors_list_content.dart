@@ -42,8 +42,9 @@ class DoctorsListContentState extends ConsumerState<DoctorsListContent> {
       try {
         final currentUser = await ref.read(currentUserProvider.future);
         if (currentUser != null && currentUser.isPatient) {
-          _requestStatuses = await FollowRequestService.getRequestsForPatient(
+          _requestStatuses = await _fetchStatusesForDoctors(
             currentUser.uid,
+            doctors,
           );
         } else {
           _requestStatuses = {};
@@ -68,46 +69,93 @@ class DoctorsListContentState extends ConsumerState<DoctorsListContent> {
     }
   }
 
+  Future<Map<String, String>> _fetchStatusesForDoctors(
+    String patientId,
+    List<DoctorModel> doctors,
+  ) async {
+    final futures = doctors.map((d) async {
+      try {
+        final status = await FollowRequestService.getRequestStatus(
+          patientId: patientId,
+          doctorId: d.uid,
+        );
+        return MapEntry(d.uid, status);
+      } catch (_) {
+        return const MapEntry<String, String?>('', null);
+      }
+    }).toList();
+
+    final results = await Future.wait(futures);
+    final map = <String, String>{};
+    for (final entry in results) {
+      if (entry.key.isEmpty) continue;
+      final status = entry.value;
+      if (status != null) map[entry.key] = status;
+    }
+    return map;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          color: Colors.white,
-          child: Column(
-            children: [
-              TextField(
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                  });
-                },
-                decoration: InputDecoration(
-                  hintText: 'Tìm kiếm bác sĩ...',
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: AppColors.primaryColor.withValues(alpha: 0.3),
+    return DefaultTabController(
+      length: 3,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            color: Colors.white,
+            child: Column(
+              children: [
+                TextField(
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Tìm kiếm bác sĩ...',
+                    prefixIcon: const Icon(Icons.search),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: AppColors.primaryColor.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.primaryColor),
                     ),
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.primaryColor),
-                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-            ],
+                const SizedBox(height: 12),
+                const TabBar(
+                  labelColor: AppColors.primaryColor,
+                  unselectedLabelColor: AppColors.textSecondary,
+                  indicatorColor: AppColors.primaryColor,
+                  tabs: [
+                    Tab(text: 'Yêu cầu'),
+                    Tab(text: 'Theo dõi'),
+                    Tab(text: 'Đang chờ'),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
-        Expanded(child: _buildDoctorsList()),
-      ],
+          Expanded(
+            child: TabBarView(
+              children: [
+                _buildDoctorsList(category: _DoctorCategory.requestable),
+                _buildDoctorsList(category: _DoctorCategory.accepted),
+                _buildDoctorsList(category: _DoctorCategory.pending),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildDoctorsList() {
+  Widget _buildDoctorsList({required _DoctorCategory category}) {
     if (_isLoading) {
       return const Center(child: LoadingWidget());
     }
@@ -134,7 +182,19 @@ class DoctorsListContentState extends ConsumerState<DoctorsListContent> {
       final matchesSearch = doctor.name.toLowerCase().contains(
         _searchQuery.toLowerCase(),
       );
-      return matchesSearch;
+      if (!matchesSearch) return false;
+      final status = _requestStatuses[doctor.uid];
+      switch (category) {
+        case _DoctorCategory.requestable:
+          // Not requested yet or previously rejected/cancelled
+          return status == null ||
+              status == 'rejected' ||
+              status == 'cancelled';
+        case _DoctorCategory.pending:
+          return status == 'pending';
+        case _DoctorCategory.accepted:
+          return status == 'accepted';
+      }
     }).toList();
 
     if (filteredDoctors.isEmpty) {
@@ -167,19 +227,23 @@ class DoctorsListContentState extends ConsumerState<DoctorsListContent> {
       itemCount: filteredDoctors.length,
       itemBuilder: (context, index) {
         final doctor = filteredDoctors[index];
-        final status = _requestStatuses[doctor.uid];
-        final isPending = status == 'pending';
-        final isAccepted = status == 'accepted';
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: DoctorCard(
             doctor: doctor,
             showBookButton: false,
-            primaryActionText: isAccepted
-                ? 'Đang theo dõi'
-                : (isPending ? 'Đã gửi yêu cầu' : 'Request theo dõi'),
-            primaryActionDisabled: isPending || isAccepted,
+            primaryActionText: () {
+              switch (category) {
+                case _DoctorCategory.accepted:
+                  return 'Đang theo dõi';
+                case _DoctorCategory.pending:
+                  return 'Đã gửi yêu cầu';
+                case _DoctorCategory.requestable:
+                  return 'Request theo dõi';
+              }
+            }(),
+            primaryActionDisabled: category != _DoctorCategory.requestable,
             onPrimaryAction: () async {
               final messenger = ScaffoldMessenger.of(context);
               final currentUser = await ref.read(currentUserProvider.future);
@@ -197,12 +261,33 @@ class DoctorsListContentState extends ConsumerState<DoctorsListContent> {
                 final ok = await FollowRequestService.requestFollow(
                   patientId: currentUser.uid,
                   doctorId: doctor.uid,
+                  patientName: currentUser.name,
                 );
                 if (ok) {
                   if (!mounted) return;
-                  setState(() {
-                    _requestStatuses[doctor.uid] = 'pending';
-                  });
+                  try {
+                    final currentUser = await ref.read(
+                      currentUserProvider.future,
+                    );
+                    if (currentUser != null) {
+                      final latest =
+                          await FollowRequestService.getRequestStatus(
+                            patientId: currentUser.uid,
+                            doctorId: doctor.uid,
+                          );
+                      setState(() {
+                        if (latest != null) {
+                          _requestStatuses[doctor.uid] = latest;
+                        } else {
+                          _requestStatuses.remove(doctor.uid);
+                        }
+                      });
+                    }
+                  } catch (_) {
+                    setState(() {
+                      _requestStatuses[doctor.uid] = 'pending';
+                    });
+                  }
                   messenger.showSnackBar(
                     const SnackBar(
                       content: Text('Đã gửi yêu cầu theo dõi đến bác sĩ.'),
@@ -221,3 +306,5 @@ class DoctorsListContentState extends ConsumerState<DoctorsListContent> {
     );
   }
 }
+
+enum _DoctorCategory { requestable, pending, accepted }

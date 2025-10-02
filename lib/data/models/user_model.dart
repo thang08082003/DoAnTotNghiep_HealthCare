@@ -7,7 +7,12 @@ class UserModel {
   final UserRole role;
   final String? avatarUrl;
   final String? diseaseFocus;
-  final String? assignedDoctorId; // ID của bác sĩ được gán cho bệnh nhân
+  final String? assignedDoctorId;
+  // Patient-only optional fields
+  final String? phone;
+  final int? age;
+  final String? gender;
+  final String? medicalHistory;
   final DateTime createdAt;
 
   UserModel({
@@ -18,6 +23,10 @@ class UserModel {
     this.avatarUrl,
     this.diseaseFocus,
     this.assignedDoctorId,
+    this.phone,
+    this.age,
+    this.gender,
+    this.medicalHistory,
     required this.createdAt,
   });
 
@@ -31,6 +40,14 @@ class UserModel {
       avatarUrl: json['avatarUrl'] as String?,
       diseaseFocus: json['diseaseFocus'] as String?,
       assignedDoctorId: json['assignedDoctorId'] as String?,
+      phone: json['phone'] as String?,
+      age: json['age'] is int
+          ? json['age'] as int
+          : (json['age'] is String
+                ? int.tryParse(json['age'] as String)
+                : null),
+      gender: json['gender'] as String?,
+      medicalHistory: json['medicalHistory'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
     );
   }
@@ -45,6 +62,10 @@ class UserModel {
       'avatarUrl': avatarUrl,
       'diseaseFocus': diseaseFocus,
       'assignedDoctorId': assignedDoctorId,
+      'phone': phone,
+      'age': age,
+      'gender': gender,
+      'medicalHistory': medicalHistory,
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -58,6 +79,10 @@ class UserModel {
     String? avatarUrl,
     String? diseaseFocus,
     String? assignedDoctorId,
+    String? phone,
+    int? age,
+    String? gender,
+    String? medicalHistory,
     DateTime? createdAt,
   }) {
     return UserModel(
@@ -68,13 +93,17 @@ class UserModel {
       avatarUrl: avatarUrl ?? this.avatarUrl,
       diseaseFocus: diseaseFocus ?? this.diseaseFocus,
       assignedDoctorId: assignedDoctorId ?? this.assignedDoctorId,
+      phone: phone ?? this.phone,
+      age: age ?? this.age,
+      gender: gender ?? this.gender,
+      medicalHistory: medicalHistory ?? this.medicalHistory,
       createdAt: createdAt ?? this.createdAt,
     );
   }
 
   @override
   String toString() {
-    return 'UserModel{uid: $uid, name: $name, email: $email, role: $role, avatarUrl: $avatarUrl, diseaseFocus: $diseaseFocus, assignedDoctorId: $assignedDoctorId, createdAt: $createdAt}';
+    return 'UserModel{uid: $uid, name: $name, email: $email, role: $role, avatarUrl: $avatarUrl, diseaseFocus: $diseaseFocus, assignedDoctorId: $assignedDoctorId, phone: $phone, age: $age, gender: $gender, medicalHistory: $medicalHistory, createdAt: $createdAt}';
   }
 
   @override
@@ -89,6 +118,10 @@ class UserModel {
           avatarUrl == other.avatarUrl &&
           diseaseFocus == other.diseaseFocus &&
           assignedDoctorId == other.assignedDoctorId &&
+          phone == other.phone &&
+          age == other.age &&
+          gender == other.gender &&
+          medicalHistory == other.medicalHistory &&
           createdAt == other.createdAt;
 
   @override
@@ -100,6 +133,10 @@ class UserModel {
       avatarUrl.hashCode ^
       diseaseFocus.hashCode ^
       assignedDoctorId.hashCode ^
+      phone.hashCode ^
+      age.hashCode ^
+      gender.hashCode ^
+      medicalHistory.hashCode ^
       createdAt.hashCode;
 
   // Helper methods
@@ -107,8 +144,10 @@ class UserModel {
   bool get isDoctor => role == UserRole.doctor;
   bool get hasAvatar => avatarUrl != null && avatarUrl!.isNotEmpty;
   bool get hasDiseaseFocus => diseaseFocus != null && diseaseFocus!.isNotEmpty;
-  bool get hasAssignedDoctor => assignedDoctorId != null && assignedDoctorId!.isNotEmpty;
-  
+  bool get hasAssignedDoctor =>
+      assignedDoctorId != null && assignedDoctorId!.isNotEmpty;
+  bool get hasPhone => phone != null && phone!.isNotEmpty;
+
   // Get disease focus as enum
   DiseaseFocus? get diseaseFocusEnum => DiseaseFocus.fromString(diseaseFocus);
 }
@@ -145,7 +184,7 @@ enum UserRole {
 // Enum cho các chuyên khoa (disease focus) - chỉ 3 loại
 enum DiseaseFocus {
   stress('stress', 'Stress'),
-  cardiology('cardiology', 'Tim mạch'), 
+  cardiology('cardiology', 'Tim mạch'),
   diagnosis('diagnosis', 'Chuẩn đoán bệnh');
 
   const DiseaseFocus(this.value, this.displayName);
@@ -154,7 +193,7 @@ enum DiseaseFocus {
 
   static DiseaseFocus? fromString(String? value) {
     if (value == null || value.isEmpty) return null;
-    
+
     for (DiseaseFocus focus in DiseaseFocus.values) {
       if (focus.value == value.toLowerCase()) {
         return focus;
@@ -164,7 +203,7 @@ enum DiseaseFocus {
   }
 
   static List<DiseaseFocus> get allFocuses => DiseaseFocus.values;
-  
+
   // Convert to Specialty enum (for doctor model compatibility)
   Specialty toSpecialty() {
     switch (this) {

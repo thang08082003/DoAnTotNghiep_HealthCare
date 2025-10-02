@@ -9,17 +9,18 @@ class NotificationService {
     return _firestore
         .collection(_collection)
         .where('userId', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map(
-          (snap) => snap.docs
+        .map((snap) {
+          final list = snap.docs
               .map(
                 (d) => AppNotification.fromDoc(
                   d as DocumentSnapshot<Map<String, dynamic>>,
                 ),
               )
-              .toList(),
-        );
+              .toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
   }
 
   static Future<List<AppNotification>> getUserNotifications(
@@ -28,21 +29,46 @@ class NotificationService {
     final query = await _firestore
         .collection(_collection)
         .where('userId', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
         .get();
-    return query.docs
+    final list = query.docs
         .map(
           (d) => AppNotification.fromDoc(
             d as DocumentSnapshot<Map<String, dynamic>>,
           ),
         )
         .toList();
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
   }
 
   static Future<void> markAsRead(String notificationId) async {
     await _firestore.collection(_collection).doc(notificationId).update({
       'isRead': true,
       'readAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  static Future<void> deleteNotification(String notificationId) async {
+    await _firestore.collection(_collection).doc(notificationId).delete();
+  }
+
+  static Future<void> createNotification({
+    required String toUserId,
+    required String senderId,
+    required NotificationType type,
+    required String title,
+    required String body,
+    Map<String, dynamic>? data,
+  }) async {
+    await _firestore.collection(_collection).add({
+      'userId': toUserId,
+      'senderId': senderId,
+      'type': type.value,
+      'title': title,
+      'body': body,
+      'data': data ?? {},
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
     });
   }
 }

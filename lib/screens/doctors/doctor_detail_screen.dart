@@ -1,0 +1,445 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../data/models/doctor_model.dart';
+import '../../data/models/user_model.dart';
+import '../../data/resources/gene/app_colors.dart';
+import '../../providers/user_provider.dart';
+import '../../data/services/chat_service.dart';
+import '../../data/models/chat_message.dart';
+import '../../data/services/doctor_orders_service.dart';
+import '../../data/models/doctor_order.dart';
+import '../patients/patient_orders_list_screen.dart';
+
+class DoctorDetailScreen extends ConsumerStatefulWidget {
+  final String doctorId;
+  final int initialTab; // 0: Thông tin bác sĩ, 1: Tin nhắn
+  const DoctorDetailScreen({
+    super.key,
+    required this.doctorId,
+    this.initialTab = 0,
+  });
+
+  @override
+  ConsumerState<DoctorDetailScreen> createState() => _DoctorDetailScreenState();
+}
+
+class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
+    with SingleTickerProviderStateMixin {
+  bool _loading = true;
+  String? _error;
+  UserModel? _user; // may be DoctorModel
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: widget.initialTab.clamp(0, 1),
+    );
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final repo = ref.read(userRepositoryProvider);
+      final user = await repo.getUserById(widget.doctorId);
+      setState(() {
+        _user = user;
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Lỗi tải thông tin bác sĩ: $e';
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Thông tin bác sĩ'),
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: Colors.white,
+          tabs: const [
+            Tab(text: 'Thông tin bác sĩ'),
+            Tab(text: 'Tin nhắn'),
+          ],
+        ),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : (_error != null)
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error, size: 64, color: AppColors.error),
+                  const SizedBox(height: 12),
+                  Text(_error!),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: _load,
+                    child: const Text('Thử lại'),
+                  ),
+                ],
+              ),
+            )
+          : TabBarView(
+              controller: _tabController,
+              children: [_buildInfoTab(), _buildMessagesTab()],
+            ),
+    );
+  }
+
+  Widget _buildInfoTab() {
+    final name = _user?.name ?? '';
+    final email = _user?.email ?? '';
+    final isDoctor = _user is DoctorModel;
+    final specialty = isDoctor
+        ? ((_user as DoctorModel).specialty.vietnameseName)
+        : 'Chưa cập nhật';
+    final years = isDoctor
+        ? ((_user as DoctorModel).yearsExperience?.toString() ??
+              'Chưa cập nhật')
+        : 'Chưa cập nhật';
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _infoRow('Tên bác sĩ', name),
+            _infoRow('Email', email),
+            _infoRow('Chuyên khoa', specialty),
+            _infoRow('Kinh nghiệm (năm)', years),
+            const SizedBox(height: 16),
+            _buildDoctorOrdersSection(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDoctorOrdersSection() {
+    // Only show for patient role; otherwise hidden
+    return Consumer(
+      builder: (context, ref, _) {
+        return FutureBuilder(
+          future: ref.read(currentUserProvider.future),
+          builder: (context, snap) {
+            if (!snap.hasData) {
+              return const SizedBox.shrink();
+            }
+            final currentUser = snap.data!;
+            if (!currentUser.isPatient) {
+              return const SizedBox.shrink();
+            }
+
+            final service = DoctorOrdersService();
+            return Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Chỉ định của bác sĩ',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  StreamBuilder<List<DoctorOrder>>(
+                    stream: service.watchOrders(
+                      patientId: currentUser.uid,
+                      doctorId: widget.doctorId,
+                    ),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: LinearProgressIndicator(minHeight: 2),
+                        );
+                      }
+                      final orders = snapshot.data ?? const <DoctorOrder>[];
+                      if (orders.isEmpty) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Icon(
+                              Icons.assignment_turned_in,
+                              size: 18,
+                              color: AppColors.textSecondary,
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Chưa có chỉ định nào được thêm. Khi bác sĩ đưa ra chỉ định (thuốc, xét nghiệm, chế độ sinh hoạt), nội dung sẽ hiển thị tại đây.',
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+
+                      // Hiển thị tối đa 3 chỉ định gần nhất
+                      final preview = orders.take(3).toList();
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: preview.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 8),
+                            itemBuilder: (context, i) => _orderTile(preview[i]),
+                          ),
+                          if (orders.length > 3) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              '+${orders.length - 3} chỉ định khác',
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 12),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.list_alt),
+                              label: const Text('Xem tất cả'),
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => PatientOrdersListScreen(
+                                      patientId: currentUser.uid,
+                                      doctorId: widget.doctorId,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _orderTile(DoctorOrder order) {
+    final created = order.createdAt != null
+        ? '${order.createdAt!.day.toString().padLeft(2, '0')}/${order.createdAt!.month.toString().padLeft(2, '0')}/${order.createdAt!.year}'
+        : '';
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.check_circle_outline, color: Colors.teal, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  order.title,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                if ((order.notes ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    order.notes!,
+                    style: const TextStyle(color: AppColors.textSecondary),
+                  ),
+                ],
+                if (created.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    created,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessagesTab() {
+    return Consumer(
+      builder: (context, ref, _) {
+        return FutureBuilder(
+          future: ref.read(currentUserProvider.future),
+          builder: (context, snap) {
+            if (!snap.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final currentUser = snap.data!;
+            final otherId = widget.doctorId;
+            if (currentUser.uid == otherId) {
+              return const Center(child: Text('Không thể chat với chính mình'));
+            }
+
+            final chatService = ChatService();
+            final stream = chatService.watchMessages(
+              userA: currentUser.uid,
+              userB: otherId,
+            );
+            final controller = TextEditingController();
+
+            return Column(
+              children: [
+                Expanded(
+                  child: StreamBuilder<List<ChatMessage>>(
+                    stream: stream,
+                    builder: (context, ss) {
+                      if (!ss.hasData) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      final messages = ss.data!;
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 8,
+                          horizontal: 12,
+                        ),
+                        itemCount: messages.length,
+                        itemBuilder: (context, index) {
+                          final m = messages[index];
+                          final mine = m.senderId == currentUser.uid;
+                          return Align(
+                            alignment: mine
+                                ? Alignment.centerRight
+                                : Alignment.centerLeft,
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(vertical: 4),
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: mine
+                                    ? Colors.blue[50]
+                                    : Colors.grey[200],
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(m.text),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+                SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: controller,
+                            decoration: const InputDecoration(
+                              hintText: 'Nhập tin nhắn...',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.send),
+                          onPressed: () async {
+                            final text = controller.text.trim();
+                            if (text.isEmpty) return;
+                            await chatService.sendMessage(
+                              from: currentUser.uid,
+                              to: otherId,
+                              text: text,
+                            );
+                            controller.clear();
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 160,
+            child: Text(
+              label,
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value.isEmpty ? 'Chưa cập nhật' : value,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -20,11 +20,9 @@ class UserService {
 
   // Stream để lắng nghe thay đổi user theo ID
   Stream<UserModel?> watchUser(String uid) {
-    return _firestore
-        .collection(_usersCollection)
-        .doc(uid)
-        .snapshots()
-        .map((snapshot) {
+    return _firestore.collection(_usersCollection).doc(uid).snapshots().map((
+      snapshot,
+    ) {
       if (!snapshot.exists) return null;
       return UserModel.fromJson(snapshot.data()!);
     });
@@ -37,10 +35,10 @@ class UserService {
         .where('role', isEqualTo: role.value)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => UserModel.fromJson(doc.data()))
-          .toList();
-    });
+          return snapshot.docs
+              .map((doc) => UserModel.fromJson(doc.data()))
+              .toList();
+        });
   }
 
   // Tạo user mới trong Firestore
@@ -55,7 +53,7 @@ class UserService {
   }) async {
     try {
       UserModel userModel;
-      
+
       if (role == UserRole.doctor && specialty != null) {
         // Tạo DoctorModel nếu là bác sĩ và có specialty
         final doctorSpecialty = Specialty.fromString(specialty);
@@ -76,6 +74,11 @@ class UserService {
           role: role,
           avatarUrl: avatarUrl,
           diseaseFocus: diseaseFocus,
+          // Ensure optional patient fields exist for new patients (can be edited later)
+          phone: role == UserRole.patient ? '' : null,
+          age: role == UserRole.patient ? null : null,
+          gender: role == UserRole.patient ? '' : null,
+          medicalHistory: role == UserRole.patient ? '' : null,
           createdAt: DateTime.now(),
         );
       }
@@ -95,10 +98,10 @@ class UserService {
   Future<UserModel?> getUserById(String uid) async {
     try {
       final doc = await _firestore.collection(_usersCollection).doc(uid).get();
-      
+
       if (doc.exists && doc.data() != null) {
         final data = doc.data()!;
-        
+
         // Check if this is a doctor with specialty field
         if (data['role'] == 'doctor' && data['specialty'] != null) {
           return DoctorModel.fromJson(data);
@@ -127,10 +130,7 @@ class UserService {
   // Cập nhật một số field cụ thể
   Future<void> updateUserFields(String uid, Map<String, dynamic> fields) async {
     try {
-      await _firestore
-          .collection(_usersCollection)
-          .doc(uid)
-          .update(fields);
+      await _firestore.collection(_usersCollection).doc(uid).update(fields);
     } catch (e) {
       throw Exception('Không thể cập nhật thông tin: $e');
     }
@@ -160,9 +160,7 @@ class UserService {
           .where('diseaseFocus', isEqualTo: diseaseFocus)
           .get();
 
-      return query.docs
-          .map((doc) => UserModel.fromJson(doc.data()))
-          .toList();
+      return query.docs.map((doc) => UserModel.fromJson(doc.data())).toList();
     } catch (e) {
       throw Exception('Không thể lấy danh sách bác sĩ: $e');
     }
@@ -178,7 +176,7 @@ class UserService {
 
       return query.docs.map((doc) {
         final data = doc.data();
-        
+
         // Return appropriate model based on role and data
         if (role == UserRole.doctor && data['specialty'] != null) {
           return DoctorModel.fromJson(data);
@@ -187,7 +185,9 @@ class UserService {
         }
       }).toList();
     } catch (e) {
-      throw Exception('Không thể lấy danh sách user với role ${role.value}: $e');
+      throw Exception(
+        'Không thể lấy danh sách user với role ${role.value}: $e',
+      );
     }
   }
 
@@ -211,9 +211,7 @@ class UserService {
           .where('name', isLessThan: '${name}z')
           .get();
 
-      return query.docs
-          .map((doc) => UserModel.fromJson(doc.data()))
-          .toList();
+      return query.docs.map((doc) => UserModel.fromJson(doc.data())).toList();
     } catch (e) {
       throw Exception('Không thể tìm kiếm user: $e');
     }
@@ -248,13 +246,9 @@ class UserService {
   // Lấy tất cả users
   Future<List<UserModel>> getAllUsers() async {
     try {
-      final query = await _firestore
-          .collection(_usersCollection)
-          .get();
+      final query = await _firestore.collection(_usersCollection).get();
 
-      return query.docs
-          .map((doc) => UserModel.fromJson(doc.data()))
-          .toList();
+      return query.docs.map((doc) => UserModel.fromJson(doc.data())).toList();
     } catch (e) {
       throw Exception('Không thể lấy danh sách user: $e');
     }

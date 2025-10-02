@@ -5,6 +5,7 @@ enum NotificationType {
   doctorFeedback('doctor_feedback'),
   appointment('appointment'),
   reminder('reminder'),
+  followRequest('follow_request'),
   other('other');
 
   const NotificationType(this.value);
@@ -20,6 +21,8 @@ enum NotificationType {
         return NotificationType.appointment;
       case 'reminder':
         return NotificationType.reminder;
+      case 'follow_request':
+        return NotificationType.followRequest;
       default:
         return NotificationType.other;
     }
@@ -29,6 +32,7 @@ enum NotificationType {
 class AppNotification {
   final String id;
   final String userId;
+  final String? senderId;
   final NotificationType type;
   final String title;
   final String body;
@@ -39,6 +43,7 @@ class AppNotification {
   AppNotification({
     required this.id,
     required this.userId,
+    this.senderId,
     required this.type,
     required this.title,
     required this.body,
@@ -61,6 +66,7 @@ class AppNotification {
     return AppNotification(
       id: doc.id,
       userId: (json['userId'] ?? '') as String,
+      senderId: (json['senderId'] as String?),
       type: NotificationType.fromString(json['type'] as String?),
       title: (json['title'] ?? '') as String,
       body: (json['body'] ?? '') as String,
@@ -73,6 +79,7 @@ class AppNotification {
   Map<String, dynamic> toJson() {
     return {
       'userId': userId,
+      if (senderId != null) 'senderId': senderId,
       'type': type.value,
       'title': title,
       'body': body,

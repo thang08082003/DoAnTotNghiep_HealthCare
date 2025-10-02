@@ -49,6 +49,10 @@ class DoctorModel extends UserModel {
     this.yearsExperience,
     super.diseaseFocus,
     super.assignedDoctorId,
+    super.phone,
+    super.age,
+    super.gender,
+    super.medicalHistory,
   }) : super(role: UserRole.doctor);
 
   // Factory constructor from JSON
@@ -68,6 +72,12 @@ class DoctorModel extends UserModel {
                   json['experience'])
               as int?,
       diseaseFocus: json['diseaseFocus'],
+      phone: json['phone'],
+      age: json['age'] is int
+          ? json['age'] as int
+          : (json['age'] is String ? int.tryParse(json['age']) : null),
+      gender: json['gender'],
+      medicalHistory: json['medicalHistory'],
     );
   }
 
@@ -113,6 +123,10 @@ class DoctorModel extends UserModel {
     String? avatarUrl,
     String? diseaseFocus,
     String? assignedDoctorId,
+    String? phone,
+    int? age,
+    String? gender,
+    String? medicalHistory,
     DateTime? createdAt,
     UserRole? role, // Keep this for compatibility
     Specialty? specialty,
@@ -127,6 +141,11 @@ class DoctorModel extends UserModel {
       specialty: specialty ?? this.specialty,
       yearsExperience: yearsExperience ?? this.yearsExperience,
       diseaseFocus: diseaseFocus ?? this.diseaseFocus,
+      assignedDoctorId: assignedDoctorId ?? this.assignedDoctorId,
+      phone: phone ?? this.phone,
+      age: age ?? this.age,
+      gender: gender ?? this.gender,
+      medicalHistory: medicalHistory ?? this.medicalHistory,
     );
   }
 

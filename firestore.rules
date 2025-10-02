@@ -51,17 +51,74 @@ service cloud.firestore {
     }
 
     // Follow requests between patients and doctors
-    // Allow create when the authenticated user is either the patient or the doctor
-    // Allow read/update/delete when the authenticated user is either the patient or the doctor on the document
+    // Document ID format: {patientId}_{doctorId}
     match /follow_requests/{requestId} {
-      allow create: if request.auth != null && (
-        request.resource.data.patientId == request.auth.uid ||
-        request.resource.data.doctorId == request.auth.uid
-      );
-      allow read, update, delete: if request.auth != null && (
+      // Only the patient can create a request document
+      allow create: if request.auth != null &&
+        request.resource.data.patientId == request.auth.uid;
+
+      // Allow reading if the doc id references the current user
+      // This works even when the doc does not exist (for transaction get()).
+      allow read: if request.auth != null && (
+        // Access by docId for direct lookups or non-existent docs
+        requestId.matches('^' + request.auth.uid + '_.+') ||
+        requestId.matches('.+_' + request.auth.uid + '$') ||
+        // Access by document fields for queries (e.g., where doctorId == uid)
         resource.data.patientId == request.auth.uid ||
         resource.data.doctorId == request.auth.uid
       );
+
+      // Updates/deletes only allowed for participants on the doc
+      allow update, delete: if request.auth != null && (
+        resource.data.patientId == request.auth.uid ||
+        resource.data.doctorId == request.auth.uid
+      );
+    }
+
+    // Conversations (chat) - only participants can read/write
+    // conversationId format: {userA}_{userB}
+    function isConvParticipant(convId) {
+      return request.auth != null && (
+        convId.matches('^' + request.auth.uid + '_.+') ||
+        convId.matches('.+_' + request.auth.uid + '$')
+      );
+    }
+
+    match /conversations/{convId} {
+      // Optionally allow creating a conversation doc; messages live in subcollection
+      allow read, write: if isConvParticipant(convId);
+
+      match /messages/{messageId} {
+        // Allow participants to read messages in their conversation
+        allow read: if isConvParticipant(convId);
+
+        // Allow creating messages if the sender is the authenticated user and is a participant
+        allow create: if isConvParticipant(convId) && request.resource.data.senderId == request.auth.uid;
+
+        // Allow updates/deletes by participants (e.g., mark as read)
+        allow update, delete: if isConvParticipant(convId) && (
+          resource.data.senderId == request.auth.uid ||
+          resource.data.receiverId == request.auth.uid
+        );
+      }
+
+      // Doctor orders (chỉ định) subcollection
+      function isDoctor(uid) {
+        return get(/databases/$(database)/documents/users/$(uid)).data.role == 'doctor';
+      }
+
+      match /orders/{orderId} {
+        // Participants can read all orders in their conversation
+        allow read: if isConvParticipant(convId);
+
+        // Only a doctor participant can create/update orders and doctorId must match the writer
+        allow create, update: if isConvParticipant(convId) && isDoctor(request.auth.uid) &&
+          request.resource.data.doctorId == request.auth.uid;
+
+        // Optionally allow delete by doctor as well
+        allow delete: if isConvParticipant(convId) && isDoctor(request.auth.uid) &&
+          resource.data.doctorId == request.auth.uid;
+      }
     }
   }
 }

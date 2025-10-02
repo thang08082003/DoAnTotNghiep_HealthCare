@@ -11,6 +11,7 @@ import '../notifications/notifications_content.dart';
 import '../dashboard/patient_dashboard_content.dart';
 import '../dashboard/doctor_dashboard_content.dart';
 import '../profile/profile_content.dart';
+import '../patients/patients_list_content.dart';
 
 class HomePage extends BasePage {
   const HomePage({super.key, required UserRole userRole})
@@ -72,7 +73,12 @@ class HomePageState extends BasePageState<HomePage> {
 
   // Doctors content
   Widget _buildDoctorsContent() {
-    return const DoctorsListContent();
+    // For patient, this tab shows doctors. For doctor, it should show patients
+    if (widget.userRole == UserRole.patient) {
+      return const DoctorsListContent();
+    } else {
+      return const PatientsListContent();
+    }
   }
 
   // Notifications content

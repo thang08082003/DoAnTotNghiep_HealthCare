@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
+import '../doctors/doctors_following_list_screen.dart';
 
 class PatientDashboardContent extends ConsumerWidget {
   const PatientDashboardContent({super.key});
@@ -200,7 +201,11 @@ class PatientDashboardContent extends ConsumerWidget {
                 color: AppColors.primaryColor.withValues(alpha: 0.08),
                 iconColor: AppColors.primaryColor,
                 onTap: () {
-                  // TODO: Navigate to chat with assigned doctor or doctor list if none
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const DoctorsFollowingListScreen(),
+                    ),
+                  );
                 },
               ),
             ],
