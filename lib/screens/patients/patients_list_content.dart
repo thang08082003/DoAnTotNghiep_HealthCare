@@ -27,6 +27,7 @@ class PatientsListContentState extends ConsumerState<PatientsListContent> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
       _error = null;
@@ -34,6 +35,7 @@ class PatientsListContentState extends ConsumerState<PatientsListContent> {
     try {
       final currentUser = await ref.read(currentUserProvider.future);
       if (currentUser == null || !currentUser.isDoctor) {
+        if (!mounted) return;
         setState(() {
           _patients = [];
           _loading = false;
@@ -47,11 +49,13 @@ class PatientsListContentState extends ConsumerState<PatientsListContent> {
       final repo = ref.read(userRepositoryProvider);
       final futures = ids.map((id) => repo.getUserById(id)).toList();
       final users = await Future.wait(futures);
+      if (!mounted) return;
       setState(() {
         _patients = users.whereType<UserModel>().toList();
         _loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _loading = false;
         _error = 'Lỗi tải danh sách bệnh nhân: $e';
@@ -146,7 +150,17 @@ class PatientsListContentState extends ConsumerState<PatientsListContent> {
           ),
           child: ListTile(
             leading: CircleAvatar(
-              child: Text(p.name.isNotEmpty ? p.name[0].toUpperCase() : '?'),
+              radius: 20,
+              backgroundColor: AppColors.primaryColor.withValues(alpha: 0.1),
+              backgroundImage: (p.avatarUrl != null && p.avatarUrl!.isNotEmpty)
+                  ? NetworkImage(p.avatarUrl!)
+                  : null,
+              child: (p.avatarUrl == null || p.avatarUrl!.isEmpty)
+                  ? Text(
+                      p.name.isNotEmpty ? p.name[0].toUpperCase() : '?',
+                      style: const TextStyle(color: AppColors.primaryColor),
+                    )
+                  : null,
             ),
             title: Text(
               p.name,

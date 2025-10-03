@@ -1,5 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../components/loading/loading_widget.dart';
 import '../../data/models/user_model.dart';
@@ -41,6 +44,9 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
       vsync: this,
       initialIndex: widget.initialTab.clamp(0, 1),
     );
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
     _load();
   }
 
@@ -80,7 +86,13 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Thông tin bệnh nhân'),
+        title: (_tabController.index == 1 && _patient != null)
+            ? _PatientChatAppBarTitle(
+                name: _patient!.name,
+                avatarUrl:
+                    _patient!.avatarUrl ?? (_raw['avatarUrl'] as String?),
+              )
+            : const Text('Thông tin bệnh nhân'),
         bottom: TabBar(
           controller: _tabController,
           labelColor: Colors.white,
@@ -126,6 +138,7 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
     final diseaseFocus =
         _patient?.diseaseFocusEnum?.displayName ?? 'Chưa cập nhật';
     final medicalHistory = _formatMedicalHistory(_raw['medicalHistory']);
+    final avatarUrl = _patient?.avatarUrl ?? (_raw['avatarUrl'] as String?);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -134,6 +147,25 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
         children: [
           _infoCard(
             children: [
+              Center(
+                child: CircleAvatar(
+                  radius: 40,
+                  backgroundColor: AppColors.primaryColor.withValues(
+                    alpha: 0.1,
+                  ),
+                  backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
+                      ? NetworkImage(avatarUrl)
+                      : null,
+                  child: (avatarUrl == null || avatarUrl.isEmpty)
+                      ? const Icon(
+                          Icons.person,
+                          size: 40,
+                          color: AppColors.primaryColor,
+                        )
+                      : null,
+                ),
+              ),
+              const SizedBox(height: 12),
               _infoRow('Tên', name),
               _infoRow('Số điện thoại', phone),
               _infoRow('Email', email),
@@ -450,7 +482,7 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
                                     : Colors.grey[200],
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Text(m.text),
+                              child: _buildMessageContent(m),
                             ),
                           );
                         },
@@ -464,6 +496,17 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
                     padding: const EdgeInsets.all(8.0),
                     child: Row(
                       children: [
+                        IconButton(
+                          icon: const Icon(Icons.attach_file),
+                          onPressed: () async {
+                            await _onAttachPressed(
+                              context: context,
+                              chatService: chatService,
+                              currentUserId: currentUser.uid,
+                              otherId: otherId,
+                            );
+                          },
+                        ),
                         Expanded(
                           child: TextField(
                             controller: controller,
@@ -494,6 +537,146 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
               ],
             );
           },
+        );
+      },
+    );
+  }
+
+  Widget _buildMessageContent(ChatMessage m) {
+    if (m.isImage && (m.mediaUrl ?? '').isNotEmpty) {
+      final url = m.mediaUrl!;
+      return GestureDetector(
+        onTap: () async {
+          final uri = Uri.tryParse(url);
+          if (uri != null) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        },
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 220, maxHeight: 220),
+            child: Image.network(url, fit: BoxFit.cover),
+          ),
+        ),
+      );
+    }
+    if (m.isFile && (m.mediaUrl ?? '').isNotEmpty) {
+      final url = m.mediaUrl!;
+      final name = m.fileName ?? 'Tệp đính kèm';
+      return InkWell(
+        onTap: () async {
+          final uri = Uri.tryParse(url);
+          if (uri != null) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        },
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.insert_drive_file, size: 20),
+            const SizedBox(width: 8),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 200),
+              child: Text(name, overflow: TextOverflow.ellipsis),
+            ),
+          ],
+        ),
+      );
+    }
+    return Text(m.text);
+  }
+
+  Future<void> _onAttachPressed({
+    required BuildContext context,
+    required ChatService chatService,
+    required String currentUserId,
+    required String otherId,
+  }) async {
+    await showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Chọn ảnh từ thư viện'),
+                onTap: () async {
+                  Navigator.of(ctx).pop();
+                  final picker = ImagePicker();
+                  final x = await picker.pickImage(source: ImageSource.gallery);
+                  if (x == null) return;
+                  final bytes = await x.readAsBytes();
+                  final path = x.name.toLowerCase();
+                  String ext = 'jpeg';
+                  if (path.endsWith('.png')) ext = 'png';
+                  if (path.endsWith('.jpg') || path.endsWith('.jpeg')) {
+                    ext = 'jpeg';
+                  }
+                  await chatService.sendImageMessage(
+                    from: currentUserId,
+                    to: otherId,
+                    bytes: bytes,
+                    fileExt: ext,
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.attach_file),
+                title: const Text('Chọn tệp'),
+                onTap: () async {
+                  Navigator.of(ctx).pop();
+                  final result = await FilePicker.platform.pickFiles(
+                    withData: true,
+                    allowMultiple: false,
+                  );
+                  if (result == null || result.files.isEmpty) return;
+                  final f = result.files.first;
+                  final data = f.bytes;
+                  if (data == null) return;
+                  // Derive mime only for common image types supported for now
+                  String? mime;
+                  final ext = (f.extension ?? '').toLowerCase();
+                  switch (ext) {
+                    case 'png':
+                      mime = 'image/png';
+                      break;
+                    case 'jpg':
+                    case 'jpeg':
+                      mime = 'image/jpeg';
+                      break;
+                    case 'gif':
+                      mime = 'image/gif';
+                      break;
+                    case 'webp':
+                      mime = 'image/webp';
+                      break;
+                    default:
+                      mime = null;
+                  }
+                  try {
+                    await chatService.sendFileMessage(
+                      from: currentUserId,
+                      to: otherId,
+                      bytes: data,
+                      fileName: f.name,
+                      mimeType: mime,
+                    );
+                  } on UnsupportedError catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(e.message ?? e.toString())),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
         );
       },
     );
@@ -550,5 +733,36 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
       return texts.isEmpty ? 'Chưa cập nhật' : texts.join(', ');
     }
     return 'Chưa cập nhật';
+  }
+}
+
+class _PatientChatAppBarTitle extends StatelessWidget {
+  final String name;
+  final String? avatarUrl;
+  const _PatientChatAppBarTitle({required this.name, this.avatarUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasAvatar = avatarUrl != null && avatarUrl!.isNotEmpty;
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 16,
+          backgroundColor: AppColors.primaryColor.withValues(alpha: 0.1),
+          backgroundImage: hasAvatar ? NetworkImage(avatarUrl!) : null,
+          child: !hasAvatar
+              ? const Icon(
+                  Icons.person,
+                  size: 16,
+                  color: AppColors.primaryColor,
+                )
+              : null,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
+      ],
+    );
   }
 }

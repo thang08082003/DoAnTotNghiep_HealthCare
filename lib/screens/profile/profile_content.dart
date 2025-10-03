@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import '../../data/config/media_upload_config.dart';
+import '../../data/services/media_upload_service.dart';
 import '../../components/buttons/logout_button.dart';
 import '../../components/loading/loading_widget.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../router/app_router.dart';
-import 'edit_patient_profile_screen.dart';
+// Removed old full-screen editors; fields are now edited inline via dialogs
 import 'smart_watch_connect_screen.dart';
 import '../../data/models/doctor_model.dart';
-import 'edit_doctor_profile_screen.dart';
 
 class ProfileContent extends ConsumerWidget {
   const ProfileContent({super.key});
@@ -39,16 +43,10 @@ class ProfileContent extends ConsumerWidget {
               ),
               child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundColor: AppColors.primaryColor.withValues(
-                      alpha: 0.1,
-                    ),
-                    child: const Icon(
-                      Icons.person,
-                      size: 40,
-                      color: AppColors.primaryColor,
-                    ),
+                  _AvatarPicker(
+                    avatarUrl: user?.avatarUrl,
+                    uid: user?.uid,
+                    onUpdated: () => ref.invalidate(currentUserProvider),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -72,15 +70,8 @@ class ProfileContent extends ConsumerWidget {
               const SizedBox(height: 16),
               _PatientInfoCard(
                 user: user!,
-                onEdit: () async {
-                  final result = await Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const EditPatientProfileScreen(),
-                    ),
-                  );
-                  if (result == true) {
-                    ref.invalidate(currentUserProvider);
-                  }
+                onEdit: () {
+                  ref.invalidate(currentUserProvider);
                 },
               ),
             ],
@@ -89,15 +80,8 @@ class ProfileContent extends ConsumerWidget {
               const SizedBox(height: 16),
               _DoctorInfoCard(
                 doctor: user as DoctorModel,
-                onEdit: () async {
-                  final result = await Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const EditDoctorProfileScreen(),
-                    ),
-                  );
-                  if (result == true) {
-                    ref.invalidate(currentUserProvider);
-                  }
+                onEdit: () {
+                  ref.invalidate(currentUserProvider);
                 },
               ),
             ],
@@ -259,19 +243,52 @@ class _PatientInfoCard extends StatelessWidget {
                   color: AppColors.textPrimary,
                 ),
               ),
-              TextButton.icon(
-                onPressed: onEdit,
-                icon: const Icon(Icons.edit, size: 18),
-                label: const Text('Chỉnh sửa'),
-              ),
+              const SizedBox.shrink(),
             ],
           ),
           const SizedBox(height: 8),
-          _row('Số điện thoại', _displayOrNA(phone)),
+          _editableRow(
+            context,
+            label: 'Số điện thoại',
+            value: _displayOrNA(phone),
+            keyboardType: TextInputType.phone,
+            onSave: (val) async {
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .update({'phone': val.trim()});
+              onEdit();
+            },
+          ),
           const Divider(height: 24),
-          _row('Tuổi', age == null ? 'Chưa cập nhật' : '$age'),
+          _editableRow(
+            context,
+            label: 'Tuổi',
+            value: age == null ? 'Chưa cập nhật' : '$age',
+            keyboardType: TextInputType.number,
+            onSave: (val) async {
+              final parsed = int.tryParse(val.trim());
+              if (parsed == null) throw 'Tuổi không hợp lệ';
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .update({'age': parsed});
+              onEdit();
+            },
+          ),
           const Divider(height: 24),
-          _row('Giới tính', _displayOrNA(gender)),
+          _editableGenderRow(
+            context,
+            label: 'Giới tính',
+            value: _displayOrNA(gender),
+            onSave: (val) async {
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .update({'gender': val});
+              onEdit();
+            },
+          ),
           const Divider(height: 24),
           const Text(
             'Tiền sử bệnh',
@@ -281,29 +298,160 @@ class _PatientInfoCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            _displayOrNA(medicalHistory),
-            style: const TextStyle(color: AppColors.textSecondary),
+          InkWell(
+            onTap: () async {
+              final current = _displayOrNA(medicalHistory);
+              final result = await _showEditDialog(
+                context,
+                title: 'Tiền sử bệnh',
+                initialValue: current == 'Chưa cập nhật' ? '' : current,
+                maxLines: 5,
+              );
+              if (result == null) return;
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .update({'medicalHistory': result.trim()});
+              onEdit();
+            },
+            child: Text(
+              _displayOrNA(medicalHistory),
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _row(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: const TextStyle(color: AppColors.textSecondary)),
-        const SizedBox(width: 12),
-        Flexible(
-          child: Text(
-            value,
-            textAlign: TextAlign.right,
-            style: const TextStyle(color: AppColors.textPrimary),
+  Widget _editableRow(
+    BuildContext context, {
+    required String label,
+    required String value,
+    required Future<void> Function(String) onSave,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return InkWell(
+      onTap: () async {
+        final current = value == 'Chưa cập nhật' ? '' : value;
+        final result = await _showEditDialog(
+          context,
+          title: label,
+          initialValue: current,
+          keyboardType: keyboardType,
+        );
+        if (result == null) return;
+        await onSave(result);
+      },
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: AppColors.textSecondary)),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: const TextStyle(color: AppColors.textPrimary),
+            ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _editableGenderRow(
+    BuildContext context, {
+    required String label,
+    required String value,
+    required Future<void> Function(String) onSave,
+  }) {
+    return InkWell(
+      onTap: () async {
+        final selection = await showDialog<String>(
+          context: context,
+          builder: (ctx) {
+            String current = (value == 'Chưa cập nhật') ? '' : value;
+            final options = ['Nam', 'Nữ', 'Khác'];
+            return AlertDialog(
+              title: Text(label),
+              content: StatefulBuilder(
+                builder: (context, setState) => Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: options
+                      .map(
+                        (opt) => RadioListTile<String>(
+                          title: Text(opt),
+                          value: opt,
+                          groupValue: current,
+                          onChanged: (v) => setState(() => current = v ?? ''),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Huỷ'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(ctx).pop(current),
+                  child: const Text('Lưu'),
+                ),
+              ],
+            );
+          },
+        );
+        if (selection == null) return;
+        await onSave(selection);
+      },
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: AppColors.textSecondary)),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: const TextStyle(color: AppColors.textPrimary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<String?> _showEditDialog(
+    BuildContext context, {
+    required String title,
+    String initialValue = '',
+    TextInputType keyboardType = TextInputType.text,
+    int maxLines = 1,
+  }) async {
+    final ctl = TextEditingController(text: initialValue);
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: ctl,
+          keyboardType: keyboardType,
+          maxLines: maxLines,
+          decoration: const InputDecoration(border: OutlineInputBorder()),
         ),
-      ],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Huỷ'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(ctl.text),
+            child: const Text('Lưu'),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -348,19 +496,42 @@ class _DoctorInfoCard extends StatelessWidget {
                   color: AppColors.textPrimary,
                 ),
               ),
-              TextButton.icon(
-                onPressed: onEdit,
-                icon: const Icon(Icons.edit, size: 18),
-                label: const Text('Chỉnh sửa'),
-              ),
+              const SizedBox.shrink(),
             ],
           ),
           const SizedBox(height: 8),
-          _row('Email', email),
+          _editableRow(
+            context,
+            label: 'Email',
+            value: email,
+            keyboardType: TextInputType.emailAddress,
+            onSave: (val) async {
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(doctor.uid)
+                  .update({'email': val.trim()});
+              onEdit();
+            },
+          ),
           const Divider(height: 24),
           _row('Chuyên khoa', specialty),
           const Divider(height: 24),
-          _row('Kinh nghiệm', years != null ? '$years năm' : 'Chưa cập nhật'),
+          _editableRow(
+            context,
+            label: 'Kinh nghiệm',
+            value: years != null ? '$years năm' : 'Chưa cập nhật',
+            keyboardType: TextInputType.number,
+            onSave: (val) async {
+              final onlyNumber = val.replaceAll(RegExp(r'[^0-9]'), '');
+              final parsed = int.tryParse(onlyNumber);
+              if (parsed == null) throw 'Số năm không hợp lệ';
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(doctor.uid)
+                  .update({'yearsExperience': parsed});
+              onEdit();
+            },
+          ),
         ],
       ),
     );
@@ -380,6 +551,215 @@ class _DoctorInfoCard extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ===== Top-level reusable helpers for inline field editing dialogs =====
+
+Future<String?> _showEditDialog(
+  BuildContext context, {
+  required String title,
+  String initialValue = '',
+  TextInputType keyboardType = TextInputType.text,
+  int maxLines = 1,
+}) async {
+  final ctl = TextEditingController(text: initialValue);
+  return showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(title),
+      content: TextField(
+        controller: ctl,
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        decoration: const InputDecoration(border: OutlineInputBorder()),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Huỷ'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.of(ctx).pop(ctl.text),
+          child: const Text('Lưu'),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _editableRow(
+  BuildContext context, {
+  required String label,
+  required String value,
+  required Future<void> Function(String) onSave,
+  TextInputType keyboardType = TextInputType.text,
+}) {
+  return InkWell(
+    onTap: () async {
+      final current = value == 'Chưa cập nhật' ? '' : value;
+      final result = await _showEditDialog(
+        context,
+        title: label,
+        initialValue: current,
+        keyboardType: keyboardType,
+      );
+      if (result == null) return;
+      await onSave(result);
+      // Show quick feedback
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Đã lưu thay đổi')));
+    },
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(color: AppColors.textSecondary)),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: const TextStyle(color: AppColors.textPrimary),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+// (Top-level gender row helper removed to avoid duplicate; using the one inside _PatientInfoCard)
+
+// ===== Avatar Picker Widget =====
+class _AvatarPicker extends StatefulWidget {
+  final String? avatarUrl;
+  final String? uid;
+  final VoidCallback onUpdated;
+
+  const _AvatarPicker({
+    required this.avatarUrl,
+    required this.uid,
+    required this.onUpdated,
+  });
+
+  @override
+  State<_AvatarPicker> createState() => _AvatarPickerState();
+}
+
+class _AvatarPickerState extends State<_AvatarPicker> {
+  bool _uploading = false;
+
+  Future<void> _pickAndUpload() async {
+    if (widget.uid == null) return;
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        imageQuality: 85,
+      );
+      if (picked == null) return;
+
+      setState(() => _uploading = true);
+
+      final ext = picked.name.split('.').last.toLowerCase();
+      final path = 'avatars/${widget.uid}/profile.${ext}';
+      final fileData = await picked.readAsBytes();
+
+      String url;
+      if (MediaUploadConfig.provider == MediaUploadProvider.firebaseStorage) {
+        final ref = FirebaseStorage.instance.ref().child(path);
+        final metadata = SettableMetadata(
+          contentType: ext == 'png' ? 'image/png' : 'image/jpeg',
+          cacheControl: 'public, max-age=86400',
+        );
+        await ref.putData(fileData, metadata);
+        url = await ref.getDownloadURL();
+      } else {
+        url = await MediaUploadService.uploadAvatar(
+          uid: widget.uid!,
+          data: fileData,
+          fileExt: (ext == 'png' || ext == 'jpg' || ext == 'jpeg')
+              ? (ext == 'jpg' ? 'jpeg' : ext)
+              : 'jpeg',
+        );
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.uid)
+          .update({'avatarUrl': url});
+
+      if (mounted) {
+        setState(() => _uploading = false);
+        widget.onUpdated();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ảnh đại diện đã được cập nhật')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _uploading = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi cập nhật ảnh: $e')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasAvatar =
+        (widget.avatarUrl != null && widget.avatarUrl!.isNotEmpty);
+    return GestureDetector(
+      onTap: _uploading ? null : _pickAndUpload,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          CircleAvatar(
+            radius: 40,
+            backgroundColor: AppColors.primaryColor.withValues(alpha: 0.1),
+            backgroundImage: hasAvatar ? NetworkImage(widget.avatarUrl!) : null,
+            child: !hasAvatar
+                ? const Icon(
+                    Icons.person,
+                    size: 40,
+                    color: AppColors.primaryColor,
+                  )
+                : null,
+          ),
+          if (_uploading)
+            const SizedBox(
+              width: 80,
+              height: 80,
+              child: CircularProgressIndicator(),
+            )
+          else
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(4),
+                child: const Icon(
+                  Icons.camera_alt,
+                  size: 18,
+                  color: AppColors.primaryColor,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

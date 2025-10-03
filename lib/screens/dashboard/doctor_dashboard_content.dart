@@ -211,7 +211,13 @@ class _FollowedPatientsListState extends ConsumerState<_FollowedPatientsList> {
               CircleAvatar(
                 radius: 20,
                 backgroundColor: AppColors.primaryColor.withValues(alpha: 0.1),
-                child: const Icon(Icons.person, color: AppColors.primaryColor),
+                backgroundImage:
+                    (p.avatarUrl != null && p.avatarUrl!.isNotEmpty)
+                    ? NetworkImage(p.avatarUrl!)
+                    : null,
+                child: (p.avatarUrl == null || p.avatarUrl!.isEmpty)
+                    ? const Icon(Icons.person, color: AppColors.primaryColor)
+                    : null,
               ),
               const SizedBox(width: 12),
               Expanded(

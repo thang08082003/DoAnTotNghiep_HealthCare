@@ -9,6 +9,11 @@ class PatientDashboardContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final size = MediaQuery.of(context).size;
+    final isNarrow = size.width < 360;
+    // Make tiles taller on narrow screens to avoid overflow
+    final double quickAccessHeight = isNarrow ? 92 : 104;
+    final double welcomePad = isNarrow ? 20 : 26;
     final userAsync = ref.watch(currentUserProvider);
     return userAsync.when(
       loading: () => const SizedBox.shrink(),
@@ -23,7 +28,7 @@ class PatientDashboardContent extends ConsumerWidget {
               // Welcome card
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(26),
+                padding: EdgeInsets.all(welcomePad),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -167,31 +172,41 @@ class PatientDashboardContent extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 2.6,
-                children: [
-                  _buildQuickAccessCard(
-                    icon: Icons.self_improvement,
-                    title: 'Stress',
-                    subtitle: 'Theo dõi & thư giãn',
-                    color: AppColors.primaryColor.withValues(alpha: 0.08),
-                    iconColor: AppColors.primaryColor,
-                    onTap: () {},
+              SafeArea(
+                top: false,
+                minimum: const EdgeInsets.only(bottom: 4),
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    mainAxisExtent: quickAccessHeight,
                   ),
-                  _buildQuickAccessCard(
-                    icon: Icons.health_and_safety,
-                    title: 'Phát hiện sớm',
-                    subtitle: 'Rủi ro sức khỏe',
-                    color: Colors.green.withValues(alpha: 0.08),
-                    iconColor: Colors.green,
-                    onTap: () {},
-                  ),
-                ],
+                  itemCount: 2,
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return _buildQuickAccessCard(
+                        icon: Icons.self_improvement,
+                        title: 'Stress',
+                        subtitle: 'Theo dõi & thư giãn',
+                        color: AppColors.primaryColor.withValues(alpha: 0.08),
+                        iconColor: AppColors.primaryColor,
+                        onTap: () {},
+                      );
+                    } else {
+                      return _buildQuickAccessCard(
+                        icon: Icons.health_and_safety,
+                        title: 'Phát hiện sớm',
+                        subtitle: 'Rủi ro sức khỏe',
+                        color: Colors.green.withValues(alpha: 0.08),
+                        iconColor: Colors.green,
+                        onTap: () {},
+                      );
+                    }
+                  },
+                ),
               ),
               const SizedBox(height: 12),
               _buildQuickAccessCard(
@@ -358,36 +373,60 @@ class PatientDashboardContent extends ConsumerWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: double.infinity,
-        constraints: const BoxConstraints(minHeight: 68),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: iconColor, size: 22),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final h = constraints.maxHeight;
+          // Compact mode when tiles are short, to avoid vertical overflow
+          final compact = h < 80;
+          final ultraCompact = h < 66;
+          final pad = ultraCompact ? 8.0 : (compact ? 10.0 : 16.0);
+          final iconSize = ultraCompact ? 16.0 : (compact ? 18.0 : 22.0);
+          final gap1 = ultraCompact ? 4.0 : (compact ? 6.0 : 8.0);
+          final gap2 = compact ? 2.0 : 4.0;
+          final titleStyle = TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: ultraCompact ? 12 : (compact ? 13 : 14),
+            height: ultraCompact ? 1.1 : (compact ? 1.15 : 1.2),
+            color: AppColors.textPrimary,
+          );
+          final subtitleStyle = TextStyle(
+            fontSize: compact ? 11 : 12,
+            height: compact ? 1.1 : 1.2,
+            color: AppColors.textSecondary,
+          );
+
+          return Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(pad),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(icon, color: iconColor, size: iconSize),
+                SizedBox(height: gap1),
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: titleStyle,
+                ),
+                if (!ultraCompact) ...[
+                  SizedBox(height: gap2),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: subtitleStyle,
+                  ),
+                ],
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

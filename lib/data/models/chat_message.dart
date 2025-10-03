@@ -5,6 +5,12 @@ class ChatMessage {
   final String text;
   final DateTime createdAt;
   final bool isRead;
+  // Attachment fields (optional)
+  final String? type; // 'text' | 'image' | 'file'
+  final String? mediaUrl;
+  final String? fileName;
+  final String? mimeType;
+  final int? fileSize;
 
   ChatMessage({
     required this.id,
@@ -13,6 +19,11 @@ class ChatMessage {
     required this.text,
     required this.createdAt,
     required this.isRead,
+    this.type,
+    this.mediaUrl,
+    this.fileName,
+    this.mimeType,
+    this.fileSize,
   });
 
   factory ChatMessage.fromJson(String id, Map<String, dynamic> json) {
@@ -23,6 +34,11 @@ class ChatMessage {
       text: json['text'] as String? ?? '',
       createdAt: _parseDate(json['createdAt']),
       isRead: (json['isRead'] as bool?) ?? false,
+      type: json['type'] as String?,
+      mediaUrl: json['mediaUrl'] as String?,
+      fileName: json['fileName'] as String?,
+      mimeType: json['mimeType'] as String?,
+      fileSize: (json['fileSize'] is int) ? json['fileSize'] as int : null,
     );
   }
 
@@ -33,6 +49,11 @@ class ChatMessage {
       'text': text,
       'createdAt': createdAt.toIso8601String(),
       'isRead': isRead,
+      if (type != null) 'type': type,
+      if (mediaUrl != null) 'mediaUrl': mediaUrl,
+      if (fileName != null) 'fileName': fileName,
+      if (mimeType != null) 'mimeType': mimeType,
+      if (fileSize != null) 'fileSize': fileSize,
     };
   }
 
@@ -46,4 +67,11 @@ class ChatMessage {
     } catch (_) {}
     return DateTime.now();
   }
+}
+
+extension ChatMessageX on ChatMessage {
+  String get kind => (type ?? (mediaUrl != null ? 'image' : 'text'));
+  bool get isImage => kind == 'image';
+  bool get isFile => kind == 'file';
+  bool get isText => kind == 'text';
 }
