@@ -8,7 +8,7 @@ import '../patients/patient_detail_screen.dart';
 import '../../data/services/doctor_reviews_service.dart';
 import '../../data/models/doctor_review.dart';
 import '../doctors/doctor_reviews_screen.dart';
-import '../ai/ai_chat_screen.dart';
+import '../resources/clinical_resources_screen.dart';
 
 class DoctorDashboardContent extends ConsumerWidget {
   const DoctorDashboardContent({super.key});
@@ -83,8 +83,17 @@ class DoctorDashboardContent extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
 
-              // Nút chat AI
-              _AIChatEntryButton(),
+              // Hỗ trợ
+              const Text(
+                'Hỗ trợ',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _ClinicalInfoEntryButton(),
 
               const SizedBox(height: 24),
 
@@ -444,14 +453,16 @@ class _AbnormalAlertsPreview extends StatelessWidget {
   }
 }
 
-class _AIChatEntryButton extends StatelessWidget {
+class _ClinicalInfoEntryButton extends StatelessWidget {
+  const _ClinicalInfoEntryButton();
+
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () {
-        Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => const AIChatScreen()));
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const ClinicalResourcesScreen()),
+        );
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(
@@ -473,101 +484,38 @@ class _AIChatEntryButton extends StatelessWidget {
           children: [
             const CircleAvatar(
               backgroundColor: Color(0xFFE8F0FE),
-              child: Icon(Icons.smart_toy, color: AppColors.primaryColor),
+              child: Icon(Icons.menu_book, color: AppColors.primaryColor),
             ),
             const SizedBox(width: 12),
-            const Expanded(child: _AIChatTexts()),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Text(
+                    'Thông tin chuyên môn',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Truy cập hướng dẫn lâm sàng, phác đồ điều trị, tài liệu y khoa nội bộ',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const Icon(Icons.chevron_right, color: AppColors.textSecondary),
           ],
         ),
       ),
     );
   }
-}
-
-class _AIChatTexts extends StatelessWidget {
-  const _AIChatTexts();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: const [
-        Text(
-          'Chat với AI',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        SizedBox(height: 4),
-        Text(
-          'Hỗ trợ trong công tác theo dõi và điều trị bệnh nhân',
-          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-        ),
-      ],
-    );
-  }
-}
-
-// Quick access card helper (matches the signature you requested)
-Widget buildQuickAccessCard({
-  required IconData icon,
-  required String title,
-  required String subtitle,
-  required Color color,
-  required Color iconColor,
-  required VoidCallback onTap,
-}) {
-  return InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(12),
-    child: Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: iconColor, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-        ],
-      ),
-    ),
-  );
 }

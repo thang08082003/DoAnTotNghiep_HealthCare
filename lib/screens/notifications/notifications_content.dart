@@ -6,8 +6,6 @@ import '../../data/resources/gene/app_colors.dart';
 import '../../data/services/notification_service.dart';
 import '../../providers/user_provider.dart';
 import '../../data/services/follow_request_service.dart';
-import '../doctors/doctor_detail_screen.dart';
-import '../patients/patient_detail_screen.dart';
 
 class NotificationsListContent extends ConsumerWidget {
   const NotificationsListContent({super.key});
@@ -34,7 +32,6 @@ class NotificationsListContent extends ConsumerWidget {
               return Center(child: Text('Lỗi tải thông báo: ${snap.error}'));
             }
             final items = (snap.data ?? const []);
-            // Hide read notifications so they disappear after being handled
             final visible = items.where((n) => !n.isRead).toList();
             if (visible.isEmpty) {
               return const Center(
@@ -106,81 +103,6 @@ class NotificationsListContent extends ConsumerWidget {
                             color: AppColors.textSecondary,
                           ),
                         ),
-                        // Show explicit names if present in notification payload
-                        if (n.type == NotificationType.followRequest &&
-                            (n.data?['patientName'] is String) &&
-                            (n.data!['patientName'] as String)
-                                .trim()
-                                .isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              'Bệnh nhân: ${(n.data!['patientName'] as String).trim()}',
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        // Fallback: resolve patient name via patientId for older notifications
-                        if (n.type == NotificationType.followRequest &&
-                            (((n.data?['patientName'] as String?) == null) ||
-                                ((n.data?['patientName'] as String?)
-                                        ?.trim()
-                                        .isEmpty ??
-                                    true)) &&
-                            (n.data?['patientId'] is String) &&
-                            (n.data!['patientId'] as String).trim().isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: _UserNameLine(
-                              label: 'Bệnh nhân',
-                              userId: (n.data!['patientId'] as String).trim(),
-                            ),
-                          ),
-                        if (n.type == NotificationType.doctorFeedback &&
-                            (n.data?['doctorName'] is String) &&
-                            (n.data!['doctorName'] as String).trim().isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              'Bác sĩ: ${(n.data!['doctorName'] as String).trim()}',
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        // If doctor is viewing a feedback, show the patient name when available
-                        if (user.isDoctor &&
-                            n.type == NotificationType.doctorFeedback &&
-                            (n.data?['patientName'] is String) &&
-                            (n.data!['patientName'] as String)
-                                .trim()
-                                .isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              'Bệnh nhân: ${(n.data!['patientName'] as String).trim()}',
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        // Fallback: resolve doctor name via doctorId for older notifications
-                        if (n.type == NotificationType.doctorFeedback &&
-                            (((n.data?['doctorName'] as String?) == null) ||
-                                ((n.data?['doctorName'] as String?)
-                                        ?.trim()
-                                        .isEmpty ??
-                                    true)) &&
-                            (n.data?['doctorId'] is String) &&
-                            (n.data!['doctorId'] as String).trim().isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: _UserNameLine(
-                              label: 'Bác sĩ',
-                              userId: (n.data!['doctorId'] as String).trim(),
-                            ),
-                          ),
                         const SizedBox(height: 4),
                         Text(
                           _formatDate(n.createdAt),
@@ -202,7 +124,6 @@ class NotificationsListContent extends ConsumerWidget {
                                     final patientId =
                                         data['patientId'] as String?;
                                     if (reqId != null && patientId != null) {
-                                      // Delete the notification so it disappears immediately
                                       await NotificationService.deleteNotification(
                                         n.id,
                                       );
@@ -235,7 +156,6 @@ class NotificationsListContent extends ConsumerWidget {
                                     final patientId =
                                         data['patientId'] as String?;
                                     if (reqId != null && patientId != null) {
-                                      // Delete the notification so it disappears immediately
                                       await NotificationService.deleteNotification(
                                         n.id,
                                       );
@@ -264,84 +184,22 @@ class NotificationsListContent extends ConsumerWidget {
                       ],
                     ),
                     onTap: () async {
+                      // Chỉ đánh dấu đã đọc, KHÔNG điều hướng
                       if (!n.isRead) {
-                        await NotificationService.markAsRead(n.id);
-                      }
-                      // Deep link by type
-                      try {
-                        switch (n.type) {
-                          case NotificationType.chatMessage:
-                            {
-                              final senderId = n.data?['senderId'] as String?;
-                              if (senderId == null || senderId.trim().isEmpty) {
-                                break;
-                              }
-                              if (user.isDoctor) {
-                                // Doctor viewing a message from a patient
-                                if (context.mounted) {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => PatientDetailScreen(
-                                        patientId: senderId.trim(),
-                                        initialTab: 1,
-                                      ),
-                                    ),
-                                  );
-                                }
-                              } else {
-                                // Patient viewing a message from a doctor
-                                if (context.mounted) {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => DoctorDetailScreen(
-                                        doctorId: senderId.trim(),
-                                        initialTab: 1,
-                                      ),
-                                    ),
-                                  );
-                                }
-                              }
-                              break;
-                            }
-                          case NotificationType.doctorFeedback:
-                            {
-                              // Reuse: go to chat between doctor-patient
-                              final doctorId = n.data?['doctorId'] as String?;
-                              final patientId = n.data?['patientId'] as String?;
-                              if (user.isDoctor &&
-                                  patientId != null &&
-                                  patientId.trim().isNotEmpty) {
-                                if (context.mounted) {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => PatientDetailScreen(
-                                        patientId: patientId.trim(),
-                                        initialTab: 1,
-                                      ),
-                                    ),
-                                  );
-                                }
-                              } else if (!user.isDoctor &&
-                                  doctorId != null &&
-                                  doctorId.trim().isNotEmpty) {
-                                if (context.mounted) {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => DoctorDetailScreen(
-                                        doctorId: doctorId.trim(),
-                                        initialTab: 1,
-                                      ),
-                                    ),
-                                  );
-                                }
-                              }
-                              break;
-                            }
-                          default:
-                            // No-op for other types
-                            break;
+                        try {
+                          await NotificationService.markAsRead(n.id);
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Không thể cập nhật trạng thái đã đọc: $e',
+                                ),
+                              ),
+                            );
+                          }
                         }
-                      } catch (_) {}
+                      }
                     },
                   ),
                 );
@@ -402,29 +260,4 @@ class NotificationsListContent extends ConsumerWidget {
   }
 }
 
-class _UserNameLine extends ConsumerWidget {
-  final String label;
-  final String userId;
-  const _UserNameLine({required this.label, required this.userId});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final repo = ref.read(userRepositoryProvider);
-    return FutureBuilder(
-      future: repo.getUserById(userId),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SizedBox.shrink();
-        }
-        final user = snapshot.data;
-        if (user == null) return const SizedBox.shrink();
-        final name = user.name.trim();
-        if (name.isEmpty) return const SizedBox.shrink();
-        return Text(
-          '$label: $name',
-          style: const TextStyle(color: AppColors.textSecondary),
-        );
-      },
-    );
-  }
-}
+// Removed extra username resolver in simplified UI

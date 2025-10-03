@@ -6,7 +6,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'notification_service.dart';
 import '../../router/navigation_service.dart';
 import '../../screens/doctors/doctor_detail_screen.dart';
@@ -27,7 +26,7 @@ class LocalNotificationsService {
   static bool _initialized = false;
   static StreamSubscription? _sub;
   static String? _listeningUserId;
-  static const String _prefsKeyPrefix = 'notifications_last_seen_';
+  static final Set<String> _shownIds = <String>{};
 
   static Future<void> initialize() async {
     if (_initialized) return;
@@ -57,7 +56,11 @@ class LocalNotificationsService {
     // Android 13+
     final status = await Permission.notification.status;
     if (!status.isGranted) {
-      await Permission.notification.request();
+      // Request runtime notification permission on Android 13+
+      final req = await Permission.notification.request();
+      if (!req.isGranted) {
+        debugPrint('[LocalNotifications] Notification permission not granted');
+      }
     }
     // iOS
     await _plugin
@@ -74,71 +77,46 @@ class LocalNotificationsService {
     if (_listeningUserId == userId && _sub != null) return;
     await stop();
     _listeningUserId = userId;
-    DateTime lastSeen = await _getLastSeen(userId);
-    bool isFirstSnapshot = true;
+    _shownIds.clear();
+    debugPrint('[LocalNotifications] Start listening for user: $userId');
     _sub = _firestore
         .collection('notifications')
         .where('userId', isEqualTo: userId)
         .where('isRead', isEqualTo: false)
-        .orderBy('createdAt', descending: false)
         .snapshots()
-        .listen((snapshot) {
-          // Avoid blasting historical notifications on login/restart
-          if (isFirstSnapshot) {
-            isFirstSnapshot = false;
-            return;
-          }
-          for (final change in snapshot.docChanges) {
-            if (change.type == DocumentChangeType.added) {
+        .listen(
+          (snapshot) {
+            for (final change in snapshot.docChanges) {
+              if (change.type != DocumentChangeType.added &&
+                  change.type != DocumentChangeType.modified)
+                continue;
               final data = change.doc.data() ?? {};
               final notifId = change.doc.id;
+              if (_shownIds.contains(notifId)) continue; // de-dup per session
               final title = (data['title'] as String?) ?? 'Thông báo';
               final body = (data['body'] as String?) ?? '';
-              final created = data['createdAt'];
-              DateTime? createdAt;
-              if (created is Timestamp) {
-                createdAt = created.toDate();
-              } else if (created is String) {
-                createdAt = DateTime.tryParse(created);
-              }
-              // Gate by lastSeen if available
-              if (createdAt != null && !createdAt.isAfter(lastSeen)) {
-                continue;
-              }
               final payload = _encodePayload(data, id: notifId);
               _show(title: title, body: body, payload: payload);
-              if (createdAt != null && createdAt.isAfter(lastSeen)) {
-                lastSeen = createdAt;
-                _setLastSeen(userId, lastSeen);
-              }
+              _shownIds.add(notifId);
+              debugPrint(
+                '[LocalNotifications] Shown notif=$notifId title="$title"',
+              );
             }
-          }
-        });
+          },
+          onError: (e, st) {
+            debugPrint('[LocalNotifications] Listen error: $e');
+          },
+        );
   }
 
   static Future<void> stop() async {
     await _sub?.cancel();
     _sub = null;
     _listeningUserId = null;
+    _shownIds.clear();
   }
 
-  static Future<DateTime> _getLastSeen(String userId) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final ms = prefs.getInt('$_prefsKeyPrefix$userId');
-      if (ms != null && ms > 0) {
-        return DateTime.fromMillisecondsSinceEpoch(ms);
-      }
-    } catch (_) {}
-    return DateTime.fromMillisecondsSinceEpoch(0);
-  }
-
-  static Future<void> _setLastSeen(String userId, DateTime dt) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('$_prefsKeyPrefix$userId', dt.millisecondsSinceEpoch);
-    } catch (_) {}
-  }
+  // lastSeen removed per current strategy (pure realtime while app is active)
 
   static Future<void> _show({
     required String title,
