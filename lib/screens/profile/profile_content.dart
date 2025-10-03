@@ -537,21 +537,41 @@ class _DoctorInfoCard extends StatelessWidget {
             },
           ),
           const Divider(height: 24),
-          _editableRow(
-            context,
-            label: 'Mô tả',
-            value: description,
-            onSave: (val) async {
-              final trimmed = val.trim();
+          // Mô tả (hiển thị dạng block giống Tiền sử bệnh của bệnh nhân)
+          const Text(
+            'Mô tả',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          InkWell(
+            onTap: () async {
+              final current = description.trim();
+              final result = await _showEditDialog(
+                context,
+                title: 'Mô tả',
+                initialValue: current == 'Chưa cập nhật' ? '' : current,
+                maxLines: 8,
+                charLimit: 1000,
+              );
+              if (result == null) return;
+              final trimmed = result.trim();
               if (trimmed.isEmpty) {
                 await FirebaseFirestore.instance
                     .collection('users')
                     .doc(doctor.uid)
                     .update({'description': FieldValue.delete()});
               } else {
-                // Optional length limit
                 if (trimmed.length > 1000) {
-                  throw 'Mô tả quá dài (tối đa 1000 ký tự)';
+                  // Guard although dialog prevents oversave
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Mô tả quá dài (tối đa 1000 ký tự)'),
+                    ),
+                  );
+                  return;
                 }
                 await FirebaseFirestore.instance
                     .collection('users')
@@ -560,8 +580,10 @@ class _DoctorInfoCard extends StatelessWidget {
               }
               onEdit();
             },
-            maxLines: 8,
-            charLimit: 1000,
+            child: Text(
+              description.trim().isEmpty ? 'Chưa cập nhật' : description,
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
           ),
         ],
       ),
