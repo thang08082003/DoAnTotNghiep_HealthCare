@@ -5,10 +5,14 @@ import '../data/repositories/user_repository.dart';
 import 'user_provider.dart';
 
 // Provider
-final doctorSpecialtySelectionProvider = StateNotifierProvider<DoctorSpecialtySelectionNotifier, DoctorSpecialtySelectionState>((ref) {
-  final userRepository = ref.watch(userRepositoryProvider);
-  return DoctorSpecialtySelectionNotifier(userRepository);
-});
+final doctorSpecialtySelectionProvider =
+    StateNotifierProvider<
+      DoctorSpecialtySelectionNotifier,
+      DoctorSpecialtySelectionState
+    >((ref) {
+      final userRepository = ref.watch(userRepositoryProvider);
+      return DoctorSpecialtySelectionNotifier(userRepository);
+    });
 
 // State
 class DoctorSpecialtySelectionState {
@@ -42,17 +46,16 @@ class DoctorSelectionResult {
   final bool success;
   final String? message;
 
-  const DoctorSelectionResult({
-    required this.success,
-    this.message,
-  });
+  const DoctorSelectionResult({required this.success, this.message});
 }
 
 // Notifier
-class DoctorSpecialtySelectionNotifier extends StateNotifier<DoctorSpecialtySelectionState> {
+class DoctorSpecialtySelectionNotifier
+    extends StateNotifier<DoctorSpecialtySelectionState> {
   final UserRepository _userRepository;
 
-  DoctorSpecialtySelectionNotifier(this._userRepository) : super(const DoctorSpecialtySelectionState());
+  DoctorSpecialtySelectionNotifier(this._userRepository)
+    : super(const DoctorSpecialtySelectionState());
 
   void resetSelection() {
     state = const DoctorSpecialtySelectionState();
@@ -66,6 +69,9 @@ class DoctorSpecialtySelectionNotifier extends StateNotifier<DoctorSpecialtySele
     required String doctorId,
     required String doctorName,
     required String doctorEmail,
+    int? yearsExperience,
+    String? phone,
+    String? description,
   }) async {
     if (state.selectedSpecialty == null) {
       return const DoctorSelectionResult(
@@ -84,6 +90,9 @@ class DoctorSpecialtySelectionNotifier extends StateNotifier<DoctorSpecialtySele
         email: doctorEmail,
         role: UserRole.doctor,
         specialty: state.selectedSpecialty!.englishName,
+        yearsExperience: yearsExperience,
+        phone: phone,
+        description: description,
       );
 
       state = state.copyWith(isLoading: false);
@@ -93,11 +102,8 @@ class DoctorSpecialtySelectionNotifier extends StateNotifier<DoctorSpecialtySele
         message: 'Đăng ký thành công! Chào mừng BS. $doctorName.',
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
-      
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+
       return DoctorSelectionResult(
         success: false,
         message: 'Lỗi khi đăng ký: $e',

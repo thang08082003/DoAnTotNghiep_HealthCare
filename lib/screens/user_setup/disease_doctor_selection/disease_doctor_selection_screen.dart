@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../components/buttons/primary_button.dart';
-import '../../../components/loading/loading_widget.dart';
-import '../../../data/models/doctor_model.dart';
 import '../../../data/resources/gene/app_colors.dart';
 import '../../../providers/disease_doctor_selection_provider.dart';
 import '../../home/home_page.dart';
@@ -12,12 +10,20 @@ class DiseaseDoctorSelectionScreen extends ConsumerStatefulWidget {
   final String patientId;
   final String patientName;
   final String patientEmail;
+  final String? phone;
+  final int? age;
+  final String? gender;
+  final String? medicalHistory;
 
   const DiseaseDoctorSelectionScreen({
     super.key,
     required this.patientId,
     required this.patientName,
     required this.patientEmail,
+    this.phone,
+    this.age,
+    this.gender,
+    this.medicalHistory,
   });
 
   @override
@@ -53,7 +59,7 @@ class _DiseaseDoctorSelectionScreenState
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
-        title: const Text('Chọn bệnh và bác sĩ'),
+        title: const Text('Chọn loại bệnh'),
         backgroundColor: AppColors.primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -97,7 +103,7 @@ class _DiseaseDoctorSelectionScreenState
                                 ),
                                 const SizedBox(height: 4),
                                 const Text(
-                                  'Hãy chọn loại bệnh và bác sĩ phù hợp',
+                                  'Hãy chọn loại bệnh phù hợp',
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: AppColors.textSecondary,
@@ -132,29 +138,7 @@ class _DiseaseDoctorSelectionScreenState
 
               const SizedBox(height: 32),
 
-              // Doctor Selection
-              if (selectionState.selectedDiseaseFocus != null) ...[
-                const Text(
-                  'Chọn bác sĩ:',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                if (selectionState.isLoadingDoctors)
-                  const LoadingWidget()
-                else if (selectionState.availableDoctors.isEmpty)
-                  _buildNoDoctorsCard()
-                else
-                  ...selectionState.availableDoctors.map(
-                    (doctor) => _buildDoctorCard(doctor, selectionState),
-                  ),
-              ],
-
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),
 
               // Continue Button
               PrimaryButton(
@@ -245,116 +229,6 @@ class _DiseaseDoctorSelectionScreenState
     );
   }
 
-  Widget _buildDoctorCard(
-    DoctorModel doctor,
-    DiseaseDoctorSelectionState state,
-  ) {
-    final isSelected = state.selectedDoctor?.uid == doctor.uid;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: isSelected ? 4 : 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isSelected ? AppColors.primaryColor : Colors.transparent,
-          width: 2,
-        ),
-      ),
-      child: InkWell(
-        onTap: () {
-          ref
-              .read(diseaseDoctorSelectionProvider.notifier)
-              .selectDoctor(doctor);
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: AppColors.primaryColor.withValues(alpha: 0.1),
-                child: Text(
-                  doctor.name.substring(0, 1).toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primaryColor,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'BS. ${doctor.name}',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: isSelected
-                            ? AppColors.primaryColor
-                            : AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Chuyên khoa: ${doctor.specialty.displayName}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: isSelected
-                            ? AppColors.primaryColor
-                            : AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (isSelected)
-                const Icon(
-                  Icons.check_circle,
-                  color: AppColors.primaryColor,
-                  size: 24,
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNoDoctorsCard() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Icon(Icons.info_outline, size: 48, color: Colors.orange[600]),
-            const SizedBox(height: 12),
-            const Text(
-              'Chưa có bác sĩ chuyên khoa',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Hiện tại chưa có bác sĩ nào cho chuyên khoa này. Bạn vẫn có thể tiếp tục đăng ký.',
-              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Future<void> _handleContinue() async {
     final result = await ref
         .read(diseaseDoctorSelectionProvider.notifier)
@@ -362,6 +236,10 @@ class _DiseaseDoctorSelectionScreenState
           patientId: widget.patientId,
           patientName: widget.patientName,
           patientEmail: widget.patientEmail,
+          phone: widget.phone,
+          age: widget.age,
+          gender: widget.gender,
+          medicalHistory: widget.medicalHistory,
         );
 
     if (mounted) {

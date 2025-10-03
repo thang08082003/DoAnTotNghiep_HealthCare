@@ -467,6 +467,10 @@ class _DoctorInfoCard extends StatelessWidget {
     final specialty = doctor.specialty.vietnameseName;
     final years = doctor.yearsExperience;
     final email = doctor.email;
+    final description =
+        (doctor.description == null || doctor.description!.isEmpty)
+        ? 'Chưa cập nhật'
+        : doctor.description!;
 
     return Container(
       width: double.infinity,
@@ -532,6 +536,33 @@ class _DoctorInfoCard extends StatelessWidget {
               onEdit();
             },
           ),
+          const Divider(height: 24),
+          _editableRow(
+            context,
+            label: 'Mô tả',
+            value: description,
+            onSave: (val) async {
+              final trimmed = val.trim();
+              if (trimmed.isEmpty) {
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(doctor.uid)
+                    .update({'description': FieldValue.delete()});
+              } else {
+                // Optional length limit
+                if (trimmed.length > 1000) {
+                  throw 'Mô tả quá dài (tối đa 1000 ký tự)';
+                }
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(doctor.uid)
+                    .update({'description': trimmed});
+              }
+              onEdit();
+            },
+            maxLines: 8,
+            charLimit: 1000,
+          ),
         ],
       ),
     );
@@ -563,28 +594,69 @@ Future<String?> _showEditDialog(
   String initialValue = '',
   TextInputType keyboardType = TextInputType.text,
   int maxLines = 1,
+  int? charLimit,
 }) async {
   final ctl = TextEditingController(text: initialValue);
+  final limit = charLimit ?? (maxLines > 1 ? 1000 : null);
   return showDialog<String>(
     context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(title),
-      content: TextField(
-        controller: ctl,
-        keyboardType: keyboardType,
-        maxLines: maxLines,
-        decoration: const InputDecoration(border: OutlineInputBorder()),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(),
-          child: const Text('Huỷ'),
-        ),
-        ElevatedButton(
-          onPressed: () => Navigator.of(ctx).pop(ctl.text),
-          child: const Text('Lưu'),
-        ),
-      ],
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setState) {
+        final currentLength = ctl.text.characters.length;
+        return AlertDialog(
+          title: Text(title),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: double.maxFinite,
+                child: TextField(
+                  controller: ctl,
+                  keyboardType: keyboardType,
+                  maxLines: maxLines,
+                  minLines: maxLines > 1 ? (maxLines / 2).ceil() : 1,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    counterText: limit != null
+                        ? '${currentLength.toString()}/${limit.toString()}'
+                        : null,
+                  ),
+                ),
+              ),
+              if (limit != null)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      'Tối đa $limit ký tự',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Huỷ'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (limit != null && ctl.text.characters.length > limit) {
+                  return; // Do nothing if over limit
+                }
+                Navigator.of(ctx).pop(ctl.text);
+              },
+              child: const Text('Lưu'),
+            ),
+          ],
+        );
+      },
     ),
   );
 }
@@ -595,6 +667,8 @@ Widget _editableRow(
   required String value,
   required Future<void> Function(String) onSave,
   TextInputType keyboardType = TextInputType.text,
+  int maxLines = 1,
+  int? charLimit,
 }) {
   return InkWell(
     onTap: () async {
@@ -604,6 +678,8 @@ Widget _editableRow(
         title: label,
         initialValue: current,
         keyboardType: keyboardType,
+        maxLines: maxLines,
+        charLimit: charLimit,
       );
       if (result == null) return;
       await onSave(result);

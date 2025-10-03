@@ -38,6 +38,7 @@ enum Specialty {
 class DoctorModel extends UserModel {
   final Specialty specialty;
   final int? yearsExperience; // optional years of experience
+  final String? description; // mô tả bác sĩ (bio)
 
   DoctorModel({
     required super.uid,
@@ -47,6 +48,7 @@ class DoctorModel extends UserModel {
     required super.createdAt,
     required this.specialty,
     this.yearsExperience,
+    this.description,
     super.diseaseFocus,
     super.assignedDoctorId,
     super.phone,
@@ -71,6 +73,7 @@ class DoctorModel extends UserModel {
                   json['experienceYears'] ??
                   json['experience'])
               as int?,
+      description: json['description'],
       diseaseFocus: json['diseaseFocus'],
       phone: json['phone'],
       age: json['age'] is int
@@ -100,6 +103,7 @@ class DoctorModel extends UserModel {
       createdAt: user.createdAt,
       specialty: mappedSpecialty,
       yearsExperience: null,
+      description: null,
       diseaseFocus: user.diseaseFocus,
       assignedDoctorId: user.assignedDoctorId,
     );
@@ -111,6 +115,9 @@ class DoctorModel extends UserModel {
     final json = super.toJson();
     json['specialty'] = specialty.englishName;
     if (yearsExperience != null) json['yearsExperience'] = yearsExperience;
+    if (description != null && description!.isNotEmpty) {
+      json['description'] = description;
+    }
     return json;
   }
 
@@ -131,6 +138,7 @@ class DoctorModel extends UserModel {
     UserRole? role, // Keep this for compatibility
     Specialty? specialty,
     int? yearsExperience,
+    String? description,
   }) {
     return DoctorModel(
       uid: uid ?? this.uid,
@@ -140,6 +148,7 @@ class DoctorModel extends UserModel {
       createdAt: createdAt ?? this.createdAt,
       specialty: specialty ?? this.specialty,
       yearsExperience: yearsExperience ?? this.yearsExperience,
+      description: description ?? this.description,
       diseaseFocus: diseaseFocus ?? this.diseaseFocus,
       assignedDoctorId: assignedDoctorId ?? this.assignedDoctorId,
       phone: phone ?? this.phone,
@@ -155,6 +164,6 @@ class DoctorModel extends UserModel {
 
   @override
   String toString() {
-    return 'DoctorModel(uid: $uid, name: $name, specialty: ${specialty.vietnameseName}, yearsExperience: ${yearsExperience ?? 'n/a'})';
+    return 'DoctorModel(uid: $uid, name: $name, specialty: ${specialty.vietnameseName}, yearsExperience: ${yearsExperience ?? 'n/a'}, description: ${description ?? ''})';
   }
 }

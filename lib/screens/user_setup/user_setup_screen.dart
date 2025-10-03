@@ -9,11 +9,7 @@ class UserSetupScreen extends ConsumerStatefulWidget {
   final String uid;
   final String email;
 
-  const UserSetupScreen({
-    super.key,
-    required this.uid,
-    required this.email,
-  });
+  const UserSetupScreen({super.key, required this.uid, required this.email});
 
   @override
   ConsumerState<UserSetupScreen> createState() => _UserSetupScreenState();
@@ -22,6 +18,15 @@ class UserSetupScreen extends ConsumerStatefulWidget {
 class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  // Patient fields
+  final _phoneController = TextEditingController();
+  final _ageController = TextEditingController();
+  final _medicalHistoryController = TextEditingController();
+  String? _selectedGender; // 'male','female','other'
+  // Doctor fields
+  final _yearsExperienceController = TextEditingController();
+  final _doctorPhoneController = TextEditingController();
+  final _doctorDescriptionController = TextEditingController();
 
   UserRole _selectedRole = UserRole.patient;
   bool _isLoading = false;
@@ -29,10 +34,14 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _phoneController.dispose();
+    _ageController.dispose();
+    _medicalHistoryController.dispose();
+    _yearsExperienceController.dispose();
+    _doctorPhoneController.dispose();
+    _doctorDescriptionController.dispose();
     super.dispose();
   }
-
-
 
   Future<void> _completeSetup() async {
     if (!_formKey.currentState!.validate()) return;
@@ -52,6 +61,16 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
             patientId: widget.uid,
             patientName: name,
             patientEmail: widget.email,
+            phone: _phoneController.text.trim().isNotEmpty
+                ? _phoneController.text.trim()
+                : null,
+            age: _ageController.text.trim().isNotEmpty
+                ? int.tryParse(_ageController.text.trim())
+                : null,
+            gender: _selectedGender,
+            medicalHistory: _medicalHistoryController.text.trim().isNotEmpty
+                ? _medicalHistoryController.text.trim()
+                : null,
           );
         } else {
           // Navigate to specialty selection for doctors
@@ -60,6 +79,15 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
             doctorId: widget.uid,
             doctorName: name,
             doctorEmail: widget.email,
+            yearsExperience: _yearsExperienceController.text.trim().isNotEmpty
+                ? int.tryParse(_yearsExperienceController.text.trim())
+                : null,
+            phone: _doctorPhoneController.text.trim().isNotEmpty
+                ? _doctorPhoneController.text.trim()
+                : null,
+            description: _doctorDescriptionController.text.trim().isNotEmpty
+                ? _doctorDescriptionController.text.trim()
+                : null,
           );
         }
       }
@@ -186,6 +214,9 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
                       const SizedBox(height: 20),
 
                       const SizedBox(height: 24),
+                      // Dynamic extra fields per role
+                      _buildExtraFieldsSection(),
+                      const SizedBox(height: 24),
 
                       // Complete button
                       PrimaryButton(
@@ -221,7 +252,9 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primaryColor.withValues(alpha: 0.1) : Colors.grey[100],
+          color: isSelected
+              ? AppColors.primaryColor.withValues(alpha: 0.1)
+              : Colors.grey[100],
           border: Border.all(
             color: isSelected ? AppColors.primaryColor : Colors.grey[300]!,
             width: isSelected ? 2 : 1,
@@ -241,7 +274,9 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: isSelected ? AppColors.primaryColor : AppColors.textPrimary,
+                color: isSelected
+                    ? AppColors.primaryColor
+                    : AppColors.textPrimary,
               ),
             ),
             const SizedBox(height: 4),
@@ -249,7 +284,9 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
               subtitle,
               style: TextStyle(
                 fontSize: 12,
-                color: isSelected ? AppColors.primaryColor : AppColors.textSecondary,
+                color: isSelected
+                    ? AppColors.primaryColor
+                    : AppColors.textSecondary,
               ),
               textAlign: TextAlign.center,
             ),
@@ -257,5 +294,160 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildExtraFieldsSection() {
+    if (_selectedRole == UserRole.patient) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Thông tin bệnh nhân',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _phoneController,
+            keyboardType: TextInputType.phone,
+            decoration: InputDecoration(
+              labelText: 'Số điện thoại (tuỳ chọn)',
+              prefixIcon: const Icon(Icons.phone),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            validator: (v) {
+              if (v != null && v.isNotEmpty && v.length < 8) {
+                return 'Số điện thoại không hợp lệ';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _ageController,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: 'Tuổi (tuỳ chọn)',
+              prefixIcon: const Icon(Icons.cake_outlined),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            validator: (v) {
+              if (v != null && v.isNotEmpty) {
+                final n = int.tryParse(v);
+                if (n == null || n < 0 || n > 120) return 'Tuổi không hợp lệ';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            value: _selectedGender,
+            items: const [
+              DropdownMenuItem(value: 'male', child: Text('Nam')),
+              DropdownMenuItem(value: 'female', child: Text('Nữ')),
+              DropdownMenuItem(value: 'other', child: Text('Khác')),
+            ],
+            decoration: InputDecoration(
+              labelText: 'Giới tính (tuỳ chọn)',
+              prefixIcon: const Icon(Icons.transgender),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onChanged: (val) => setState(() => _selectedGender = val),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _medicalHistoryController,
+            maxLines: 3,
+            decoration: InputDecoration(
+              labelText: 'Tiền sử bệnh (tuỳ chọn)',
+              alignLabelWithHint: true,
+              prefixIcon: const Icon(Icons.notes),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
+      );
+    } else {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Thông tin bác sĩ',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _doctorPhoneController,
+            keyboardType: TextInputType.phone,
+            decoration: InputDecoration(
+              labelText: 'Số điện thoại (tuỳ chọn)',
+              prefixIcon: const Icon(Icons.phone),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            validator: (v) {
+              if (v != null && v.isNotEmpty && v.length < 8) {
+                return 'Số điện thoại không hợp lệ';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _yearsExperienceController,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: 'Số năm kinh nghiệm (tuỳ chọn)',
+              prefixIcon: const Icon(Icons.timeline),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            validator: (v) {
+              if (v != null && v.isNotEmpty) {
+                final n = int.tryParse(v);
+                if (n == null || n < 0 || n > 80) return 'Giá trị không hợp lệ';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _doctorDescriptionController,
+            maxLines: 3,
+            decoration: InputDecoration(
+              labelText: 'Mô tả / Giới thiệu (tuỳ chọn)',
+              alignLabelWithHint: true,
+              prefixIcon: const Icon(Icons.description),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
   }
 }

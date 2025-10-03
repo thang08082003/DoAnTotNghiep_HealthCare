@@ -16,6 +16,8 @@ import '../../data/models/doctor_review.dart';
 import '../patients/patient_orders_list_screen.dart';
 import '../call/video_call_screen.dart';
 import 'doctor_reviews_screen.dart';
+import '../../data/services/user_service.dart';
+import '../profile/edit_doctor_profile_screen.dart';
 
 class DoctorDetailScreen extends ConsumerStatefulWidget {
   final String doctorId;
@@ -157,6 +159,12 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
         ? ((_user as DoctorModel).yearsExperience?.toString() ??
               'Chưa cập nhật')
         : 'Chưa cập nhật';
+    final description = isDoctor
+        ? ((_user as DoctorModel).description == null ||
+                  (_user as DoctorModel).description!.isEmpty
+              ? 'Chưa có mô tả'
+              : (_user as DoctorModel).description!)
+        : 'Không áp dụng';
     final avatarUrl = _user?.avatarUrl;
 
     return SingleChildScrollView(
@@ -192,10 +200,81 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
             _infoRow('Email', email),
             _infoRow('Chuyên khoa', specialty),
             _infoRow('Kinh nghiệm (năm)', years),
+            const SizedBox(height: 8),
+            _buildDescriptionSection(description, isDoctor),
             const SizedBox(height: 16),
             _buildRatingsSection(),
             const SizedBox(height: 16),
             if (!infoOnly) _buildDoctorOrdersSection(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDescriptionSection(String description, bool isDoctor) {
+    final currentUserAsync = ref.watch(currentUserProvider);
+    final isOwnProfile = (currentUserAsync.asData?.value?.uid == _user?.uid);
+    return GestureDetector(
+      onTap: (isDoctor && isOwnProfile)
+          ? () async {
+              // Navigate to edit screen then reload
+              final changed = await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const EditDoctorProfileScreen(),
+                ),
+              );
+              if (changed == true) {
+                _load();
+              }
+            }
+          : null,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.description,
+                  size: 18,
+                  color: AppColors.primaryColor,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Mô tả',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                if (isDoctor && isOwnProfile) const Spacer(),
+                if (isDoctor && isOwnProfile)
+                  const Icon(
+                    Icons.edit,
+                    size: 16,
+                    color: AppColors.primaryColor,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              description,
+              style: TextStyle(
+                fontSize: 14,
+                color: description == 'Chưa có mô tả'
+                    ? Colors.grey
+                    : AppColors.textPrimary,
+              ),
+            ),
           ],
         ),
       ),
@@ -357,6 +436,7 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
                                   doctorId: widget.doctorId,
                                   patientId: user.uid,
                                   patientName: user.name,
+                                  patientAvatarUrl: user.avatarUrl,
                                   rating: rating,
                                   comment: commentCtl.text.trim().isEmpty
                                       ? null
@@ -403,7 +483,11 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.person, color: AppColors.textSecondary),
+          _InlineReviewAvatar(
+            patientId: r.patientId,
+            initialUrl: r.patientAvatarUrl,
+            name: r.patientName,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -919,6 +1003,108 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
         ],
       ),
     );
+  }
+}
+
+class _InlineReviewAvatar extends StatefulWidget {
+  final String patientId;
+  final String? initialUrl;
+  final String name;
+  const _InlineReviewAvatar({
+    required this.patientId,
+    required this.initialUrl,
+    required this.name,
+  });
+
+  @override
+  State<_InlineReviewAvatar> createState() => _InlineReviewAvatarState();
+}
+
+class _InlineReviewAvatarState extends State<_InlineReviewAvatar> {
+  String? _url;
+  bool _fetching = false;
+  bool _tried = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _url = widget.initialUrl;
+    if (_url == null || _url!.isEmpty) _fetch();
+  }
+
+  Future<void> _fetch() async {
+    if (_tried) return;
+    _tried = true;
+    setState(() => _fetching = true);
+    try {
+      final svc = UserService();
+      final u = await svc.getUserById(widget.patientId);
+      if (!mounted) return;
+      setState(() => _url = u?.avatarUrl);
+    } catch (_) {
+      // ignore
+    } finally {
+      if (mounted) setState(() => _fetching = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasUrl = _url != null && _url!.isNotEmpty;
+    final initials = _initials(widget.name);
+    if (_fetching && !hasUrl) {
+      return const SizedBox(
+        width: 40,
+        height: 40,
+        child: Center(
+          child: SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        width: 40,
+        height: 40,
+        color: Colors.grey.withValues(alpha: 0.15),
+        child: hasUrl
+            ? Image.network(
+                _url!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _fallback(initials),
+              )
+            : _fallback(initials),
+      ),
+    );
+  }
+
+  Widget _fallback(String initials) => Center(
+    child: Text(
+      initials,
+      style: const TextStyle(
+        fontWeight: FontWeight.bold,
+        color: AppColors.textSecondary,
+      ),
+    ),
+  );
+
+  String _initials(String name) {
+    final parts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((e) => e.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return '?';
+    if (parts.length == 1) {
+      return parts.first.characters.take(1).toString().toUpperCase();
+    }
+    return (parts.first.characters.take(1).toString() +
+            parts.last.characters.take(1).toString())
+        .toUpperCase();
   }
 }
 

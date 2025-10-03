@@ -34,6 +34,7 @@ class DoctorReviewsService {
     required String doctorId,
     required String patientId,
     required String patientName,
+    String? patientAvatarUrl,
     required int rating, // 1..5
     String? comment,
   }) async {
@@ -42,6 +43,7 @@ class DoctorReviewsService {
       'doctorId': doctorId,
       'patientId': patientId,
       'patientName': patientName,
+      'patientAvatarUrl': patientAvatarUrl,
       'rating': rating,
       'comment': comment,
       'updatedAt': FieldValue.serverTimestamp(),

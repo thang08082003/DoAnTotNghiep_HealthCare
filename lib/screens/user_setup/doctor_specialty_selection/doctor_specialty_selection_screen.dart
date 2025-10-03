@@ -11,12 +11,18 @@ class DoctorSpecialtySelectionScreen extends ConsumerStatefulWidget {
   final String doctorId;
   final String doctorName;
   final String doctorEmail;
+  final int? yearsExperience;
+  final String? phone;
+  final String? description;
 
   const DoctorSpecialtySelectionScreen({
     super.key,
     required this.doctorId,
     required this.doctorName,
     required this.doctorEmail,
+    this.yearsExperience,
+    this.phone,
+    this.description,
   });
 
   @override
@@ -226,6 +232,9 @@ class _DoctorSpecialtySelectionScreenState
           doctorId: widget.doctorId,
           doctorName: widget.doctorName,
           doctorEmail: widget.doctorEmail,
+          yearsExperience: widget.yearsExperience,
+          phone: widget.phone,
+          description: widget.description,
         );
 
     if (mounted) {

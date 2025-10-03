@@ -3,6 +3,7 @@ class DoctorReview {
   final String doctorId;
   final String patientId;
   final String patientName;
+  final String? patientAvatarUrl;
   final int rating; // 1..5
   final String? comment;
   final DateTime? createdAt;
@@ -13,6 +14,7 @@ class DoctorReview {
     required this.doctorId,
     required this.patientId,
     required this.patientName,
+    this.patientAvatarUrl,
     required this.rating,
     this.comment,
     this.createdAt,
@@ -40,6 +42,7 @@ class DoctorReview {
       doctorId: data['doctorId'] as String? ?? '',
       patientId: data['patientId'] as String? ?? '',
       patientName: data['patientName'] as String? ?? '',
+      patientAvatarUrl: data['patientAvatarUrl'] as String?,
       rating: (data['rating'] as num?)?.toInt() ?? 0,
       comment: data['comment'] as String?,
       createdAt: toDate(data['createdAt']),

@@ -52,6 +52,10 @@ class AppRouter {
             patientId: args?['patientId'] ?? '',
             patientName: args?['patientName'] ?? '',
             patientEmail: args?['patientEmail'] ?? '',
+            phone: args?['phone'],
+            age: args?['age'],
+            gender: args?['gender'],
+            medicalHistory: args?['medicalHistory'],
           ),
           settings: settings,
         );
@@ -63,6 +67,9 @@ class AppRouter {
             doctorId: args?['doctorId'] ?? '',
             doctorName: args?['doctorName'] ?? '',
             doctorEmail: args?['doctorEmail'] ?? '',
+            yearsExperience: args?['yearsExperience'],
+            phone: args?['phone'],
+            description: args?['description'],
           ),
           settings: settings,
         );
@@ -107,6 +114,10 @@ class AppRouter {
     required String patientId,
     required String patientName,
     required String patientEmail,
+    String? phone,
+    int? age,
+    String? gender,
+    String? medicalHistory,
   }) {
     Navigator.of(context).pushNamedAndRemoveUntil(
       diseaseDoctorSelection,
@@ -115,6 +126,10 @@ class AppRouter {
         'patientId': patientId,
         'patientName': patientName,
         'patientEmail': patientEmail,
+        'phone': phone,
+        'age': age,
+        'gender': gender,
+        'medicalHistory': medicalHistory,
       },
     );
   }
@@ -124,6 +139,9 @@ class AppRouter {
     required String doctorId,
     required String doctorName,
     required String doctorEmail,
+    int? yearsExperience,
+    String? phone,
+    String? description,
   }) {
     Navigator.of(context).pushNamedAndRemoveUntil(
       doctorSpecialtySelection,
@@ -132,6 +150,9 @@ class AppRouter {
         'doctorId': doctorId,
         'doctorName': doctorName,
         'doctorEmail': doctorEmail,
+        'yearsExperience': yearsExperience,
+        'phone': phone,
+        'description': description,
       },
     );
   }

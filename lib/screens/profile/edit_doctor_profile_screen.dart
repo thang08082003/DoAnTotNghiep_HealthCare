@@ -18,6 +18,7 @@ class _EditDoctorProfileScreenState
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _yearsCtrl = TextEditingController();
+  final _descCtrl = TextEditingController();
   Specialty? _specialty;
   bool _loading = true;
   String? _error;
@@ -49,6 +50,7 @@ class _EditDoctorProfileScreenState
       final data = doc.data() ?? {};
       _nameCtrl.text = user.name;
       _yearsCtrl.text = (data['yearsExperience']?.toString() ?? '');
+      _descCtrl.text = (data['description']?.toString() ?? '');
       final specStr = data['specialty'] as String?;
       _specialty = specStr != null
           ? Specialty.fromString(specStr)
@@ -79,6 +81,12 @@ class _EditDoctorProfileScreenState
       } else {
         updates['yearsExperience'] = FieldValue.delete();
       }
+      final descText = _descCtrl.text.trim();
+      if (descText.isNotEmpty) {
+        updates['description'] = descText;
+      } else {
+        updates['description'] = FieldValue.delete();
+      }
       await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -97,6 +105,7 @@ class _EditDoctorProfileScreenState
   void dispose() {
     _nameCtrl.dispose();
     _yearsCtrl.dispose();
+    _descCtrl.dispose();
     super.dispose();
   }
 
@@ -162,6 +171,15 @@ class _EditDoctorProfileScreenState
                             ? 'Phải là số'
                             : null;
                       },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _descCtrl,
+                      maxLines: 4,
+                      decoration: const InputDecoration(
+                        labelText: 'Mô tả / Giới thiệu',
+                        alignLabelWithHint: true,
+                      ),
                     ),
                     const SizedBox(height: 20),
                     SizedBox(

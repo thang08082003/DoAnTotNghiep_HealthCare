@@ -50,6 +50,14 @@ class UserService {
     String? avatarUrl,
     String? diseaseFocus,
     String? specialty,
+    // Patient specific
+    String? phone,
+    int? age,
+    String? gender,
+    String? medicalHistory,
+    // Doctor specific
+    int? yearsExperience,
+    String? description,
   }) async {
     try {
       UserModel userModel;
@@ -64,6 +72,12 @@ class UserService {
           specialty: doctorSpecialty,
           createdAt: DateTime.now(),
           avatarUrl: avatarUrl,
+          yearsExperience: yearsExperience,
+          phone: phone,
+          age: age,
+          gender: gender,
+          medicalHistory: medicalHistory,
+          description: description,
         );
       } else {
         // Tạo UserModel thông thường cho patient hoặc doctor không có specialty
@@ -74,11 +88,11 @@ class UserService {
           role: role,
           avatarUrl: avatarUrl,
           diseaseFocus: diseaseFocus,
-          // Ensure optional patient fields exist for new patients (can be edited later)
-          phone: role == UserRole.patient ? '' : null,
-          age: role == UserRole.patient ? null : null,
-          gender: role == UserRole.patient ? '' : null,
-          medicalHistory: role == UserRole.patient ? '' : null,
+          // Patient fields (if provided at onboarding)
+          phone: phone,
+          age: age,
+          gender: gender,
+          medicalHistory: medicalHistory,
           createdAt: DateTime.now(),
         );
       }

@@ -12,6 +12,14 @@ class UserRepository {
     required UserRole role,
     String? diseaseFocus,
     String? specialty,
+    // Patient
+    String? phone,
+    int? age,
+    String? gender,
+    String? medicalHistory,
+    // Doctor
+    int? yearsExperience,
+    String? description,
   }) async {
     await _userService.createUser(
       uid: uid,
@@ -20,6 +28,12 @@ class UserRepository {
       role: role,
       diseaseFocus: diseaseFocus,
       specialty: specialty,
+      phone: phone,
+      age: age,
+      gender: gender,
+      medicalHistory: medicalHistory,
+      yearsExperience: yearsExperience,
+      description: description,
     );
   }
 
