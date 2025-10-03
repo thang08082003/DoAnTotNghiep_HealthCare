@@ -63,11 +63,40 @@ class DoctorReviewsScreen extends ConsumerWidget {
                     ),
                   );
                 }
-                return ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: reviews.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (context, i) => _reviewTile(reviews[i]),
+                return FutureBuilder(
+                  future: ref.read(currentUserProvider.future),
+                  builder: (context, userSnap) {
+                    final currentUser = userSnap.data;
+                    final currentUid = currentUser?.uid;
+                    final isPatient = (currentUser?.isPatient ?? false) == true;
+                    return ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: reviews.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, i) {
+                        final r = reviews[i];
+                        final isMine =
+                            isPatient &&
+                            currentUid != null &&
+                            currentUid == r.patientId;
+                        return _ReviewTile(
+                          review: r,
+                          isMine: isMine,
+                          onEdit: isMine
+                              ? () => _showAddOrEditReviewSheet(
+                                  context,
+                                  ref,
+                                  service,
+                                  existing: r,
+                                )
+                              : null,
+                          onDelete: isMine
+                              ? () => _confirmAndDelete(context, service, r)
+                              : null,
+                        );
+                      },
+                    );
+                  },
                 );
               },
             ),
@@ -88,10 +117,20 @@ class DoctorReviewsScreen extends ConsumerWidget {
             builder: (context, snapStatus) {
               final accepted = snapStatus.data == 'accepted';
               if (!accepted) return const SizedBox.shrink();
-              return FloatingActionButton.extended(
-                onPressed: () => _showAddReviewSheet(context, ref, service),
-                icon: const Icon(Icons.star),
-                label: const Text('Đánh giá'),
+              // Only allow adding a review if the current patient has not reviewed yet
+              return StreamBuilder<List<DoctorReview>>(
+                stream: service.watchReviews(doctorId),
+                builder: (context, snapReviews) {
+                  final reviews = snapReviews.data ?? const <DoctorReview>[];
+                  final hasMine = reviews.any((r) => r.patientId == user.uid);
+                  if (hasMine) return const SizedBox.shrink();
+                  return FloatingActionButton.extended(
+                    onPressed: () =>
+                        _showAddOrEditReviewSheet(context, ref, service),
+                    icon: const Icon(Icons.star),
+                    label: const Text('Đánh giá'),
+                  );
+                },
               );
             },
           );
@@ -100,57 +139,52 @@ class DoctorReviewsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _reviewTile(DoctorReview r) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.person, color: AppColors.textSecondary),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        r.patientName.isEmpty ? 'Người dùng' : r.patientName,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 16),
-                        const SizedBox(width: 4),
-                        Text('${r.rating}/5'),
-                      ],
-                    ),
-                  ],
-                ),
-                if ((r.comment ?? '').isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(r.comment!),
-                ],
-              ],
-            ),
+  Future<void> _confirmAndDelete(
+    BuildContext context,
+    DoctorReviewsService service,
+    DoctorReview r,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xoá nhận xét'),
+        content: const Text('Bạn có chắc muốn xoá nhận xét này?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Huỷ'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Xoá'),
           ),
         ],
       ),
     );
+    if (confirmed == true) {
+      try {
+        await service.deleteReview(doctorId: doctorId, patientId: r.patientId);
+        if (context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Đã xoá nhận xét')));
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Xoá thất bại: $e')));
+        }
+      }
+    }
   }
 
-  void _showAddReviewSheet(
+  void _showAddOrEditReviewSheet(
     BuildContext context,
     WidgetRef ref,
-    DoctorReviewsService service,
-  ) {
+    DoctorReviewsService service, {
+    DoctorReview? existing,
+  }) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -158,8 +192,9 @@ class DoctorReviewsScreen extends ConsumerWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) {
-        final commentCtl = TextEditingController();
-        int rating = 5;
+        final initialComment = existing?.comment ?? '';
+        final commentCtl = TextEditingController(text: initialComment);
+        int rating = existing?.rating ?? 5;
         return Padding(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(ctx).viewInsets.bottom,
@@ -181,9 +216,9 @@ class DoctorReviewsScreen extends ConsumerWidget {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Đánh giá bác sĩ',
-                        style: TextStyle(
+                      Text(
+                        existing == null ? 'Đánh giá bác sĩ' : 'Sửa đánh giá',
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
@@ -227,8 +262,12 @@ class DoctorReviewsScreen extends ConsumerWidget {
                               if (!context.mounted) return;
                               Navigator.of(ctx).pop();
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Đã gửi đánh giá'),
+                                SnackBar(
+                                  content: Text(
+                                    existing == null
+                                        ? 'Đã gửi đánh giá'
+                                        : 'Đã cập nhật đánh giá',
+                                  ),
                                 ),
                               );
                             } catch (e) {
@@ -239,7 +278,7 @@ class DoctorReviewsScreen extends ConsumerWidget {
                               );
                             }
                           },
-                          child: const Text('Gửi'),
+                          child: Text(existing == null ? 'Gửi' : 'Cập nhật'),
                         ),
                       ),
                     ],
@@ -250,6 +289,83 @@ class DoctorReviewsScreen extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _ReviewTile extends StatelessWidget {
+  final DoctorReview review;
+  final bool isMine;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+  const _ReviewTile({
+    required this.review,
+    this.isMine = false,
+    this.onEdit,
+    this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final r = review;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.person, color: AppColors.textSecondary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        r.patientName.isEmpty ? 'Người dùng' : r.patientName,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        const Icon(Icons.star, color: Colors.amber, size: 16),
+                        const SizedBox(width: 4),
+                        Text('${r.rating}/5'),
+                      ],
+                    ),
+                    if (isMine) ...[
+                      const SizedBox(width: 8),
+                      PopupMenuButton<String>(
+                        onSelected: (value) {
+                          if (value == 'edit') {
+                            onEdit?.call();
+                          } else if (value == 'delete') {
+                            onDelete?.call();
+                          }
+                        },
+                        itemBuilder: (context) => const [
+                          PopupMenuItem(value: 'edit', child: Text('Sửa')),
+                          PopupMenuItem(value: 'delete', child: Text('Xoá')),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+                if ((r.comment ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(r.comment!),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

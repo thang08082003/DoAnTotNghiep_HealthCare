@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:healthcare/data/resources/gene/app_colors.dart';
 import 'package:healthcare/router/app_router.dart';
+import 'package:healthcare/router/navigation_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,22 +19,20 @@ class HealthCareApp extends StatelessWidget {
     return MaterialApp(
       title: 'Healthcare App',
       debugShowCheckedModeBanner: false,
+      navigatorKey: NavigationService.navigatorKey,
       theme: ThemeData(
-        primarySwatch: MaterialColor(
-          0xFF1976D2,
-          const <int, Color>{
-            50: Color(0xFFE3F2FD),
-            100: Color(0xFFBBDEFB),
-            200: Color(0xFF90CAF9),
-            300: Color(0xFF64B5F6),
-            400: Color(0xFF42A5F5),
-            500: Color(0xFF1976D2),
-            600: Color(0xFF1E88E5),
-            700: Color(0xFF1976D2),
-            800: Color(0xFF1565C0),
-            900: Color(0xFF0D47A1),
-          },
-        ),
+        primarySwatch: MaterialColor(0xFF1976D2, const <int, Color>{
+          50: Color(0xFFE3F2FD),
+          100: Color(0xFFBBDEFB),
+          200: Color(0xFF90CAF9),
+          300: Color(0xFF64B5F6),
+          400: Color(0xFF42A5F5),
+          500: Color(0xFF1976D2),
+          600: Color(0xFF1E88E5),
+          700: Color(0xFF1976D2),
+          800: Color(0xFF1565C0),
+          900: Color(0xFF0D47A1),
+        }),
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.primaryColor,
           brightness: Brightness.light,
@@ -53,9 +52,7 @@ class HealthCareApp extends StatelessWidget {
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(
@@ -70,5 +67,3 @@ class HealthCareApp extends StatelessWidget {
     );
   }
 }
-
-

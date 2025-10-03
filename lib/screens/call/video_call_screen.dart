@@ -21,6 +21,7 @@ class _VideoCallScreenState extends ConsumerState<VideoCallScreen> {
   RtcEngine? _engine;
   int? _remoteUid;
   String? _error;
+  bool _micMuted = false;
 
   @override
   void initState() {
@@ -190,12 +191,17 @@ class _VideoCallScreenState extends ConsumerState<VideoCallScreen> {
                           onPressed: () => _engine?.switchCamera(),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.mic_off),
+                          icon: Icon(
+                            _micMuted ? Icons.mic_off : Icons.mic,
+                            color: _micMuted ? Colors.red : null,
+                          ),
                           onPressed: () async {
-                            // Toggle microphone
-                            // For brevity, simple mute toggle
-                            // You can manage state if needed
-                            await _engine?.muteLocalAudioStream(true);
+                            // Toggle microphone between mute/unmute
+                            final newMuted = !_micMuted;
+                            await _engine?.muteLocalAudioStream(newMuted);
+                            if (mounted) {
+                              setState(() => _micMuted = newMuted);
+                            }
                           },
                         ),
                         IconButton(

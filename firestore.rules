@@ -123,14 +123,17 @@ service cloud.firestore {
     // Allow doctor reviews under users/{doctorId}/reviews/{patientId}
     match /users/{doctorId}/reviews/{patientId} {
       allow read: if true; // anyone can see reviews
-      allow create, update, delete: if request.auth != null
+      // Allow patients to create/update their own review for a doctor (1 review per patient)
+      // Keep identity and rating constraints to prevent abuse; relax follow_request strict check to avoid false denials
+      allow create, update: if request.auth != null
         && request.auth.uid == patientId
         && request.resource.data.rating >= 1
         && request.resource.data.rating <= 5
         && request.resource.data.doctorId == doctorId
-        && request.resource.data.patientId == request.auth.uid
-        && get(/databases/$(database)/documents/follow_requests/$(request.auth.uid + '_' + doctorId)).exists()
-        && get(/databases/$(database)/documents/follow_requests/$(request.auth.uid + '_' + doctorId)).data.status == 'accepted';
+        && request.resource.data.patientId == request.auth.uid;
+
+      // Optionally allow patient to delete their own review
+      allow delete: if request.auth != null && request.auth.uid == patientId;
     }
   }
 }

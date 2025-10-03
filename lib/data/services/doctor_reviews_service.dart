@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/doctor_review.dart';
+import '../models/notification_model.dart';
+import 'notification_service.dart';
 
 class DoctorReviewsService {
   final _db = FirebaseFirestore.instance;
@@ -45,5 +47,38 @@ class DoctorReviewsService {
       'updatedAt': FieldValue.serverTimestamp(),
       'createdAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+
+    // Notify the doctor that a patient has submitted/updated a review
+    final trimmedComment = (comment ?? '').trim();
+    final snippet = trimmedComment.isEmpty
+        ? ''
+        : (trimmedComment.length > 120
+              ? '${trimmedComment.substring(0, 117)}...'
+              : trimmedComment);
+    final body = snippet.isEmpty
+        ? 'Đã đánh giá $rating/5'
+        : 'Đã đánh giá $rating/5: $snippet';
+
+    await NotificationService.createNotification(
+      toUserId: doctorId,
+      senderId: patientId,
+      type: NotificationType.doctorFeedback,
+      title: 'Nhận xét mới từ $patientName',
+      body: body,
+      data: <String, dynamic>{
+        'doctorId': doctorId,
+        'patientId': patientId,
+        'patientName': patientName,
+        'rating': rating,
+        if (trimmedComment.isNotEmpty) 'comment': trimmedComment,
+      },
+    );
+  }
+
+  Future<void> deleteReview({
+    required String doctorId,
+    required String patientId,
+  }) async {
+    await _reviewsCol(doctorId).doc(patientId).delete();
   }
 }

@@ -6,6 +6,8 @@ import '../../data/resources/gene/app_colors.dart';
 import '../../data/services/notification_service.dart';
 import '../../providers/user_provider.dart';
 import '../../data/services/follow_request_service.dart';
+import '../doctors/doctor_detail_screen.dart';
+import '../patients/patient_detail_screen.dart';
 
 class NotificationsListContent extends ConsumerWidget {
   const NotificationsListContent({super.key});
@@ -147,6 +149,22 @@ class NotificationsListContent extends ConsumerWidget {
                               ),
                             ),
                           ),
+                        // If doctor is viewing a feedback, show the patient name when available
+                        if (user.isDoctor &&
+                            n.type == NotificationType.doctorFeedback &&
+                            (n.data?['patientName'] is String) &&
+                            (n.data!['patientName'] as String)
+                                .trim()
+                                .isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              'Bệnh nhân: ${(n.data!['patientName'] as String).trim()}',
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
                         // Fallback: resolve doctor name via doctorId for older notifications
                         if (n.type == NotificationType.doctorFeedback &&
                             (((n.data?['doctorName'] as String?) == null) ||
@@ -249,7 +267,81 @@ class NotificationsListContent extends ConsumerWidget {
                       if (!n.isRead) {
                         await NotificationService.markAsRead(n.id);
                       }
-                      // Optional: handle deep links by type
+                      // Deep link by type
+                      try {
+                        switch (n.type) {
+                          case NotificationType.chatMessage:
+                            {
+                              final senderId = n.data?['senderId'] as String?;
+                              if (senderId == null || senderId.trim().isEmpty) {
+                                break;
+                              }
+                              if (user.isDoctor) {
+                                // Doctor viewing a message from a patient
+                                if (context.mounted) {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => PatientDetailScreen(
+                                        patientId: senderId.trim(),
+                                        initialTab: 1,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              } else {
+                                // Patient viewing a message from a doctor
+                                if (context.mounted) {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => DoctorDetailScreen(
+                                        doctorId: senderId.trim(),
+                                        initialTab: 1,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+                              break;
+                            }
+                          case NotificationType.doctorFeedback:
+                            {
+                              // Reuse: go to chat between doctor-patient
+                              final doctorId = n.data?['doctorId'] as String?;
+                              final patientId = n.data?['patientId'] as String?;
+                              if (user.isDoctor &&
+                                  patientId != null &&
+                                  patientId.trim().isNotEmpty) {
+                                if (context.mounted) {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => PatientDetailScreen(
+                                        patientId: patientId.trim(),
+                                        initialTab: 1,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              } else if (!user.isDoctor &&
+                                  doctorId != null &&
+                                  doctorId.trim().isNotEmpty) {
+                                if (context.mounted) {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => DoctorDetailScreen(
+                                        doctorId: doctorId.trim(),
+                                        initialTab: 1,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+                              break;
+                            }
+                          default:
+                            // No-op for other types
+                            break;
+                        }
+                      } catch (_) {}
                     },
                   ),
                 );
@@ -265,6 +357,8 @@ class NotificationsListContent extends ConsumerWidget {
     switch (type) {
       case NotificationType.aiAlert:
         return Icons.bolt;
+      case NotificationType.chatMessage:
+        return Icons.message;
       case NotificationType.doctorFeedback:
         return Icons.chat_bubble;
       case NotificationType.appointment:
@@ -282,6 +376,8 @@ class NotificationsListContent extends ConsumerWidget {
     switch (type) {
       case NotificationType.aiAlert:
         return Colors.red;
+      case NotificationType.chatMessage:
+        return AppColors.primaryColor;
       case NotificationType.doctorFeedback:
         return AppColors.primaryColor;
       case NotificationType.appointment:

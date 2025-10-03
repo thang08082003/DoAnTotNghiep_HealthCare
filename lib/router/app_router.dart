@@ -8,6 +8,7 @@ import '../screens/user_setup/user_setup_screen.dart';
 import '../screens/user_setup/disease_doctor_selection/disease_doctor_selection_screen.dart';
 import '../screens/user_setup/doctor_specialty_selection/doctor_specialty_selection_screen.dart';
 import '../screens/home/home_page.dart';
+import '../data/services/local_notifications_service.dart';
 
 class AppRouter {
   // Route names
@@ -184,6 +185,18 @@ class AuthWrapper extends ConsumerWidget {
 
                     if (userSnapshot.hasData && userSnapshot.data != null) {
                       final user = userSnapshot.data!;
+                      // Start local notifications listening after first frame
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        LocalNotificationsService.initialize()
+                            .then((_) async {
+                              await LocalNotificationsService.startListeningUserNotifications(
+                                user.uid,
+                              );
+                              // Handle cold start from a notification tap
+                              await LocalNotificationsService.handleInitialNotificationLaunch();
+                            })
+                            .catchError((_) {});
+                      });
                       return HomePage(userRole: user.role);
                     }
 

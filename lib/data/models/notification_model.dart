@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum NotificationType {
   aiAlert('ai_alert'),
+  chatMessage('chat_message'),
   doctorFeedback('doctor_feedback'),
   appointment('appointment'),
   reminder('reminder'),
@@ -15,6 +16,8 @@ enum NotificationType {
     switch (v) {
       case 'ai_alert':
         return NotificationType.aiAlert;
+      case 'chat_message':
+        return NotificationType.chatMessage;
       case 'doctor_feedback':
         return NotificationType.doctorFeedback;
       case 'appointment':
