@@ -5,6 +5,10 @@ import '../../providers/user_provider.dart';
 import '../../data/services/follow_request_service.dart';
 import '../../data/models/user_model.dart';
 import '../patients/patient_detail_screen.dart';
+import '../../data/services/doctor_reviews_service.dart';
+import '../../data/models/doctor_review.dart';
+import '../doctors/doctor_reviews_screen.dart';
+import '../ai/ai_chat_screen.dart';
 
 class DoctorDashboardContent extends ConsumerWidget {
   const DoctorDashboardContent({super.key});
@@ -79,17 +83,8 @@ class DoctorDashboardContent extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
 
-              // Removed 'Thống kê hôm nay' per request
-              const Text(
-                'Bệnh nhân đang theo dõi',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 12),
-              _FollowedPatientsList(doctorId: user?.uid ?? ''),
+              // Nút chat AI
+              _AIChatEntryButton(),
 
               const SizedBox(height: 24),
 
@@ -103,10 +98,157 @@ class DoctorDashboardContent extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
               _AbnormalAlertsPreview(doctorId: user?.uid ?? ''),
+
+              const SizedBox(height: 24),
+
+              const Text(
+                'Nhận xét gần đây',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _RecentReviewsPreview(
+                doctorId: user?.uid ?? '',
+                doctorName: user?.name ?? '',
+              ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+class _RecentReviewsPreview extends StatelessWidget {
+  final String doctorId;
+  final String doctorName;
+  const _RecentReviewsPreview({
+    required this.doctorId,
+    required this.doctorName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (doctorId.isEmpty) {
+      return _shell(Container());
+    }
+    final service = DoctorReviewsService();
+    return _shell(
+      StreamBuilder<List<DoctorReview>>(
+        stream: service.watchReviews(doctorId, limit: 3),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final reviews = snapshot.data ?? const <DoctorReview>[];
+          if (reviews.isEmpty) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4),
+              child: Text(
+                'Chưa có nhận xét nào.',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            );
+          }
+          return Column(
+            children: [
+              ...reviews.map((r) => _reviewItem(context, r)).toList(),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => DoctorReviewsScreen(
+                          doctorId: doctorId,
+                          doctorName: doctorName,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.list),
+                  label: const Text('Xem tất cả nhận xét'),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _shell(Widget child) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _reviewItem(BuildContext context, DoctorReview r) {
+    final subtitle = (r.comment ?? '').trim();
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.person, color: AppColors.textSecondary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        r.patientName.isEmpty ? 'Người dùng' : r.patientName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    const Icon(Icons.star, color: Colors.amber, size: 16),
+                    const SizedBox(width: 4),
+                    Text('${r.rating}/5'),
+                  ],
+                ),
+                if (subtitle.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle.length > 140
+                        ? '${subtitle.substring(0, 137)}...'
+                        : subtitle,
+                    style: const TextStyle(color: AppColors.textSecondary),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -298,6 +440,74 @@ class _AbnormalAlertsPreview extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AIChatEntryButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const AIChatScreen()));
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const CircleAvatar(
+              backgroundColor: Color(0xFFE8F0FE),
+              child: Icon(Icons.smart_toy, color: AppColors.primaryColor),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(child: _AIChatTexts()),
+            const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AIChatTexts extends StatelessWidget {
+  const _AIChatTexts();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: const [
+        Text(
+          'Chat với AI',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        SizedBox(height: 4),
+        Text(
+          'Hỗ trợ trong công tác theo dõi và điều trị bệnh nhân',
+          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
+      ],
     );
   }
 }
