@@ -37,7 +37,7 @@ class LocalNotificationsService {
       init,
       onDidReceiveNotificationResponse: (resp) {
         // iOS/Android tap handler for foreground/background
-        _handleNotificationTap(resp.payload);
+        handleNotificationTapFromSystem(resp.payload);
       },
     );
     // Request notification permission where required
@@ -175,7 +175,7 @@ class LocalNotificationsService {
     }
   }
 
-  static void _handleNotificationTap(String? payload) {
+  static void handleNotificationTapFromSystem(String? payload) {
     if (payload == null || payload.isEmpty) return;
     Map<String, dynamic> map = {};
     try {
@@ -184,15 +184,31 @@ class LocalNotificationsService {
       return;
     }
 
-    final type = map['type'] as String?;
+    // Pull nested data if present
+    final nested = (map['data'] is Map) ? (map['data'] as Map) : const {};
+    final flat = {
+      ...map,
+      if (!map.containsKey('doctorId') && nested['doctorId'] != null)
+        'doctorId': nested['doctorId'],
+      if (!map.containsKey('patientId') && nested['patientId'] != null)
+        'patientId': nested['patientId'],
+      if (!map.containsKey('senderId') && nested['senderId'] != null)
+        'senderId': nested['senderId'],
+      if (!map.containsKey('senderName') && nested['senderName'] != null)
+        'senderName': nested['senderName'],
+      if (!map.containsKey('receiverId') && nested['receiverId'] != null)
+        'receiverId': nested['receiverId'],
+    };
+
+    final type = flat['type'] as String?;
     if (type == 'chat_message') {
       final navigator = NavigationService.navigator;
       if (navigator == null) return;
       final currentUid = FirebaseAuth.instance.currentUser?.uid;
-      final doctorId = (map['doctorId'] as String?)?.trim();
-      final patientId = (map['patientId'] as String?)?.trim();
-      final senderId = (map['senderId'] as String?)?.trim();
-      final notificationId = (map['notificationId'] as String?)?.trim();
+      final doctorId = (flat['doctorId'] as String?)?.trim();
+      final patientId = (flat['patientId'] as String?)?.trim();
+      final senderId = (flat['senderId'] as String?)?.trim();
+      final notificationId = (flat['notificationId'] as String?)?.trim();
 
       if (doctorId != null && patientId != null && currentUid != null) {
         if (currentUid == doctorId) {
@@ -238,7 +254,7 @@ class LocalNotificationsService {
       final details = await _plugin.getNotificationAppLaunchDetails();
       final resp = details?.notificationResponse;
       if (details?.didNotificationLaunchApp == true && resp?.payload != null) {
-        _handleNotificationTap(resp!.payload);
+        handleNotificationTapFromSystem(resp!.payload);
       }
     } catch (_) {}
   }

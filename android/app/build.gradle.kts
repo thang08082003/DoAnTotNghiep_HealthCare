@@ -50,4 +50,9 @@ flutter {
 dependencies {
     // Core library desugaring for Java 8+ APIs on older Android devices
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+    // Firebase dependencies for ForegroundNotificationService
+    implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
+    implementation("com.google.firebase:firebase-firestore-ktx")
+    implementation("com.google.firebase:firebase-common-ktx")
+    implementation("com.google.firebase:firebase-auth-ktx")
 }

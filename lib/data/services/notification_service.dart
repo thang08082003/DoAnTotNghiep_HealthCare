@@ -52,6 +52,28 @@ class NotificationService {
     await _firestore.collection(_collection).doc(notificationId).delete();
   }
 
+  /// Mark notification as read then delete it from Firestore.
+  /// Even though the document will be removed, we first set `isRead=true`
+  /// to satisfy logic requirements (e.g., analytics or security rules that
+  /// may check state transitions) before deletion.
+  static Future<void> markReadAndDelete(String notificationId) async {
+    final docRef = _firestore.collection(_collection).doc(notificationId);
+    try {
+      // Best-effort update; ignore if already gone.
+      await docRef.update({
+        'isRead': true,
+        'readAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {
+      // Ignore update errors (e.g. document missing) and proceed to delete.
+    }
+    try {
+      await docRef.delete();
+    } catch (_) {
+      // Swallow; caller can decide if they need error handling elsewhere.
+    }
+  }
+
   static Future<void> createNotification({
     required String toUserId,
     required String senderId,

@@ -9,6 +9,7 @@ import '../screens/user_setup/disease_doctor_selection/disease_doctor_selection_
 import '../screens/user_setup/doctor_specialty_selection/doctor_specialty_selection_screen.dart';
 import '../screens/home/home_page.dart';
 import '../data/services/local_notifications_service.dart';
+import '../data/services/android_foreground_service.dart';
 
 class AppRouter {
   // Route names
@@ -145,11 +146,45 @@ class AppRouter {
 }
 
 // Auth Wrapper với logic điều hướng
-class AuthWrapper extends ConsumerWidget {
+class AuthWrapper extends ConsumerStatefulWidget {
   const AuthWrapper({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends ConsumerState<AuthWrapper>
+    with WidgetsBindingObserver {
+  String? _currentUserId;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (_currentUserId == null) return;
+    if (state == AppLifecycleState.paused) {
+      // App goes to background
+      AndroidForegroundService.start(_currentUserId!);
+    } else if (state == AppLifecycleState.resumed) {
+      // App returns to foreground
+      AndroidForegroundService.stop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ref = this.ref;
     final authState = ref.watch(authProvider);
 
     if (authState.isLoading) {
@@ -185,6 +220,7 @@ class AuthWrapper extends ConsumerWidget {
 
                     if (userSnapshot.hasData && userSnapshot.data != null) {
                       final user = userSnapshot.data!;
+                      _currentUserId = user.uid;
                       // Start local notifications listening after first frame
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         LocalNotificationsService.initialize()
@@ -194,6 +230,10 @@ class AuthWrapper extends ConsumerWidget {
                               );
                               // Handle cold start from a notification tap
                               await LocalNotificationsService.handleInitialNotificationLaunch();
+                              // Stop foreground service if running since app is active
+                              await AndroidForegroundService.stop();
+                              // Set up native tap listener channel once
+                              AndroidForegroundService.ensureTapListener();
                             })
                             .catchError((_) {});
                       });
