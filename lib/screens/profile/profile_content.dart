@@ -747,6 +747,7 @@ class _AvatarPicker extends StatefulWidget {
 
 class _AvatarPickerState extends State<_AvatarPicker> {
   bool _uploading = false;
+  String? _overrideUrl; // Hiển thị tạm thời avatar mới ngay lập tức
 
   Future<void> _pickAndUpload() async {
     if (widget.uid == null) return;
@@ -762,18 +763,40 @@ class _AvatarPickerState extends State<_AvatarPicker> {
       setState(() => _uploading = true);
 
       final ext = picked.name.split('.').last.toLowerCase();
-      final path = 'avatars/${widget.uid}/profile.${ext}';
+      // Tạo file mới với timestamp để tránh cache URL cũ
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final path = 'avatars/${widget.uid}/profile_$ts.${ext}';
       final fileData = await picked.readAsBytes();
 
       String url;
       if (MediaUploadConfig.provider == MediaUploadProvider.firebaseStorage) {
         final ref = FirebaseStorage.instance.ref().child(path);
         final metadata = SettableMetadata(
-          contentType: ext == 'png' ? 'image/png' : 'image/jpeg',
-          cacheControl: 'public, max-age=86400',
+          contentType: (ext == 'png'
+              ? 'image/png'
+              : (ext == 'jpg' || ext == 'jpeg')
+              ? 'image/jpeg'
+              : 'application/octet-stream'),
+          // Tránh cache lâu khiến người dùng không thấy ảnh mới
+          cacheControl: 'public, max-age=0, no-cache',
         );
         await ref.putData(fileData, metadata);
         url = await ref.getDownloadURL();
+        // Thử xoá các avatar cũ (nếu có) để tránh rác dung lượng
+        try {
+          final folderRef = FirebaseStorage.instance.ref().child(
+            'avatars/${widget.uid}',
+          );
+          final listResult = await folderRef.listAll();
+          for (final item in listResult.items) {
+            if (item.fullPath != path) {
+              // Bỏ qua lỗi nếu không xoá được
+              try {
+                await item.delete();
+              } catch (_) {}
+            }
+          }
+        } catch (_) {}
       } else {
         url = await MediaUploadService.uploadAvatar(
           uid: widget.uid!,
@@ -790,7 +813,10 @@ class _AvatarPickerState extends State<_AvatarPicker> {
           .update({'avatarUrl': url});
 
       if (mounted) {
-        setState(() => _uploading = false);
+        setState(() {
+          _uploading = false;
+          _overrideUrl = url; // dùng ngay ảnh mới trước khi provider rebuild
+        });
         widget.onUpdated();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Ảnh đại diện đã được cập nhật')),
@@ -808,8 +834,8 @@ class _AvatarPickerState extends State<_AvatarPicker> {
 
   @override
   Widget build(BuildContext context) {
-    final hasAvatar =
-        (widget.avatarUrl != null && widget.avatarUrl!.isNotEmpty);
+    final effectiveUrl = _overrideUrl ?? widget.avatarUrl;
+    final hasAvatar = (effectiveUrl != null && effectiveUrl.isNotEmpty);
     return GestureDetector(
       onTap: _uploading ? null : _pickAndUpload,
       child: Stack(
@@ -818,7 +844,15 @@ class _AvatarPickerState extends State<_AvatarPicker> {
           CircleAvatar(
             radius: 40,
             backgroundColor: AppColors.primaryColor.withValues(alpha: 0.1),
-            backgroundImage: hasAvatar ? NetworkImage(widget.avatarUrl!) : null,
+            // Thêm query tạm thời để chắc chắn bypass cache nếu vẫn cùng URL
+            backgroundImage: hasAvatar
+                ? NetworkImage(
+                    hasAvatar
+                        ? effectiveUrl +
+                              '?v=${DateTime.now().millisecondsSinceEpoch}'
+                        : effectiveUrl,
+                  )
+                : null,
             child: !hasAvatar
                 ? const Icon(
                     Icons.person,
