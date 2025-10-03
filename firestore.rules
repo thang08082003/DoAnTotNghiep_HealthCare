@@ -128,7 +128,9 @@ service cloud.firestore {
         && request.resource.data.rating >= 1
         && request.resource.data.rating <= 5
         && request.resource.data.doctorId == doctorId
-        && request.resource.data.patientId == request.auth.uid;
+        && request.resource.data.patientId == request.auth.uid
+        && get(/databases/$(database)/documents/follow_requests/$(request.auth.uid + '_' + doctorId)).exists()
+        && get(/databases/$(database)/documents/follow_requests/$(request.auth.uid + '_' + doctorId)).data.status == 'accepted';
     }
   }
 }

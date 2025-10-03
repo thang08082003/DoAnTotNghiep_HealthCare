@@ -253,7 +253,7 @@ class DoctorsListContentState extends ConsumerState<DoctorsListContent> {
                 case _DoctorCategory.pending:
                   return 'Đã gửi yêu cầu';
                 case _DoctorCategory.requestable:
-                  return 'Request theo dõi';
+                  return 'Yêu cầu theo dõi';
               }
             }(),
             primaryActionDisabled: category != _DoctorCategory.requestable,

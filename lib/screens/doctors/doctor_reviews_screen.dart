@@ -4,6 +4,7 @@ import '../../data/models/doctor_review.dart';
 import '../../data/services/doctor_reviews_service.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
+import '../../data/services/follow_request_service.dart';
 
 class DoctorReviewsScreen extends ConsumerWidget {
   final String doctorId;
@@ -73,10 +74,28 @@ class DoctorReviewsScreen extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddReviewSheet(context, ref, service),
-        icon: const Icon(Icons.star),
-        label: const Text('Đánh giá'),
+      floatingActionButton: FutureBuilder(
+        future: ref.read(currentUserProvider.future),
+        builder: (context, snapUser) {
+          if (!snapUser.hasData) return const SizedBox.shrink();
+          final user = snapUser.data!;
+          if (user.isPatient != true) return const SizedBox.shrink();
+          return FutureBuilder<String?>(
+            future: FollowRequestService.getRequestStatus(
+              patientId: user.uid,
+              doctorId: doctorId,
+            ),
+            builder: (context, snapStatus) {
+              final accepted = snapStatus.data == 'accepted';
+              if (!accepted) return const SizedBox.shrink();
+              return FloatingActionButton.extended(
+                onPressed: () => _showAddReviewSheet(context, ref, service),
+                icon: const Icon(Icons.star),
+                label: const Text('Đánh giá'),
+              );
+            },
+          );
+        },
       ),
     );
   }
