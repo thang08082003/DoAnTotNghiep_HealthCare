@@ -70,6 +70,7 @@ class AppRouter {
             yearsExperience: args?['yearsExperience'],
             phone: args?['phone'],
             description: args?['description'],
+            gender: args?['gender'],
           ),
           settings: settings,
         );
@@ -142,6 +143,7 @@ class AppRouter {
     int? yearsExperience,
     String? phone,
     String? description,
+    String? gender,
   }) {
     Navigator.of(context).pushNamedAndRemoveUntil(
       doctorSpecialtySelection,
@@ -153,6 +155,7 @@ class AppRouter {
         'yearsExperience': yearsExperience,
         'phone': phone,
         'description': description,
+        'gender': gender,
       },
     );
   }

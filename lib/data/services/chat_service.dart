@@ -83,8 +83,9 @@ class ChatService {
   }) async {
     final convId = conversationIdFor(from, to);
     // Upload image via configured provider (Cloudinary by default)
-    final url = await MediaUploadService.uploadAvatar(
-      uid: from,
+    final url = await MediaUploadService.uploadChatImage(
+      conversationId: convId,
+      senderId: from,
       data: Uint8List.fromList(bytes),
       fileExt: fileExt,
     );

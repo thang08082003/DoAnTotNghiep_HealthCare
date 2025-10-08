@@ -22,11 +22,13 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
   final _phoneController = TextEditingController();
   final _ageController = TextEditingController();
   final _medicalHistoryController = TextEditingController();
-  String? _selectedGender; // 'male','female','other'
+  String?
+  _selectedGender; // internal codes: 'male','female','other' -> will be converted to Vietnamese label before saving
   // Doctor fields
   final _yearsExperienceController = TextEditingController();
   final _doctorPhoneController = TextEditingController();
   final _doctorDescriptionController = TextEditingController();
+  String? _doctorGender; // 'male' | 'female' | 'other'
 
   UserRole _selectedRole = UserRole.patient;
   bool _isLoading = false;
@@ -41,6 +43,19 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
     _doctorPhoneController.dispose();
     _doctorDescriptionController.dispose();
     super.dispose();
+  }
+
+  String? _genderCodeToVietnamese(String? code) {
+    switch (code) {
+      case 'male':
+        return 'Nam';
+      case 'female':
+        return 'Nữ';
+      case 'other':
+        return 'Khác';
+      default:
+        return null;
+    }
   }
 
   Future<void> _completeSetup() async {
@@ -67,7 +82,7 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
             age: _ageController.text.trim().isNotEmpty
                 ? int.tryParse(_ageController.text.trim())
                 : null,
-            gender: _selectedGender,
+            gender: _genderCodeToVietnamese(_selectedGender),
             medicalHistory: _medicalHistoryController.text.trim().isNotEmpty
                 ? _medicalHistoryController.text.trim()
                 : null,
@@ -88,6 +103,7 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
             description: _doctorDescriptionController.text.trim().isNotEmpty
                 ? _doctorDescriptionController.text.trim()
                 : null,
+            gender: _genderCodeToVietnamese(_doctorGender),
           );
         }
       }
@@ -317,16 +333,17 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
             controller: _phoneController,
             keyboardType: TextInputType.phone,
             decoration: InputDecoration(
-              labelText: 'Số điện thoại (tuỳ chọn)',
+              labelText: 'Số điện thoại',
               prefixIcon: const Icon(Icons.phone),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
             validator: (v) {
-              if (v != null && v.isNotEmpty && v.length < 8) {
-                return 'Số điện thoại không hợp lệ';
-              }
+              if (v == null || v.trim().isEmpty)
+                return 'Vui lòng nhập số điện thoại';
+              final digits = v.replaceAll(RegExp(r'[^0-9]'), '');
+              if (digits.length != 10) return 'Phải có đúng 10 số';
               return null;
             },
           ),
@@ -335,17 +352,16 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
             controller: _ageController,
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
-              labelText: 'Tuổi (tuỳ chọn)',
+              labelText: 'Tuổi',
               prefixIcon: const Icon(Icons.cake_outlined),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
             validator: (v) {
-              if (v != null && v.isNotEmpty) {
-                final n = int.tryParse(v);
-                if (n == null || n < 0 || n > 120) return 'Tuổi không hợp lệ';
-              }
+              if (v == null || v.trim().isEmpty) return 'Vui lòng nhập tuổi';
+              final n = int.tryParse(v);
+              if (n == null || n < 0 || n > 120) return 'Tuổi không hợp lệ';
               return null;
             },
           ),
@@ -358,26 +374,35 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
               DropdownMenuItem(value: 'other', child: Text('Khác')),
             ],
             decoration: InputDecoration(
-              labelText: 'Giới tính (tuỳ chọn)',
+              labelText: 'Giới tính',
               prefixIcon: const Icon(Icons.transgender),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
+            validator: (v) => v == null ? 'Vui lòng chọn giới tính' : null,
             onChanged: (val) => setState(() => _selectedGender = val),
           ),
           const SizedBox(height: 16),
           TextFormField(
             controller: _medicalHistoryController,
             maxLines: 3,
+            maxLength: 150,
             decoration: InputDecoration(
-              labelText: 'Tiền sử bệnh (tuỳ chọn)',
+              labelText: 'Tiền sử bệnh (tối đa 150 ký tự)',
               alignLabelWithHint: true,
               prefixIcon: const Icon(Icons.notes),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
+              counterText: '',
             ),
+            validator: (v) {
+              if (v == null || v.trim().isEmpty)
+                return 'Vui lòng nhập tiền sử bệnh';
+              if (v.trim().length > 150) return 'Tối đa 150 ký tự';
+              return null;
+            },
           ),
         ],
       );
@@ -397,20 +422,39 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
             ),
           ),
           const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: _doctorGender,
+            items: const [
+              DropdownMenuItem(value: 'male', child: Text('Nam')),
+              DropdownMenuItem(value: 'female', child: Text('Nữ')),
+              DropdownMenuItem(value: 'other', child: Text('Khác')),
+            ],
+            decoration: InputDecoration(
+              labelText: 'Giới tính',
+              prefixIcon: const Icon(Icons.transgender),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            validator: (v) => v == null ? 'Vui lòng chọn giới tính' : null,
+            onChanged: (val) => setState(() => _doctorGender = val),
+          ),
+          const SizedBox(height: 16),
           TextFormField(
             controller: _doctorPhoneController,
             keyboardType: TextInputType.phone,
             decoration: InputDecoration(
-              labelText: 'Số điện thoại (tuỳ chọn)',
+              labelText: 'Số điện thoại',
               prefixIcon: const Icon(Icons.phone),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
             validator: (v) {
-              if (v != null && v.isNotEmpty && v.length < 8) {
-                return 'Số điện thoại không hợp lệ';
-              }
+              if (v == null || v.trim().isEmpty)
+                return 'Vui lòng nhập số điện thoại';
+              final digits = v.replaceAll(RegExp(r'[^0-9]'), '');
+              if (digits.length != 10) return 'Phải có đúng 10 số';
               return null;
             },
           ),
@@ -419,17 +463,17 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
             controller: _yearsExperienceController,
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
-              labelText: 'Số năm kinh nghiệm (tuỳ chọn)',
+              labelText: 'Số năm kinh nghiệm',
               prefixIcon: const Icon(Icons.timeline),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
             validator: (v) {
-              if (v != null && v.isNotEmpty) {
-                final n = int.tryParse(v);
-                if (n == null || n < 0 || n > 80) return 'Giá trị không hợp lệ';
-              }
+              if (v == null || v.trim().isEmpty) return 'Vui lòng nhập số năm';
+              final n = int.tryParse(v);
+              if (n == null || n < 0) return 'Giá trị không hợp lệ';
+              if (n >= 45) return 'Phải < 45 năm';
               return null;
             },
           ),
@@ -437,14 +481,21 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
           TextFormField(
             controller: _doctorDescriptionController,
             maxLines: 3,
+            maxLength: 150,
             decoration: InputDecoration(
-              labelText: 'Mô tả / Giới thiệu (tuỳ chọn)',
+              labelText: 'Mô tả / Giới thiệu (tối đa 150 ký tự)',
               alignLabelWithHint: true,
               prefixIcon: const Icon(Icons.description),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
+              counterText: '',
             ),
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Vui lòng nhập mô tả';
+              if (v.trim().length > 150) return 'Tối đa 150 ký tự';
+              return null;
+            },
           ),
         ],
       );

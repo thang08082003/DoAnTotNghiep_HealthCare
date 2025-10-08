@@ -40,6 +40,8 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
   String? _error;
   UserModel? _user; // may be DoctorModel
   late final TabController _tabController;
+  final ScrollController _chatScrollController = ScrollController();
+  final FocusNode _chatInputFocus = FocusNode();
 
   @override
   void initState() {
@@ -51,6 +53,9 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
     );
     _tabController.addListener(() {
       if (mounted) setState(() {});
+      if (_tabController.index != 1) {
+        FocusScope.of(context).unfocus();
+      }
     });
     _load();
   }
@@ -77,6 +82,8 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
 
   @override
   void dispose() {
+    _chatScrollController.dispose();
+    _chatInputFocus.dispose();
     _tabController.dispose();
     super.dispose();
   }
@@ -418,19 +425,62 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
                               ),
                           ],
                         ),
-                        TextField(
-                          controller: commentCtl,
-                          maxLines: 4,
-                          decoration: const InputDecoration(
-                            labelText: 'Nhận xét (tuỳ chọn)',
-                            border: OutlineInputBorder(),
-                          ),
+                        StatefulBuilder(
+                          builder: (c, setStateField) {
+                            final len = commentCtl.text.characters.length;
+                            final max = 200;
+                            final over = len > max;
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                TextField(
+                                  controller: commentCtl,
+                                  maxLines: 4,
+                                  maxLength: 200,
+                                  onChanged: (_) => setStateField(() {}),
+                                  decoration: InputDecoration(
+                                    labelText:
+                                        'Nhận xét (tối đa 200 ký tự, tuỳ chọn)',
+                                    border: const OutlineInputBorder(),
+                                    counterText: '$len/200',
+                                    counterStyle: TextStyle(
+                                      fontSize: 12,
+                                      color: over ? Colors.red : Colors.grey,
+                                    ),
+                                  ),
+                                ),
+                                if (over)
+                                  const Padding(
+                                    padding: EdgeInsets.only(top: 4),
+                                    child: Text(
+                                      'Vượt quá 200 ký tự',
+                                      style: TextStyle(
+                                        color: Colors.red,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
                         ),
                         const SizedBox(height: 12),
                         Align(
                           alignment: Alignment.centerRight,
                           child: ElevatedButton(
                             onPressed: () async {
+                              final text = commentCtl.text.trim();
+                              if (text.isNotEmpty &&
+                                  text.characters.length > 200) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Nhận xét vượt quá 200 ký tự',
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
                               try {
                                 await service.upsertReview(
                                   doctorId: widget.doctorId,
@@ -438,9 +488,7 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
                                   patientName: user.name,
                                   patientAvatarUrl: user.avatarUrl,
                                   rating: rating,
-                                  comment: commentCtl.text.trim().isEmpty
-                                      ? null
-                                      : commentCtl.text.trim(),
+                                  comment: text.isEmpty ? null : text,
                                 );
                                 if (!mounted) return;
                                 Navigator.of(ctx).pop();
@@ -753,7 +801,15 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
                         return const Center(child: CircularProgressIndicator());
                       }
                       final messages = ss.data!;
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (_chatScrollController.hasClients) {
+                          _chatScrollController.jumpTo(
+                            _chatScrollController.position.maxScrollExtent,
+                          );
+                        }
+                      });
                       return ListView.builder(
+                        controller: _chatScrollController,
                         padding: const EdgeInsets.symmetric(
                           vertical: 8,
                           horizontal: 12,
@@ -804,6 +860,7 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
                         Expanded(
                           child: TextField(
                             controller: controller,
+                            focusNode: _chatInputFocus,
                             decoration: const InputDecoration(
                               hintText: 'Nhập tin nhắn...',
                               border: OutlineInputBorder(),
@@ -822,6 +879,17 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
                               text: text,
                             );
                             controller.clear();
+                            _chatInputFocus.unfocus();
+                            await Future.delayed(
+                              const Duration(milliseconds: 50),
+                            );
+                            if (_chatScrollController.hasClients) {
+                              _chatScrollController.animateTo(
+                                _chatScrollController.position.maxScrollExtent,
+                                duration: const Duration(milliseconds: 200),
+                                curve: Curves.easeOut,
+                              );
+                            }
                           },
                         ),
                       ],

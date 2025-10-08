@@ -35,6 +35,8 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
   UserModel? _patient;
   Map<String, dynamic> _raw = const {};
   late final TabController _tabController;
+  final ScrollController _chatScrollController = ScrollController();
+  final FocusNode _chatInputFocus = FocusNode();
 
   @override
   void initState() {
@@ -46,6 +48,10 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
     );
     _tabController.addListener(() {
       if (mounted) setState(() {});
+      if (_tabController.index != 1) {
+        // rời tab chat thì đóng bàn phím
+        FocusScope.of(context).unfocus();
+      }
     });
     _load();
   }
@@ -78,6 +84,8 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
 
   @override
   void dispose() {
+    _chatScrollController.dispose();
+    _chatInputFocus.dispose();
     _tabController.dispose();
     super.dispose();
   }
@@ -460,7 +468,16 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
                         return const Center(child: CircularProgressIndicator());
                       }
                       final messages = ss.data!;
+                      // Scroll to bottom after frame
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (_chatScrollController.hasClients) {
+                          _chatScrollController.jumpTo(
+                            _chatScrollController.position.maxScrollExtent,
+                          );
+                        }
+                      });
                       return ListView.builder(
+                        controller: _chatScrollController,
                         padding: const EdgeInsets.symmetric(
                           vertical: 8,
                           horizontal: 12,
@@ -510,6 +527,7 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
                         Expanded(
                           child: TextField(
                             controller: controller,
+                            focusNode: _chatInputFocus,
                             decoration: const InputDecoration(
                               hintText: 'Nhập tin nhắn...',
                               border: OutlineInputBorder(),
@@ -528,6 +546,18 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
                               text: text,
                             );
                             controller.clear();
+                            _chatInputFocus.unfocus();
+                            // ensure scroll bottom after send
+                            await Future.delayed(
+                              const Duration(milliseconds: 50),
+                            );
+                            if (_chatScrollController.hasClients) {
+                              _chatScrollController.animateTo(
+                                _chatScrollController.position.maxScrollExtent,
+                                duration: const Duration(milliseconds: 200),
+                                curve: Curves.easeOut,
+                              );
+                            }
                           },
                         ),
                       ],

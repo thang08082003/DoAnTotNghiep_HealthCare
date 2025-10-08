@@ -78,6 +78,7 @@ class UserService {
           gender: gender,
           medicalHistory: medicalHistory,
           description: description,
+          // đảm bảo role được set chính xác trong json
         );
       } else {
         // Tạo UserModel thông thường cho patient hoặc doctor không có specialty

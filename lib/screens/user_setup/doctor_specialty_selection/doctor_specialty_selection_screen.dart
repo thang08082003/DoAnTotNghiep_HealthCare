@@ -14,6 +14,7 @@ class DoctorSpecialtySelectionScreen extends ConsumerStatefulWidget {
   final int? yearsExperience;
   final String? phone;
   final String? description;
+  final String? gender; // Vietnamese localized gender already
 
   const DoctorSpecialtySelectionScreen({
     super.key,
@@ -23,6 +24,7 @@ class DoctorSpecialtySelectionScreen extends ConsumerStatefulWidget {
     this.yearsExperience,
     this.phone,
     this.description,
+    this.gender,
   });
 
   @override
@@ -235,6 +237,7 @@ class _DoctorSpecialtySelectionScreenState
           yearsExperience: widget.yearsExperience,
           phone: widget.phone,
           description: widget.description,
+          gender: widget.gender,
         );
 
     if (mounted) {

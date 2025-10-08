@@ -253,10 +253,12 @@ class _PatientInfoCard extends StatelessWidget {
             value: _displayOrNA(phone),
             keyboardType: TextInputType.phone,
             onSave: (val) async {
+              final digits = val.replaceAll(RegExp(r'[^0-9]'), '');
+              if (digits.length != 10) throw 'Số điện thoại phải có đúng 10 số';
               await FirebaseFirestore.instance
                   .collection('users')
                   .doc(user.uid)
-                  .update({'phone': val.trim()});
+                  .update({'phone': digits});
               onEdit();
             },
           ),
@@ -268,7 +270,9 @@ class _PatientInfoCard extends StatelessWidget {
             keyboardType: TextInputType.number,
             onSave: (val) async {
               final parsed = int.tryParse(val.trim());
-              if (parsed == null) throw 'Tuổi không hợp lệ';
+              if (parsed == null || parsed < 0 || parsed > 120) {
+                throw 'Tuổi không hợp lệ (0 - 120)';
+              }
               await FirebaseFirestore.instance
                   .collection('users')
                   .doc(user.uid)
@@ -277,21 +281,27 @@ class _PatientInfoCard extends StatelessWidget {
             },
           ),
           const Divider(height: 24),
-          _editableGenderRow(
-            context,
-            label: 'Giới tính',
-            value: _displayOrNA(gender),
-            onSave: (val) async {
-              await FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(user.uid)
-                  .update({'gender': val});
-              onEdit();
-            },
+          // Giới tính: hiển thị chỉ đọc (không cho sửa theo yêu cầu)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Giới tính',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+              const SizedBox(width: 12),
+              Flexible(
+                child: Text(
+                  _displayOrNA(gender),
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(color: AppColors.textPrimary),
+                ),
+              ),
+            ],
           ),
           const Divider(height: 24),
           const Text(
-            'Tiền sử bệnh',
+            'Tiền sử bệnh (tối đa 150 ký tự)',
             style: TextStyle(
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
@@ -303,15 +313,25 @@ class _PatientInfoCard extends StatelessWidget {
               final current = _displayOrNA(medicalHistory);
               final result = await _showEditDialog(
                 context,
-                title: 'Tiền sử bệnh',
+                title: 'Tiền sử bệnh (tối đa 150 ký tự)',
                 initialValue: current == 'Chưa cập nhật' ? '' : current,
                 maxLines: 5,
+                charLimit: 150,
               );
               if (result == null) return;
+              final trimmed = result.trim();
+              if (trimmed.length > 150) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Vượt quá 150 ký tự')),
+                  );
+                }
+                return;
+              }
               await FirebaseFirestore.instance
                   .collection('users')
                   .doc(user.uid)
-                  .update({'medicalHistory': result.trim()});
+                  .update({'medicalHistory': trimmed});
               onEdit();
             },
             child: Text(
@@ -341,70 +361,15 @@ class _PatientInfoCard extends StatelessWidget {
           keyboardType: keyboardType,
         );
         if (result == null) return;
-        await onSave(result);
-      },
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: AppColors.textSecondary)),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: const TextStyle(color: AppColors.textPrimary),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _editableGenderRow(
-    BuildContext context, {
-    required String label,
-    required String value,
-    required Future<void> Function(String) onSave,
-  }) {
-    return InkWell(
-      onTap: () async {
-        final selection = await showDialog<String>(
-          context: context,
-          builder: (ctx) {
-            String current = (value == 'Chưa cập nhật') ? '' : value;
-            final options = ['Nam', 'Nữ', 'Khác'];
-            return AlertDialog(
-              title: Text(label),
-              content: StatefulBuilder(
-                builder: (context, setState) => Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: options
-                      .map(
-                        (opt) => RadioListTile<String>(
-                          title: Text(opt),
-                          value: opt,
-                          groupValue: current,
-                          onChanged: (v) => setState(() => current = v ?? ''),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('Huỷ'),
-                ),
-                ElevatedButton(
-                  onPressed: () => Navigator.of(ctx).pop(current),
-                  child: const Text('Lưu'),
-                ),
-              ],
-            );
-          },
-        );
-        if (selection == null) return;
-        await onSave(selection);
+        try {
+          await onSave(result);
+        } catch (e) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(e.toString())));
+          }
+        }
       },
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -429,28 +394,61 @@ class _PatientInfoCard extends StatelessWidget {
     String initialValue = '',
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
+    int? charLimit,
   }) async {
     final ctl = TextEditingController(text: initialValue);
     return showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: ctl,
-          keyboardType: keyboardType,
-          maxLines: maxLines,
-          decoration: const InputDecoration(border: OutlineInputBorder()),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Huỷ'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(ctl.text),
-            child: const Text('Lưu'),
-          ),
-        ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) {
+          final len = ctl.text.characters.length;
+          final over = charLimit != null && len > charLimit;
+          return AlertDialog(
+            title: Text(title),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: ctl,
+                  keyboardType: keyboardType,
+                  maxLines: maxLines,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    helperText: charLimit != null
+                        ? '$len/$charLimit ký tự'
+                        : null,
+                    helperStyle: TextStyle(
+                      fontSize: 12,
+                      color: over ? Colors.red : AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                if (over)
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: Text(
+                        'Vượt quá số ký tự cho phép',
+                        style: TextStyle(color: Colors.red, fontSize: 12),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Huỷ'),
+              ),
+              ElevatedButton(
+                onPressed: over ? null : () => Navigator.of(ctx).pop(ctl.text),
+                child: const Text('Lưu'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -466,7 +464,7 @@ class _DoctorInfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final specialty = doctor.specialty.vietnameseName;
     final years = doctor.yearsExperience;
-    final email = doctor.email;
+
     final description =
         (doctor.description == null || doctor.description!.isEmpty)
         ? 'Chưa cập nhật'
@@ -504,21 +502,37 @@ class _DoctorInfoCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
+          _row('Chuyên khoa', specialty),
+          const Divider(height: 24),
+          // Giới tính (không chỉnh sửa)
+          if (doctor.gender != null)
+            _row(
+              'Giới tính',
+              doctor.gender!.isEmpty ? 'Chưa cập nhật' : doctor.gender!,
+            )
+          else
+            _row('Giới tính', 'Chưa cập nhật'),
+          const Divider(height: 24),
+          // Số điện thoại (có thể chỉnh sửa, giới hạn 10 số)
           _editableRow(
             context,
-            label: 'Email',
-            value: email,
-            keyboardType: TextInputType.emailAddress,
+            label: 'Số điện thoại',
+            value: (doctor.phone == null || doctor.phone!.isEmpty)
+                ? 'Chưa cập nhật'
+                : doctor.phone!,
+            keyboardType: TextInputType.phone,
             onSave: (val) async {
+              final digits = val.replaceAll(RegExp(r'[^0-9]'), '');
+              if (digits.isNotEmpty && digits.length != 10) {
+                throw 'Số điện thoại phải có đúng 10 số';
+              }
               await FirebaseFirestore.instance
                   .collection('users')
                   .doc(doctor.uid)
-                  .update({'email': val.trim()});
+                  .update({'phone': digits.isEmpty ? null : digits});
               onEdit();
             },
           ),
-          const Divider(height: 24),
-          _row('Chuyên khoa', specialty),
           const Divider(height: 24),
           _editableRow(
             context,
@@ -529,6 +543,7 @@ class _DoctorInfoCard extends StatelessWidget {
               final onlyNumber = val.replaceAll(RegExp(r'[^0-9]'), '');
               final parsed = int.tryParse(onlyNumber);
               if (parsed == null) throw 'Số năm không hợp lệ';
+              if (parsed >= 45) throw 'Kinh nghiệm phải < 45 năm';
               await FirebaseFirestore.instance
                   .collection('users')
                   .doc(doctor.uid)
@@ -539,7 +554,7 @@ class _DoctorInfoCard extends StatelessWidget {
           const Divider(height: 24),
           // Mô tả (hiển thị dạng block giống Tiền sử bệnh của bệnh nhân)
           const Text(
-            'Mô tả',
+            'Mô tả (tối đa 150 ký tự)',
             style: TextStyle(
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
@@ -549,12 +564,12 @@ class _DoctorInfoCard extends StatelessWidget {
           InkWell(
             onTap: () async {
               final current = description.trim();
-              final result = await _showEditDialog(
+              final result = await _showDoctorDescriptionCharDialog(
                 context,
-                title: 'Mô tả',
+                title: 'Mô tả (tối đa 150 ký tự)',
                 initialValue: current == 'Chưa cập nhật' ? '' : current,
-                maxLines: 8,
-                charLimit: 1000,
+                maxLines: 6,
+                charLimit: 150,
               );
               if (result == null) return;
               final trimmed = result.trim();
@@ -564,12 +579,9 @@ class _DoctorInfoCard extends StatelessWidget {
                     .doc(doctor.uid)
                     .update({'description': FieldValue.delete()});
               } else {
-                if (trimmed.length > 1000) {
-                  // Guard although dialog prevents oversave
+                if (trimmed.length > 150) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Mô tả quá dài (tối đa 1000 ký tự)'),
-                    ),
+                    const SnackBar(content: Text('Vượt quá 150 ký tự')),
                   );
                   return;
                 }
@@ -683,6 +695,68 @@ Future<String?> _showEditDialog(
   );
 }
 
+Future<String?> _showDoctorDescriptionCharDialog(
+  BuildContext context, {
+  required String title,
+  String initialValue = '',
+  int maxLines = 6,
+  int charLimit = 150,
+}) async {
+  final ctl = TextEditingController(text: initialValue);
+  return showDialog<String>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setState) {
+        final length = ctl.text.characters.length;
+        final over = length > charLimit;
+        return AlertDialog(
+          title: Text(title),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: ctl,
+                maxLines: maxLines,
+                minLines: (maxLines / 2).ceil(),
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  helperText: '$length/$charLimit ký tự',
+                  helperStyle: TextStyle(
+                    color: over ? Colors.red : AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              if (over)
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Vượt quá số ký tự cho phép',
+                      style: TextStyle(color: Colors.red, fontSize: 12),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Huỷ'),
+            ),
+            ElevatedButton(
+              onPressed: over ? null : () => Navigator.of(ctx).pop(ctl.text),
+              child: const Text('Lưu'),
+            ),
+          ],
+        );
+      },
+    ),
+  );
+}
+
 Widget _editableRow(
   BuildContext context, {
   required String label,
@@ -704,11 +778,18 @@ Widget _editableRow(
         charLimit: charLimit,
       );
       if (result == null) return;
-      await onSave(result);
-      // Show quick feedback
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Đã lưu thay đổi')));
+      try {
+        await onSave(result);
+        // Success feedback
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Đã lưu thay đổi')));
+      } catch (e) {
+        // Error feedback (e.g., Kinh nghiệm phải < 45 năm)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
     },
     child: Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,

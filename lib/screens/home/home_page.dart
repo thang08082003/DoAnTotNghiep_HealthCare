@@ -36,6 +36,8 @@ class HomePageState extends BasePageState<HomePage> {
   void onNavigationTap(int index) {
     // Let base class handle navigation
     setState(() {
+      // Đóng bàn phím khi đổi tab
+      FocusScope.of(context).unfocus();
       currentIndex = index;
     });
   }

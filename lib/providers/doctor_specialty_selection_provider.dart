@@ -72,6 +72,7 @@ class DoctorSpecialtySelectionNotifier
     int? yearsExperience,
     String? phone,
     String? description,
+    String? gender,
   }) async {
     if (state.selectedSpecialty == null) {
       return const DoctorSelectionResult(
@@ -93,6 +94,10 @@ class DoctorSpecialtySelectionNotifier
         yearsExperience: yearsExperience,
         phone: phone,
         description: description,
+        gender: gender,
+        // Set a diseaseFocus mirror so các chỗ dùng diseaseFocus không bị null nếu logic cũ còn tham chiếu
+        // (ví dụ mapping dashboard cũ). Có thể bỏ nếu chắc không cần.
+        diseaseFocus: state.selectedSpecialty!.toDiseaseFocus().value,
       );
 
       state = state.copyWith(isLoading: false);

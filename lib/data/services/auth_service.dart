@@ -14,23 +14,33 @@ class AuthService {
 
   // Đăng ký với email và password
   Future<UserCredential?> registerWithEmailAndPassword(
-      String email, String password, {String? name, UserRole? role}) async {
+    String email,
+    String password, {
+    String? name,
+    UserRole? role,
+  }) async {
     try {
       UserCredential result = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
-      
-      // Tạo user profile trong Firestore
-      if (result.user != null) {
-        await _userService.createUser(
-          uid: result.user!.uid,
-          name: name ?? 'Người dùng',
-          email: email.trim(),
-          role: role ?? UserRole.patient,
-        );
-      }
-      
+
+      // TẠM THỜI không tạo hồ sơ ngay tại bước đăng ký.
+      // Lý do: cần cho phép người dùng chọn vai trò (bệnh nhân / bác sĩ) và nhập đủ thông tin
+      // trước khi ghi bản ghi cuối cùng vào Firestore. Hồ sơ sẽ được tạo ở các màn hình setup:
+      // - Bệnh nhân: disease_doctor_selection_provider.completePatientSetup
+      // - Bác sĩ: doctor_specialty_selection_provider.completeDoctorSetup
+      // Nếu cần pre-create có thể bật lại và truyền đúng role khi form lựa chọn role xuất hiện.
+      // (Giữ lại đoạn code cũ dưới dạng comment để dễ khôi phục)
+      // if (result.user != null) {
+      //   await _userService.createUser(
+      //     uid: result.user!.uid,
+      //     name: name ?? 'Người dùng',
+      //     email: email.trim(),
+      //     role: role ?? UserRole.patient,
+      //   );
+      // }
+
       return result;
     } on FirebaseAuthException catch (e) {
       throw _getAuthErrorMessage(e.code);
@@ -41,7 +51,9 @@ class AuthService {
 
   // Đăng nhập với email và password
   Future<UserCredential?> signInWithEmailAndPassword(
-      String email, String password) async {
+    String email,
+    String password,
+  ) async {
     try {
       UserCredential result = await _auth.signInWithEmailAndPassword(
         email: email.trim(),

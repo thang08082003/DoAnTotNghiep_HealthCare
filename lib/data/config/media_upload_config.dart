@@ -12,5 +12,8 @@ class MediaUploadConfig {
   static const String cloudinaryUploadPreset = 'HealthCare';
 
   // Optional folder to organize uploads
+  // Folder for avatar images
   static const String cloudinaryFolder = 'avatars';
+  // Separate folder for chat images to avoid clobbering avatars
+  static const String cloudinaryChatFolder = 'chat';
 }

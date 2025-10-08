@@ -17,7 +17,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  
+
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
@@ -42,11 +42,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
 
-    await ref.read(authProvider.notifier).register(
-      _emailController.text,
-      _passwordController.text,
-    );
-    
+    await ref
+        .read(authProvider.notifier)
+        .register(_emailController.text, _passwordController.text);
+
     // Navigation will be handled by listening to auth state changes
   }
 
@@ -56,15 +55,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     // Listen to auth state changes
     ref.listen<AuthState>(authProvider, (previous, next) {
-      if (next.errorMessage != null) {
+      // Chỉ show khi thông báo lỗi thay đổi để tránh lặp SnackBar
+      final errorChanged =
+          next.errorMessage != null &&
+          next.errorMessage!.isNotEmpty &&
+          next.errorMessage != previous?.errorMessage;
+      if (errorChanged) {
         _showSnackBar(next.errorMessage!);
         ref.read(authProvider.notifier).clearError();
       }
-      
+
       // If user just got authenticated (was not authenticated before, now is)
-      if (previous != null && 
-          !previous.isAuthenticated && 
-          next.isAuthenticated && 
+      if (previous != null &&
+          !previous.isAuthenticated &&
+          next.isAuthenticated &&
           next.uid != null &&
           !next.isLoading) {
         // Navigate directly to user setup
@@ -75,10 +79,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             Navigator.of(context).pushNamedAndRemoveUntil(
               AppRouter.userSetup,
               (route) => false,
-              arguments: {
-                'uid': next.uid!,
-                'email': next.email ?? '',
-              },
+              arguments: {'uid': next.uid!, 'email': next.email ?? ''},
             );
           }
         });
@@ -135,7 +136,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         ),
                       ),
                       const SizedBox(height: 32),
-                      
+
                       // Email field
                       TextFormField(
                         controller: _emailController,
@@ -158,15 +159,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           if (value == null || value.isEmpty) {
                             return 'Vui lòng nhập email';
                           }
-                          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                              .hasMatch(value)) {
+                          if (!RegExp(
+                            r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                          ).hasMatch(value)) {
                             return 'Email không hợp lệ';
                           }
                           return null;
                         },
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Password field
                       TextFormField(
                         controller: _passwordController,
@@ -208,7 +210,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Confirm Password field
                       TextFormField(
                         controller: _confirmPasswordController,
@@ -224,7 +226,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             ),
                             onPressed: () {
                               setState(() {
-                                _obscureConfirmPassword = !_obscureConfirmPassword;
+                                _obscureConfirmPassword =
+                                    !_obscureConfirmPassword;
                               });
                             },
                           ),
@@ -250,7 +253,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         },
                       ),
                       const SizedBox(height: 24),
-                      
+
                       // Register button
                       PrimaryButton(
                         text: 'Đăng Ký',
@@ -258,7 +261,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         isLoading: authState.isLoading,
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Login link
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
