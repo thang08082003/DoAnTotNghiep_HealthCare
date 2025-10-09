@@ -4,6 +4,7 @@ import '../models/chat_message.dart';
 import '../services/media_upload_service.dart';
 import '../models/notification_model.dart';
 import 'notification_service.dart';
+import 'package:mime/mime.dart' as mime;
 
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -136,21 +137,111 @@ class ChatService {
     required String fileName,
     String? mimeType,
   }) async {
-    // For simplicity, reuse Cloudinary for images; for arbitrary files you may
-    // plug another provider (e.g., Supabase Storage) in MediaUploadService.
-    // Here we'll upload as image if mimeType starts with image/ else throw.
-    if (mimeType == null || !mimeType.startsWith('image/')) {
-      throw UnsupportedError(
-        'Chỉ hỗ trợ gửi file hình ảnh trong phiên bản này',
-      );
-    }
-    final ext = fileName.split('.').last.toLowerCase();
-    await sendImageMessage(
-      from: from,
-      to: to,
-      bytes: bytes,
-      fileExt: ext == 'jpg' ? 'jpeg' : ext,
+    final convId = conversationIdFor(from, to);
+    final detectedMime =
+        mimeType ?? mime.lookupMimeType(fileName) ?? 'application/octet-stream';
+    final url = await MediaUploadService.uploadChatFile(
+      conversationId: convId,
+      senderId: from,
+      data: Uint8List.fromList(bytes),
+      fileName: fileName,
+      mimeType: detectedMime,
     );
+    final msgRef = _firestore
+        .collection(_conversations)
+        .doc(convId)
+        .collection('messages')
+        .doc();
+    await msgRef.set({
+      'senderId': from,
+      'receiverId': to,
+      'text': '',
+      'type': 'file',
+      'mediaUrl': url,
+      'fileName': fileName,
+      'mimeType': detectedMime,
+      'createdAt': FieldValue.serverTimestamp(),
+      'isRead': false,
+    });
+
+    // Notify receiver about the file message
+    try {
+      final senderName = await _getUserName(from);
+      final roles = await _getPairRoles(from, to);
+      await NotificationService.createNotification(
+        toUserId: to,
+        senderId: from,
+        type: NotificationType.chatMessage,
+        title: 'Tệp mới từ $senderName',
+        body: fileName,
+        data: {
+          'conversationId': convId,
+          'senderId': from,
+          'senderName': senderName,
+          'receiverId': to,
+          'messageId': msgRef.id,
+          'kind': 'file',
+          'mediaUrl': url,
+          'fileName': fileName,
+          'mimeType': detectedMime,
+          if (roles.doctorId != null) 'doctorId': roles.doctorId,
+          if (roles.patientId != null) 'patientId': roles.patientId,
+        },
+      );
+    } catch (_) {}
+  }
+
+  Future<void> sendVideoMessage({
+    required String from,
+    required String to,
+    required List<int> bytes,
+    String fileExt = 'mp4',
+  }) async {
+    final convId = conversationIdFor(from, to);
+    final url = await MediaUploadService.uploadChatVideo(
+      conversationId: convId,
+      senderId: from,
+      data: Uint8List.fromList(bytes),
+      fileExt: fileExt,
+    );
+    final msgRef = _firestore
+        .collection(_conversations)
+        .doc(convId)
+        .collection('messages')
+        .doc();
+    await msgRef.set({
+      'senderId': from,
+      'receiverId': to,
+      'text': '',
+      'type': 'video',
+      'mediaUrl': url,
+      'createdAt': FieldValue.serverTimestamp(),
+      'isRead': false,
+    });
+
+    // Notify receiver about the video message
+    try {
+      final senderName = await _getUserName(from);
+      final roles = await _getPairRoles(from, to);
+      await NotificationService.createNotification(
+        toUserId: to,
+        senderId: from,
+        type: NotificationType.chatMessage,
+        title: 'Video mới từ $senderName',
+        body: 'Bạn nhận được một video',
+        data: {
+          'conversationId': convId,
+          'senderId': from,
+          'senderName': senderName,
+          'receiverId': to,
+          'messageId': msgRef.id,
+          'kind': 'video',
+          'mediaUrl': url,
+          if (roles.doctorId != null) 'doctorId': roles.doctorId,
+          if (roles.patientId != null) 'patientId': roles.patientId,
+        },
+      );
+    } catch (_) {}
   }
 
   Future<void> markAsRead({

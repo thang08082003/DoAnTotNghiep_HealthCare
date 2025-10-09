@@ -72,6 +72,7 @@ class ChatMessage {
 extension ChatMessageX on ChatMessage {
   String get kind => (type ?? (mediaUrl != null ? 'image' : 'text'));
   bool get isImage => kind == 'image';
+  bool get isVideo => kind == 'video';
   bool get isFile => kind == 'file';
   bool get isText => kind == 'text';
 }
