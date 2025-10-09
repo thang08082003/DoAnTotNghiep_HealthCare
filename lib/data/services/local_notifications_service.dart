@@ -103,6 +103,9 @@ class LocalNotificationsService {
                   change.type != DocumentChangeType.modified)
                 continue;
               final data = change.doc.data() ?? {};
+              // Skip incoming call notifications on Flutter side; handled by in-app screen or native
+              final skipType = (data['type'] as String?) ?? '';
+              if (skipType == 'incoming_call') continue;
               final notifId = change.doc.id;
               if (_shownIds.contains(notifId)) continue; // de-dup per session
               final title = (data['title'] as String?) ?? 'Thông báo';

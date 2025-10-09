@@ -5,6 +5,7 @@ import '../../data/models/call_session.dart';
 import '../../data/services/local_notifications_service.dart';
 import '../../data/services/notification_service.dart' as app_notif;
 import 'video_call_screen.dart';
+import '../../router/navigation_service.dart';
 
 class VideoCallIncomingScreen extends StatefulWidget {
   final String callId;
@@ -34,8 +35,8 @@ class _VideoCallIncomingScreenState extends State<VideoCallIncomingScreen> {
     _sub = _service.watchCall(widget.callId).listen((session) async {
       if (!mounted || _handled) return;
       if (session == null) {
-        // Call doc removed or not found; close screen
-        if (mounted) Navigator.of(context).maybePop();
+        // Call doc removed or not found; close screen via root navigator
+        NavigationService.navigator?.pop();
         return;
       }
       switch (session.status) {
@@ -60,7 +61,7 @@ class _VideoCallIncomingScreenState extends State<VideoCallIncomingScreen> {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(const SnackBar(content: Text('Cuộc gọi đã kết thúc')));
-          Navigator.of(context).maybePop();
+          NavigationService.navigator?.pop();
           break;
         case CallStatus.ringing:
           // keep waiting
@@ -108,7 +109,7 @@ class _VideoCallIncomingScreenState extends State<VideoCallIncomingScreen> {
     app_notif.NotificationService.deleteIncomingCallNotificationsByCallId(
       widget.callId,
     ).catchError((_) {});
-    if (mounted) Navigator.of(context).maybePop();
+    NavigationService.navigator?.pop();
   }
 
   @override

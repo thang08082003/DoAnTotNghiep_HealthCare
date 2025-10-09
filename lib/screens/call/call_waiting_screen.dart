@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/services/call_service.dart';
 import '../../data/models/call_session.dart';
 import '../../data/services/local_notifications_service.dart';
+import '../../data/services/notification_service.dart' as app_notif;
 import 'video_call_screen.dart';
 
 class CallWaitingScreen extends ConsumerStatefulWidget {
@@ -65,6 +66,10 @@ class _CallWaitingScreenState extends ConsumerState<CallWaitingScreen> {
       widget.callId,
     ).catchError((_) {});
     await _service.end(widget.callId);
+    // Clean related incoming_call notifications in Firestore
+    app_notif.NotificationService.deleteIncomingCallNotificationsByCallId(
+      widget.callId,
+    ).catchError((_) {});
     if (mounted) Navigator.of(context).pop();
   }
 

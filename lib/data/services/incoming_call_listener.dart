@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../router/navigation_service.dart';
 import '../../screens/call/video_call_incoming_screen.dart';
 import 'local_notifications_service.dart';
+import 'notification_service.dart' as app_notif;
 import '../models/call_session.dart';
 import 'user_service.dart';
 
@@ -57,6 +58,12 @@ class IncomingCallListener {
               await LocalNotificationsService.cancelIncomingCallNotification(
                 doc.id,
               );
+              // Clean any Firestore notifications linked to this callId (for this user)
+              app_notif
+                      .NotificationService.deleteIncomingCallNotificationsByCallId(
+                    doc.id,
+                  )
+                  .catchError((_) {});
               _notified.remove(doc.id);
             }
           }
