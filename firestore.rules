@@ -135,5 +135,43 @@ service cloud.firestore {
       // Optionally allow patient to delete their own review
       allow delete: if request.auth != null && request.auth.uid == patientId;
     }
+
+    // Call sessions for video calling
+    function isCallParticipant() {
+      return request.auth != null && (
+        request.auth.uid == resource.data.callerId ||
+        request.auth.uid == resource.data.calleeId
+      );
+    }
+
+    match /call_sessions/{callId} {
+      // Participants can read their call session
+      allow read: if isCallParticipant();
+
+      // Caller creates a new ringing session
+      allow create: if request.auth != null
+        && request.resource.data.callerId == request.auth.uid
+        && request.resource.data.calleeId is string
+        && request.resource.data.channelName is string
+        && request.resource.data.status == 'ringing';
+
+      // Updates: enforce immutables and controlled status transitions
+      allow update: if isCallParticipant()
+        // Immutable fields must not change
+        && request.resource.data.callerId == resource.data.callerId
+        && request.resource.data.calleeId == resource.data.calleeId
+        && request.resource.data.channelName == resource.data.channelName
+        // Allowed transitions:
+        && (
+          // Callee accepts or declines
+          ((request.resource.data.status == 'accepted' || request.resource.data.status == 'declined')
+            && request.auth.uid == resource.data.calleeId)
+          // Either side can end the call
+          || (request.resource.data.status == 'ended')
+        );
+
+      // Optional: allow delete only to participants after ended
+      allow delete: if isCallParticipant() && resource.data.status == 'ended';
+    }
   }
 }

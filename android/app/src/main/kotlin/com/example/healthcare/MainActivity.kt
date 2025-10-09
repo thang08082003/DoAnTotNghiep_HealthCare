@@ -50,4 +50,13 @@ class MainActivity : FlutterActivity() {
 			intent?.removeExtra("payload")
 		}
 	}
+
+	override fun onNewIntent(intent: Intent) {
+		super.onNewIntent(intent)
+		val payload = intent.getStringExtra("payload")
+		if (!payload.isNullOrEmpty()) {
+			methodChannel?.invokeMethod("onNotificationTap", mapOf("payload" to payload))
+			intent.removeExtra("payload")
+		}
+	}
 }

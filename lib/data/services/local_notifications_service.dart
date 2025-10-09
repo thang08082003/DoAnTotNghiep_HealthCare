@@ -6,10 +6,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'notification_service.dart';
 import '../../router/navigation_service.dart';
 import '../../screens/doctors/doctor_detail_screen.dart';
 import '../../screens/patients/patient_detail_screen.dart';
+import '../../screens/call/video_call_incoming_screen.dart';
+import 'notification_service.dart' as app_notif;
+import 'call_service.dart';
+import '../../screens/call/video_call_screen.dart';
 
 class LocalNotificationsService {
   static final _plugin = FlutterLocalNotificationsPlugin();
@@ -21,6 +24,14 @@ class LocalNotificationsService {
         'Local High Importance',
         description: 'Local notifications for app events',
         importance: Importance.high,
+      );
+
+  static const AndroidNotificationChannel _incomingCallChannel =
+      AndroidNotificationChannel(
+        'incoming_call_channel',
+        'Incoming Calls',
+        description: 'Incoming call alerts',
+        importance: Importance.max,
       );
 
   static bool _initialized = false;
@@ -48,6 +59,7 @@ class LocalNotificationsService {
             AndroidFlutterLocalNotificationsPlugin
           >();
       await android?.createNotificationChannel(_androidChannel);
+      await android?.createNotificationChannel(_incomingCallChannel);
     }
     _initialized = true;
   }
@@ -122,9 +134,10 @@ class LocalNotificationsService {
     required String title,
     required String body,
     String? payload,
+    int? id,
   }) {
     return _plugin.show(
-      DateTime.now().millisecondsSinceEpoch.remainder(1 << 20),
+      id ?? DateTime.now().millisecondsSinceEpoch.remainder(1 << 20),
       title,
       body,
       const NotificationDetails(
@@ -139,6 +152,60 @@ class LocalNotificationsService {
       ),
       payload: payload,
     );
+  }
+
+  // Public helper to show an incoming call notification (Android/iOS local)
+  static Future<void> showIncomingCall({
+    required String callId,
+    required String channelName,
+    required String callerId,
+    required String callerName,
+  }) async {
+    await initialize();
+    final notifId = _notificationIdForCall(callId);
+    final payload = jsonEncode({
+      'type': 'incoming_call',
+      'callId': callId,
+      'channelName': channelName,
+      'callerId': callerId,
+      'callerName': callerName,
+      'origin': 'flutter_local',
+    });
+    final androidDetails = AndroidNotificationDetails(
+      _incomingCallChannel.id,
+      _incomingCallChannel.name,
+      channelDescription: _incomingCallChannel.description,
+      category: AndroidNotificationCategory.call,
+      importance: Importance.max,
+      priority: Priority.max,
+      fullScreenIntent: true,
+      playSound: true,
+      // To use a custom ringtone, add a file at android/app/src/main/res/raw/ringtone.mp3
+      // and uncomment the next line:
+      // sound: RawResourceAndroidNotificationSound('ringtone'),
+    );
+    final details = NotificationDetails(
+      android: androidDetails,
+      iOS: const DarwinNotificationDetails(presentSound: true),
+    );
+    await _plugin.show(
+      notifId,
+      'Cuộc gọi đến',
+      'Từ $callerName',
+      details,
+      payload: payload,
+    );
+  }
+
+  static int _notificationIdForCall(String callId) {
+    // Create a stable positive int id from callId
+    final h = callId.hashCode;
+    return (h & 0x7fffffff) % 100000000; // keep it within a reasonable range
+  }
+
+  static Future<void> cancelIncomingCallNotification(String callId) async {
+    final id = _notificationIdForCall(callId);
+    await _plugin.cancel(id);
   }
 
   static String? _encodePayload(Map<String, dynamic> data, {String? id}) {
@@ -242,7 +309,46 @@ class LocalNotificationsService {
 
       // Auto mark as read when user taps the system banner
       if (notificationId != null && notificationId.isNotEmpty) {
-        NotificationService.markAsRead(notificationId).catchError((_) {});
+        app_notif.NotificationService.markAsRead(
+          notificationId,
+        ).catchError((_) {});
+      }
+    } else if (type == 'incoming_call') {
+      final navigator = NavigationService.navigator;
+      if (navigator == null) return;
+      final callId = (flat['callId'] as String?) ?? '';
+      final channelName = (flat['channelName'] as String?) ?? '';
+      final callerName = (flat['callerName'] as String?) ?? 'Người gọi';
+      final origin = (flat['origin'] as String?) ?? '';
+      if (origin == 'flutter_local') {
+        // Immediate join on Flutter-local notification taps
+        cancelIncomingCallNotification(callId).catchError((_) {});
+        app_notif.NotificationService.deleteIncomingCallNotificationsByCallId(
+          callId,
+        ).catchError((_) {});
+        // Accept then go straight to call screen
+        CallService().accept(callId).catchError((_) {});
+        navigator.push(
+          MaterialPageRoute(
+            builder: (_) =>
+                VideoCallScreen(channelName: channelName, callId: callId),
+          ),
+        );
+      } else {
+        // Native notification taps (or unknown) go to the incoming screen
+        navigator.push(
+          MaterialPageRoute(
+            builder: (_) => VideoCallIncomingScreen(
+              callId: callId,
+              channelName: channelName,
+              callerName: callerName,
+            ),
+          ),
+        );
+        // Best-effort: remove related incoming_call notifications in Firestore
+        app_notif.NotificationService.deleteIncomingCallNotificationsByCallId(
+          callId,
+        ).catchError((_) {});
       }
     }
   }

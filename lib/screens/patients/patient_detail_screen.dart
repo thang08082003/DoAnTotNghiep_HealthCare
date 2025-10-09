@@ -13,6 +13,10 @@ import '../../data/models/chat_message.dart';
 import '../../data/services/doctor_orders_service.dart';
 import 'patient_orders_list_screen.dart';
 import '../call/video_call_screen.dart';
+import '../../data/services/call_service.dart';
+import '../../data/models/call_session.dart';
+// import '../call/incoming_call_sheet.dart'; // reserved for future incoming overlay
+import 'dart:async';
 
 class PatientDetailScreen extends ConsumerStatefulWidget {
   final String patientId;
@@ -445,17 +449,52 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
                     child: ElevatedButton.icon(
                       icon: const Icon(Icons.video_call),
                       label: const Text('Gọi video'),
-                      onPressed: () {
+                      onPressed: () async {
                         final channel = _buildChannelName(
                           currentUser.uid,
                           otherId,
                         );
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                VideoCallScreen(channelName: channel),
-                          ),
+                        final callService = CallService();
+                        final callId = await callService.createOutgoingCall(
+                          callerId: currentUser.uid,
+                          calleeId: otherId,
+                          channelName: channel,
                         );
+                        if (!context.mounted) return;
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (_) =>
+                              const Center(child: CircularProgressIndicator()),
+                        );
+                        late final StreamSubscription sub;
+                        sub = callService.watchCall(callId).listen((
+                          session,
+                        ) async {
+                          if (session == null) return;
+                          if (!context.mounted) return;
+                          if (session.status == CallStatus.accepted) {
+                            Navigator.of(context).pop();
+                            sub.cancel();
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => VideoCallScreen(
+                                  channelName: channel,
+                                  callId: callId,
+                                ),
+                              ),
+                            );
+                          } else if (session.status == CallStatus.declined ||
+                              session.status == CallStatus.ended) {
+                            Navigator.of(context).pop();
+                            sub.cancel();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Cuộc gọi không được kết nối'),
+                              ),
+                            );
+                          }
+                        });
                       },
                     ),
                   ),

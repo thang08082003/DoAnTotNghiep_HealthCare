@@ -22,10 +22,14 @@ class ForegroundNotificationService : Service() {
     private val CHANNEL_NAME = "Background Sync"
     private val ALERT_CHANNEL_ID = "bg_alerts"
     private val ALERT_CHANNEL_NAME = "App Alerts"
+    private val CALL_CHANNEL_ID = "incoming_call_channel"
+    private val CALL_CHANNEL_NAME = "Incoming Calls"
     private val ONGOING_ID = 10001
 
     private var registration: ListenerRegistration? = null
+    private var callRegistration: ListenerRegistration? = null
     private var userId: String? = null
+    private val callNotifIds = HashMap<String, Int>()
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -34,17 +38,14 @@ class ForegroundNotificationService : Service() {
         createChannel()
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        userId = intent?.getStringExtra("userId")
-        startForeground(ONGOING_ID, buildOngoingNotification())
-        startListening()
-        return START_STICKY
-    }
+    
 
     override fun onDestroy() {
         super.onDestroy()
         registration?.remove()
         registration = null
+        callRegistration?.remove()
+        callRegistration = null
     }
 
     private fun createChannel() {
@@ -67,6 +68,15 @@ class ForegroundNotificationService : Service() {
                 )
                 channelHigh.description = "High priority app alerts"
                 nm.createNotificationChannel(channelHigh)
+            }
+            if (nm.getNotificationChannel(CALL_CHANNEL_ID) == null) {
+                val callChannel = NotificationChannel(
+                    CALL_CHANNEL_ID,
+                    CALL_CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_HIGH
+                )
+                callChannel.description = "Incoming call alerts"
+                nm.createNotificationChannel(callChannel)
             }
         }
     }
@@ -122,6 +132,102 @@ class ForegroundNotificationService : Service() {
                     }
                 }
             }
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        userId = intent?.getStringExtra("userId")
+        startForeground(ONGOING_ID, buildOngoingNotification())
+        startListening()
+        startListeningIncomingCalls()
+        return START_STICKY
+    }
+
+    private fun startListeningIncomingCalls() {
+        val uid = userId ?: FirebaseAuth.getInstance().currentUser?.uid ?: return
+        try {
+            if (FirebaseApp.getApps(this).isEmpty()) {
+                FirebaseApp.initializeApp(this)
+            }
+        } catch (_: Exception) { }
+
+        val db = FirebaseFirestore.getInstance()
+        callRegistration?.remove()
+        callRegistration = db.collection("call_sessions")
+            .whereEqualTo("calleeId", uid)
+            .whereEqualTo("status", "ringing")
+            .addSnapshotListener { snapshots, _ ->
+                if (snapshots == null) return@addSnapshotListener
+                for (dc in snapshots.documentChanges) {
+                    val doc = dc.document
+                    val callId = doc.id
+                    when (dc.type) {
+                        DocumentChange.Type.ADDED -> {
+                            val callerId = doc.getString("callerId") ?: ""
+                            val channelName = doc.getString("channelName") ?: ""
+                            // Try to fetch caller name
+                            FirebaseFirestore.getInstance().collection("users")
+                                .document(callerId)
+                                .get()
+                                .addOnSuccessListener { udoc ->
+                                    val callerName = udoc.getString("name") ?: callerId
+                                    showIncomingCall(callId, callerId, callerName, channelName)
+                                }
+                                .addOnFailureListener { _ ->
+                                    showIncomingCall(callId, callerId, callerId, channelName)
+                                }
+                        }
+                        DocumentChange.Type.REMOVED -> {
+                            // Status changed away from ringing
+                            cancelIncomingCallNotification(callId)
+                        }
+                        else -> {}
+                    }
+                }
+            }
+    }
+
+    private fun showIncomingCall(callId: String, callerId: String, callerName: String, channelName: String) {
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notifId = (callId.hashCode() and 0x7fffffff) % 100000000
+        callNotifIds[callId] = notifId
+
+        val payloadObj = JSONObject()
+        payloadObj.put("type", "incoming_call")
+        payloadObj.put("callId", callId)
+        payloadObj.put("channelName", channelName)
+        payloadObj.put("callerId", callerId)
+        payloadObj.put("callerName", callerName)
+    payloadObj.put("origin", "native")
+
+        val fullIntent = Intent(this, MainActivity::class.java).apply {
+            putExtra("payload", payloadObj.toString())
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        }
+        val fullPending = PendingIntent.getActivity(
+            this,
+            notifId,
+            fullIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
+        )
+
+        val builder = NotificationCompat.Builder(this, CALL_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.stat_sys_phone_call)
+            .setContentTitle("Cuộc gọi đến")
+            .setContentText("Từ $callerName")
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setOngoing(true)
+            .setAutoCancel(false)
+            .setFullScreenIntent(fullPending, true)
+            .setContentIntent(fullPending)
+
+        manager.notify(notifId, builder.build())
+    }
+
+    private fun cancelIncomingCallNotification(callId: String) {
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val id = callNotifIds.remove(callId) ?: ((callId.hashCode() and 0x7fffffff) % 100000000)
+        manager.cancel(id)
     }
 
     private fun showOneShot(title: String, body: String, payload: String? = null) {

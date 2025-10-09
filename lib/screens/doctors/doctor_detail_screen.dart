@@ -14,7 +14,11 @@ import '../../data/models/doctor_order.dart';
 import '../../data/services/doctor_reviews_service.dart';
 import '../../data/models/doctor_review.dart';
 import '../patients/patient_orders_list_screen.dart';
-import '../call/video_call_screen.dart';
+import '../call/call_waiting_screen.dart';
+import '../../data/services/call_service.dart';
+// import '../../data/models/call_session.dart';
+// import '../call/incoming_call_sheet.dart'; // handled via global listener
+import 'dart:async';
 import 'doctor_reviews_screen.dart';
 import '../../data/services/user_service.dart';
 import '../profile/edit_doctor_profile_screen.dart';
@@ -81,41 +85,7 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
   }
 
   @override
-  void dispose() {
-    _chatScrollController.dispose();
-    _chatInputFocus.dispose();
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (widget.infoOnly) {
-      // Info-only view: no tabs, no chat, no orders
-      return Scaffold(
-        appBar: AppBar(title: const Text('Thông tin bác sĩ')),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : (_error != null)
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.error, size: 64, color: AppColors.error),
-                    const SizedBox(height: 12),
-                    Text(_error!),
-                    const SizedBox(height: 12),
-                    ElevatedButton(
-                      onPressed: _load,
-                      child: const Text('Thử lại'),
-                    ),
-                  ],
-                ),
-              )
-            : _buildInfoTab(infoOnly: true),
-      );
-    }
-
     return Scaffold(
       appBar: AppBar(
         title: (_tabController.index == 1 && _user != null)
@@ -778,15 +748,24 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
                     child: ElevatedButton.icon(
                       icon: const Icon(Icons.video_call),
                       label: const Text('Gọi video'),
-                      onPressed: () {
+                      onPressed: () async {
                         final channel = _buildChannelName(
                           currentUser.uid,
                           otherId,
                         );
+                        final callService = CallService();
+                        final callId = await callService.createOutgoingCall(
+                          callerId: currentUser.uid,
+                          calleeId: otherId,
+                          channelName: channel,
+                        );
+                        if (!context.mounted) return;
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) =>
-                                VideoCallScreen(channelName: channel),
+                            builder: (_) => CallWaitingScreen(
+                              callId: callId,
+                              channelName: channel,
+                            ),
                           ),
                         );
                       },

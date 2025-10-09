@@ -52,6 +52,26 @@ class NotificationService {
     await _firestore.collection(_collection).doc(notificationId).delete();
   }
 
+  /// Delete all notifications of type 'incoming_call' associated with a callId.
+  static Future<void> deleteIncomingCallNotificationsByCallId(
+    String callId,
+  ) async {
+    try {
+      final q = await _firestore
+          .collection(_collection)
+          .where('type', isEqualTo: 'incoming_call')
+          .where('data.callId', isEqualTo: callId)
+          .get();
+      final batch = _firestore.batch();
+      for (final d in q.docs) {
+        batch.delete(d.reference);
+      }
+      await batch.commit();
+    } catch (_) {
+      // ignore best-effort cleanup
+    }
+  }
+
   /// Mark notification as read then delete it from Firestore.
   /// Even though the document will be removed, we first set `isRead=true`
   /// to satisfy logic requirements (e.g., analytics or security rules that

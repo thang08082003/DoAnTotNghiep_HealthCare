@@ -10,6 +10,7 @@ import '../screens/user_setup/doctor_specialty_selection/doctor_specialty_select
 import '../screens/home/home_page.dart';
 import '../data/services/local_notifications_service.dart';
 import '../data/services/android_foreground_service.dart';
+import '../data/services/incoming_call_listener.dart';
 
 class AppRouter {
   // Route names
@@ -258,6 +259,8 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
                               await AndroidForegroundService.stop();
                               // Set up native tap listener channel once
                               AndroidForegroundService.ensureTapListener();
+                              // Start listening for incoming calls for this user
+                              IncomingCallListener.start(user.uid);
                             })
                             .catchError((_) {});
                       });
@@ -280,6 +283,11 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
       );
     }
 
+    // Not authenticated
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Stop incoming call listener if any
+      IncomingCallListener.stop();
+    });
     return const LoginScreen();
   }
 }

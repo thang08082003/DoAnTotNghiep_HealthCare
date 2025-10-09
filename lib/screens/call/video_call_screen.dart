@@ -1,17 +1,19 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/user_provider.dart';
 import '../../data/config/agora_config.dart';
 
 class VideoCallScreen extends ConsumerStatefulWidget {
-  final String
-  channelName; // Use a deterministic channel name per doctor-patient pair
-  const VideoCallScreen({super.key, required this.channelName});
+  final String channelName; // deterministic channel name
+  final String? callId; // Firestore call session id
+  const VideoCallScreen({super.key, required this.channelName, this.callId});
 
   @override
   ConsumerState<VideoCallScreen> createState() => _VideoCallScreenState();
@@ -22,6 +24,8 @@ class _VideoCallScreenState extends ConsumerState<VideoCallScreen> {
   int? _remoteUid;
   String? _error;
   bool _micMuted = false;
+  bool _ended = false;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _callSub;
 
   @override
   void initState() {
@@ -98,6 +102,22 @@ class _VideoCallScreenState extends ConsumerState<VideoCallScreen> {
       );
 
       setState(() => _engine = engine);
+
+      // Watch call session for remote end/decline
+      if (widget.callId != null) {
+        _callSub = FirebaseFirestore.instance
+            .collection('call_sessions')
+            .doc(widget.callId)
+            .snapshots()
+            .listen((d) {
+              final data = d.data();
+              if (data == null) return;
+              final status = data['status'] as String?;
+              if ((status == 'ended' || status == 'declined') && !_ended) {
+                _endCall();
+              }
+            });
+      }
     } catch (e) {
       setState(() => _error = 'Khởi tạo cuộc gọi thất bại: $e');
     }
@@ -121,17 +141,35 @@ class _VideoCallScreenState extends ConsumerState<VideoCallScreen> {
     return null;
   }
 
+  Future<void> _endCall() async {
+    if (_ended) return;
+    _ended = true;
+    try {
+      await _callSub?.cancel();
+      if (widget.callId != null) {
+        // Best effort update status
+        final FirebaseFirestore db = FirebaseFirestore.instance;
+        await db.collection('call_sessions').doc(widget.callId).update({
+          'status': 'ended',
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (_) {}
+    await _engine?.leaveChannel();
+    await _engine?.release();
+    if (mounted) Navigator.of(context).pop();
+  }
+
   @override
   void dispose() {
-    _engine?.leaveChannel();
-    _engine?.release();
+    _endCall();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Cuộc gọi video')),
+      // No AppBar per requirement
       body: _error != null
           ? Center(child: Text(_error!))
           : Column(
@@ -206,7 +244,7 @@ class _VideoCallScreenState extends ConsumerState<VideoCallScreen> {
                         ),
                         IconButton(
                           icon: const Icon(Icons.call_end, color: Colors.red),
-                          onPressed: () => Navigator.of(context).pop(),
+                          onPressed: _endCall,
                         ),
                       ],
                     ),

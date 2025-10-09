@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Allow full-screen incoming call notifications on Android 10+ -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <!-- Foreground service & notifications (Android 13+) permissions -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
@@ -47,6 +49,11 @@
             android:name=".ForegroundNotificationService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- Receiver for incoming call actions from native notification -->
+        <receiver
+            android:name=".IncomingCallActionReceiver"
+            android:exported="false"/>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
