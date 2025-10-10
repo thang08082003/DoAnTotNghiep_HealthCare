@@ -12,7 +12,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../router/app_router.dart';
 // Removed old full-screen editors; fields are now edited inline via dialogs
-import 'smart_watch_connect_screen.dart';
+import 'health_connect_screen.dart';
 import '../../data/models/doctor_model.dart';
 
 class ProfileContent extends ConsumerWidget {
@@ -115,15 +115,15 @@ class ProfileContent extends ConsumerWidget {
                   if (user?.isPatient == true)
                     ListTile(
                       leading: const Icon(
-                        Icons.watch,
+                        Icons.favorite,
                         color: AppColors.primaryColor,
                       ),
-                      title: const Text('Kết nối Smart Watch'),
+                      title: const Text('Kết nối Health Connect'),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () async {
                         await Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) => const SmartWatchConnectScreen(),
+                            builder: (_) => const GoogleFitConnectScreen(),
                           ),
                         );
                       },

@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
 import '../doctors/doctors_following_list_screen.dart';
+import '../metrics/heart_rate_detail_screen.dart';
+import '../metrics/spo2_detail_screen.dart';
+import '../../data/services/health_connect_service.dart';
+import 'package:health/health.dart';
 
 class PatientDashboardContent extends ConsumerWidget {
   const PatientDashboardContent({super.key});
@@ -11,8 +15,7 @@ class PatientDashboardContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final size = MediaQuery.of(context).size;
     final isNarrow = size.width < 360;
-    // Make tiles taller on narrow screens to avoid overflow
-    final double quickAccessHeight = isNarrow ? 92 : 104;
+    // Quick access uses single cards now; no dynamic height needed
     final double welcomePad = isNarrow ? 20 : 26;
     final userAsync = ref.watch(currentUserProvider);
     return userAsync.when(
@@ -89,7 +92,7 @@ class PatientDashboardContent extends ConsumerWidget {
               const SizedBox(height: 24),
 
               const Text(
-                'Thông tin nhanh',
+                'Thông tin sức khỏe hôm nay',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -97,48 +100,83 @@ class PatientDashboardContent extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildMetricCard(
-                      icon: Icons.favorite_rounded,
-                      iconColor: Colors.redAccent,
-                      label: 'Nhịp tim',
-                      value: '76 bpm',
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildMetricCard(
-                      icon: Icons.show_chart,
-                      iconColor: Colors.deepPurple,
-                      label: 'HRV',
-                      value: '52 ms',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildMetricCard(
-                      icon: Icons.bloodtype_rounded,
-                      iconColor: Colors.teal,
-                      label: 'SpO₂',
-                      value: '98 %',
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildMetricCard(
-                      icon: Icons.nightlight_round,
-                      iconColor: Colors.indigo,
-                      label: 'Giấc ngủ',
-                      value: '7h 45m',
-                    ),
-                  ),
-                ],
+              FutureBuilder<_LatestMetrics>(
+                future: _fetchLatestMetrics(),
+                builder: (context, snap) {
+                  final m = snap.data;
+                  final hrText = _fmtBpm(m?.hr);
+                  final hrvText = _fmtMs(m?.hrv);
+                  final spo2Text = _fmtPct(m?.spo2);
+                  final sleepText = _fmtDur(m?.sleep);
+                  return Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: InkWell(
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const _LazyHeartRateDetail(),
+                                  ),
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: _buildMetricCard(
+                                icon: Icons.favorite_rounded,
+                                iconColor: Colors.redAccent,
+                                label: 'Nhịp tim',
+                                value: hrText,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildMetricCard(
+                              icon: Icons.show_chart,
+                              iconColor: Colors.deepPurple,
+                              label: 'HRV',
+                              value: hrvText,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: InkWell(
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const _LazySpo2Detail(),
+                                  ),
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: _buildMetricCard(
+                                icon: Icons.bloodtype_rounded,
+                                iconColor: Colors.teal,
+                                label: 'SpO₂',
+                                value: spo2Text,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildMetricCard(
+                              icon: Icons.nightlight_round,
+                              iconColor: Colors.indigo,
+                              label: 'Giấc ngủ',
+                              value: sleepText,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                },
               ),
 
               const SizedBox(height: 24),
@@ -164,7 +202,7 @@ class PatientDashboardContent extends ConsumerWidget {
               const SizedBox(height: 24),
 
               const Text(
-                'Truy cập nhanh',
+                'Truy cập',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -172,41 +210,13 @@ class PatientDashboardContent extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              SafeArea(
-                top: false,
-                minimum: const EdgeInsets.only(bottom: 4),
-                child: GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    mainAxisExtent: quickAccessHeight,
-                  ),
-                  itemCount: 2,
-                  itemBuilder: (context, index) {
-                    if (index == 0) {
-                      return _buildQuickAccessCard(
-                        icon: Icons.self_improvement,
-                        title: 'Stress',
-                        subtitle: 'Theo dõi & thư giãn',
-                        color: AppColors.primaryColor.withValues(alpha: 0.08),
-                        iconColor: AppColors.primaryColor,
-                        onTap: () {},
-                      );
-                    } else {
-                      return _buildQuickAccessCard(
-                        icon: Icons.health_and_safety,
-                        title: 'Phát hiện sớm',
-                        subtitle: 'Rủi ro sức khỏe',
-                        color: Colors.green.withValues(alpha: 0.08),
-                        iconColor: Colors.green,
-                        onTap: () {},
-                      );
-                    }
-                  },
-                ),
+              _buildQuickAccessCard(
+                icon: Icons.health_and_safety,
+                title: 'Phát hiện sớm',
+                subtitle: 'Rủi ro sức khỏe',
+                color: Colors.green.withValues(alpha: 0.08),
+                iconColor: Colors.green,
+                onTap: () {},
               ),
               const SizedBox(height: 12),
               _buildQuickAccessCard(
@@ -430,4 +440,141 @@ class PatientDashboardContent extends ConsumerWidget {
       ),
     );
   }
+}
+
+// Lazy wrapper to navigate to the detail screen
+class _LazyHeartRateDetail extends StatelessWidget {
+  const _LazyHeartRateDetail();
+  @override
+  Widget build(BuildContext context) => const HeartRateDetailScreen();
+}
+
+class _LazySpo2Detail extends StatelessWidget {
+  const _LazySpo2Detail();
+  @override
+  Widget build(BuildContext context) => const Spo2DetailScreen();
+}
+
+// ------ Health Connect latest metrics helpers ------
+class _LatestMetrics {
+  final double? hr; // bpm
+  final double? hrv; // ms (SDNN if available)
+  final double? spo2; // %
+  final Duration? sleep; // last night's total
+  const _LatestMetrics({this.hr, this.hrv, this.spo2, this.sleep});
+}
+
+Future<_LatestMetrics> _fetchLatestMetrics() async {
+  final svc = GoogleFitService();
+  try {
+    // Ensure permissions (best-effort)
+    await svc.ensureConnected();
+  } catch (_) {}
+
+  final now = DateTime.now();
+  final dayAgo = now.subtract(const Duration(days: 1));
+
+  double? latestHr;
+  double? latestHrv;
+  double? latestSpo2;
+  Duration? lastSleep;
+
+  // Heart Rate (last 24h, pick latest point)
+  try {
+    final hr = await svc.getData(
+      types: const [HealthDataType.HEART_RATE],
+      start: dayAgo,
+      end: now,
+    );
+    if (hr.isNotEmpty) {
+      hr.sort((a, b) => a.dateFrom.compareTo(b.dateFrom));
+      final v = hr.last.value;
+      if (v is NumericHealthValue) {
+        latestHr = v.numericValue.toDouble();
+      }
+    }
+  } catch (_) {}
+
+  // HRV (SDNN when available)
+  try {
+    final hrv = await svc.getData(
+      types: const [HealthDataType.HEART_RATE_VARIABILITY_SDNN],
+      start: dayAgo,
+      end: now,
+    );
+    if (hrv.isNotEmpty) {
+      hrv.sort((a, b) => a.dateFrom.compareTo(b.dateFrom));
+      final v = hrv.last.value;
+      if (v is NumericHealthValue) {
+        latestHrv = v.numericValue.toDouble();
+      }
+    }
+  } catch (_) {}
+
+  // SpO2 (last 24h, pick latest)
+  try {
+    final spo2 = await svc.getData(
+      types: const [HealthDataType.BLOOD_OXYGEN],
+      start: dayAgo,
+      end: now,
+    );
+    if (spo2.isNotEmpty) {
+      spo2.sort((a, b) => a.dateFrom.compareTo(b.dateFrom));
+      final v = spo2.last.value;
+      if (v is NumericHealthValue) {
+        latestSpo2 = v.numericValue.toDouble();
+      }
+    }
+  } catch (_) {}
+
+  // Sleep — use last night session duration if available
+  try {
+    final yesterday = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(const Duration(days: 1));
+    final today = DateTime(now.year, now.month, now.day);
+    // Try sessions
+    var sleep = await svc.getData(
+      types: const [HealthDataType.SLEEP_SESSION],
+      start: yesterday,
+      end: today,
+    );
+    Duration total = Duration.zero;
+    if (sleep.isEmpty) {
+      sleep = await svc.getData(
+        types: const [HealthDataType.SLEEP_ASLEEP],
+        start: yesterday,
+        end: today,
+      );
+    }
+    for (final s in sleep) {
+      final dt = s.dateTo.difference(s.dateFrom);
+      if (dt.isNegative) continue;
+      total += dt;
+    }
+    if (total > Duration.zero) lastSleep = total;
+  } catch (_) {}
+
+  return _LatestMetrics(
+    hr: latestHr,
+    hrv: latestHrv,
+    spo2: latestSpo2,
+    sleep: lastSleep,
+  );
+}
+
+String _fmtBpm(double? v) =>
+    v == null || v <= 0 ? '-' : '${v.toStringAsFixed(0)} bpm';
+String _fmtMs(double? v) =>
+    v == null || v <= 0 ? '-' : '${v.toStringAsFixed(0)} ms';
+String _fmtPct(double? v) =>
+    v == null || v <= 0 ? '-' : '${v.toStringAsFixed(0)} %';
+String _fmtDur(Duration? d) {
+  if (d == null || d <= Duration.zero) return '-';
+  final h = d.inHours;
+  final m = d.inMinutes.remainder(60);
+  if (h <= 0) return '${m}m';
+  return '${h}h ${m}m';
 }
