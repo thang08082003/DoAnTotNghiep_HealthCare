@@ -25,6 +25,8 @@ class _HeartRateDetailScreenState extends State<HeartRateDetailScreen> {
   List<FlSpot> _daySpots = const [];
   List<FlSpot> _weekSpots = const [];
   List<FlSpot> _monthSpots = const [];
+  // Day hourly averages for bar chart (24 values)
+  List<double?> _dayHourlyAvg = const [];
 
   // Summaries
   double? _dayMin;
@@ -59,6 +61,7 @@ class _HeartRateDetailScreenState extends State<HeartRateDetailScreen> {
       final dayData = await _fetchRawHr(svc, dayStart, now);
       final daySpots = _mapToDaySpots(dayData, dayStart);
       final dayStats = _calcStats(dayData);
+      final dayHourly = _hourlyAveragesFromSpots(daySpots);
 
       // Week range (Mon..Sun of current week)
       final monday = _startOfWeek(now);
@@ -90,6 +93,7 @@ class _HeartRateDetailScreenState extends State<HeartRateDetailScreen> {
         _dayMin = dayStats.min;
         _dayMax = dayStats.max;
         _dayAvg = dayStats.avg;
+        _dayHourlyAvg = dayHourly;
 
         _weekSpots = weekSpots;
         _weekMin = weekStats.min;
@@ -107,6 +111,18 @@ class _HeartRateDetailScreenState extends State<HeartRateDetailScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  // Build 24 hourly averages from scattered spots in range [0,24)
+  List<double?> _hourlyAveragesFromSpots(List<FlSpot> spots) {
+    final buckets = List<List<double>>.generate(24, (_) => []);
+    for (final s in spots) {
+      final i = s.x.floor();
+      if (i >= 0 && i < 24) buckets[i].add(s.y);
+    }
+    return buckets
+        .map((b) => b.isEmpty ? null : b.reduce((a, b) => a + b) / b.length)
+        .toList();
   }
 
   Future<List<HealthDataPoint>> _fetchRawHr(
@@ -292,13 +308,28 @@ class _HeartRateDetailScreenState extends State<HeartRateDetailScreen> {
   }
 
   Widget _buildDayChart() {
+    final groups = <BarChartGroupData>[];
+    for (int i = 0; i < 24; i++) {
+      final y = _dayHourlyAvg.isNotEmpty ? (_dayHourlyAvg[i] ?? 0.0) : 0.0;
+      groups.add(
+        BarChartGroupData(
+          x: i,
+          barRods: [
+            BarChartRodData(
+              toY: y.toDouble(),
+              color: AppColors.primaryColor,
+              width: 6,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ],
+        ),
+      );
+    }
     return _ChartContainer(
       child: _daySpots.isEmpty
           ? const Center(child: Text('Chưa có dữ liệu'))
-          : LineChart(
-              LineChartData(
-                minX: 0,
-                maxX: 24,
+          : BarChart(
+              BarChartData(
                 minY: 0,
                 maxY: 190,
                 gridData: const FlGridData(
@@ -353,15 +384,7 @@ class _HeartRateDetailScreenState extends State<HeartRateDetailScreen> {
                     sideTitles: SideTitles(showTitles: false),
                   ),
                 ),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: _daySpots,
-                    isCurved: false,
-                    color: AppColors.primaryColor,
-                    barWidth: 2,
-                    dotData: const FlDotData(show: false),
-                  ),
-                ],
+                barGroups: groups,
               ),
             ),
     );
@@ -369,13 +392,29 @@ class _HeartRateDetailScreenState extends State<HeartRateDetailScreen> {
 
   Widget _buildWeekChart() {
     const dayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+    final values = List<double>.generate(7, (i) {
+      final spot = _weekSpots.length > i ? _weekSpots[i] : null;
+      return spot?.y ?? 0.0;
+    });
+    final groups = [
+      for (int i = 0; i < 7; i++)
+        BarChartGroupData(
+          x: i,
+          barRods: [
+            BarChartRodData(
+              toY: values[i],
+              color: AppColors.primaryColor,
+              width: 14,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ],
+        ),
+    ];
     return _ChartContainer(
       child: _weekSpots.isEmpty
           ? const Center(child: Text('Chưa có dữ liệu'))
-          : LineChart(
-              LineChartData(
-                minX: 0,
-                maxX: 6,
+          : BarChart(
+              BarChartData(
                 minY: 0,
                 maxY: 190,
                 gridData: const FlGridData(
@@ -393,7 +432,6 @@ class _HeartRateDetailScreenState extends State<HeartRateDetailScreen> {
                       reservedSize: 26,
                       interval: 1,
                       getTitlesWidget: (v, meta) {
-                        // Only render labels for exact integer ticks 0..6 to avoid duplicates
                         const eps = 1e-6;
                         final isInt = (v - v.roundToDouble()).abs() < eps;
                         if (!isInt) return const SizedBox.shrink();
@@ -429,15 +467,7 @@ class _HeartRateDetailScreenState extends State<HeartRateDetailScreen> {
                     sideTitles: SideTitles(showTitles: false),
                   ),
                 ),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: _weekSpots,
-                    isCurved: false,
-                    color: AppColors.primaryColor,
-                    barWidth: 2,
-                    dotData: const FlDotData(show: false),
-                  ),
-                ],
+                barGroups: groups,
               ),
             ),
     );
@@ -445,17 +475,27 @@ class _HeartRateDetailScreenState extends State<HeartRateDetailScreen> {
 
   Widget _buildMonthChart() {
     // Show ticks at 1, 7, 14, 21, 28
-    final ticks = {1, 7, 14, 21, 28};
-    final maxX = _monthSpots.isEmpty
-        ? 30.0
-        : _monthSpots.map((e) => e.x).reduce((a, b) => a > b ? a : b);
+    final dayTicks = {1, 7, 14, 21, 28};
+    final groups = _monthSpots
+        .map(
+          (s) => BarChartGroupData(
+            x: s.x.round(),
+            barRods: [
+              BarChartRodData(
+                toY: s.y.toDouble(),
+                color: AppColors.primaryColor,
+                width: 8,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ],
+          ),
+        )
+        .toList();
     return _ChartContainer(
       child: _monthSpots.isEmpty
           ? const Center(child: Text('Chưa có dữ liệu'))
-          : LineChart(
-              LineChartData(
-                minX: 1,
-                maxX: maxX,
+          : BarChart(
+              BarChartData(
                 minY: 0,
                 maxY: 190,
                 gridData: const FlGridData(
@@ -474,7 +514,7 @@ class _HeartRateDetailScreenState extends State<HeartRateDetailScreen> {
                       interval: 1,
                       getTitlesWidget: (v, meta) {
                         final d = v.round();
-                        if (ticks.contains(d)) {
+                        if (dayTicks.contains(d)) {
                           return Text(
                             '$d',
                             style: const TextStyle(fontSize: 10),
@@ -507,15 +547,7 @@ class _HeartRateDetailScreenState extends State<HeartRateDetailScreen> {
                     sideTitles: SideTitles(showTitles: false),
                   ),
                 ),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: _monthSpots,
-                    isCurved: false,
-                    color: AppColors.primaryColor,
-                    barWidth: 2,
-                    dotData: const FlDotData(show: false),
-                  ),
-                ],
+                barGroups: groups,
               ),
             ),
     );

@@ -45,3 +45,8 @@ app.*.map.json
 /android/app/release
 google-services.json
 /vscode/
+pubspec.lock
+macos/Flutter/GeneratedPluginRegistrant.swift
+.vscode/tasks.json
+pubspec.lock
+
