@@ -14,6 +14,7 @@ import '../../router/app_router.dart';
 // Removed old full-screen editors; fields are now edited inline via dialogs
 import 'health_connect_screen.dart';
 import '../../data/models/doctor_model.dart';
+import '../../data/models/user_model.dart';
 
 class ProfileContent extends ConsumerWidget {
   const ProfileContent({super.key});
@@ -214,6 +215,9 @@ class _PatientInfoCard extends StatelessWidget {
     final gender = user.gender as String?;
     final medicalHistory = user.medicalHistory as String?;
     final age = user.age as int?;
+    final diseaseFocusEnum =
+        (user as dynamic).diseaseFocusEnum as DiseaseFocus?;
+    final diseaseFocusText = diseaseFocusEnum?.displayName ?? 'Chưa cập nhật';
 
     return Container(
       width: double.infinity,
@@ -279,6 +283,54 @@ class _PatientInfoCard extends StatelessWidget {
                   .update({'age': parsed});
               onEdit();
             },
+          ),
+          const Divider(height: 24),
+          // Bệnh theo dõi (Disease Focus) - chọn từ enum
+          InkWell(
+            onTap: () async {
+              final selected = await _showDiseaseFocusDialog(
+                context,
+                current: diseaseFocusEnum,
+              );
+              if (selected == null) return;
+              try {
+                if (selected == _DiseaseFocusDialogResult.clear) {
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(user.uid)
+                      .update({'diseaseFocus': FieldValue.delete()});
+                } else if (selected is DiseaseFocus) {
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(user.uid)
+                      .update({'diseaseFocus': selected.value});
+                }
+                onEdit();
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(e.toString())));
+                }
+              }
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Bệnh theo dõi',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+                const SizedBox(width: 12),
+                Flexible(
+                  child: Text(
+                    diseaseFocusText,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(color: AppColors.textPrimary),
+                  ),
+                ),
+              ],
+            ),
           ),
           const Divider(height: 24),
           // Giới tính: hiển thị chỉ đọc (không cho sửa theo yêu cầu)
@@ -452,6 +504,52 @@ class _PatientInfoCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// Dialog helpers for Disease Focus selection
+enum _DiseaseFocusDialogResult { clear }
+
+Future<Object?> _showDiseaseFocusDialog(
+  BuildContext context, {
+  DiseaseFocus? current,
+}) {
+  return showDialog<Object?>(
+    context: context,
+    builder: (ctx) {
+      return AlertDialog(
+        title: const Text('Chọn bệnh theo dõi'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              ...DiseaseFocus.values.map((f) {
+                final selected = f == current;
+                return ListTile(
+                  leading: Icon(
+                    selected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                    color: selected
+                        ? AppColors.primaryColor
+                        : AppColors.textSecondary,
+                  ),
+                  title: Text(f.displayName),
+                  onTap: () => Navigator.of(ctx).pop(f),
+                );
+              }),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Đóng'),
+          ),
+        ],
+      );
+    },
+  );
 }
 
 class _DoctorInfoCard extends StatelessWidget {

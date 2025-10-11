@@ -17,6 +17,7 @@ enum _RangeMode { day, week, month }
 class _HeartRateDetailScreenState extends State<HeartRateDetailScreen> {
   bool _loading = true;
   String? _error;
+  bool _fetching = false;
 
   // UI mode
   _RangeMode _mode = _RangeMode.day;
@@ -48,16 +49,20 @@ class _HeartRateDetailScreenState extends State<HeartRateDetailScreen> {
   }
 
   Future<void> _loadAll() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    if (_fetching) return;
+    _fetching = true;
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     try {
       final svc = GoogleFitService();
 
-      // Day range (last 24h)
+      // Day range anchored to today's 00:00 -> now
       final now = DateTime.now();
-      final dayStart = now.subtract(const Duration(hours: 24));
+      final dayStart = DateTime(now.year, now.month, now.day);
       final dayData = await _fetchRawHr(svc, dayStart, now);
       final daySpots = _mapToDaySpots(dayData, dayStart);
       final dayStats = _calcStats(dayData);
@@ -109,6 +114,7 @@ class _HeartRateDetailScreenState extends State<HeartRateDetailScreen> {
       if (!mounted) return;
       setState(() => _error = e.toString());
     } finally {
+      _fetching = false;
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -213,7 +219,16 @@ class _HeartRateDetailScreenState extends State<HeartRateDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Nhịp tim')),
+      appBar: AppBar(
+        title: const Text('Nhịp tim'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Làm mới',
+            onPressed: _loadAll,
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: _loading
@@ -337,6 +352,21 @@ class _HeartRateDetailScreenState extends State<HeartRateDetailScreen> {
                   drawVerticalLine: false,
                   horizontalInterval: 50,
                 ),
+                barTouchData: BarTouchData(
+                  enabled: true,
+                  touchTooltipData: BarTouchTooltipData(
+                    tooltipPadding: const EdgeInsets.all(8),
+                    tooltipRoundedRadius: 8,
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      final hour = group.x;
+                      final v = rod.toY;
+                      return BarTooltipItem(
+                        '${v.toStringAsFixed(2)} bpm\n${hour}h',
+                        const TextStyle(color: Colors.white, fontSize: 12),
+                      );
+                    },
+                  ),
+                ),
                 titlesData: FlTitlesData(
                   leftTitles: const AxisTitles(
                     sideTitles: SideTitles(showTitles: false),
@@ -422,6 +452,31 @@ class _HeartRateDetailScreenState extends State<HeartRateDetailScreen> {
                   drawVerticalLine: false,
                   horizontalInterval: 50,
                 ),
+                barTouchData: BarTouchData(
+                  enabled: true,
+                  touchTooltipData: BarTouchTooltipData(
+                    tooltipPadding: const EdgeInsets.all(8),
+                    tooltipRoundedRadius: 8,
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      const dayLabels = [
+                        'T2',
+                        'T3',
+                        'T4',
+                        'T5',
+                        'T6',
+                        'T7',
+                        'CN',
+                      ];
+                      final idx = group.x.clamp(0, 6);
+                      final label = dayLabels[idx];
+                      final v = rod.toY;
+                      return BarTooltipItem(
+                        '${v.toStringAsFixed(2)} bpm\n$label',
+                        const TextStyle(color: Colors.white, fontSize: 12),
+                      );
+                    },
+                  ),
+                ),
                 titlesData: FlTitlesData(
                   leftTitles: const AxisTitles(
                     sideTitles: SideTitles(showTitles: false),
@@ -502,6 +557,21 @@ class _HeartRateDetailScreenState extends State<HeartRateDetailScreen> {
                   show: true,
                   drawVerticalLine: false,
                   horizontalInterval: 50,
+                ),
+                barTouchData: BarTouchData(
+                  enabled: true,
+                  touchTooltipData: BarTouchTooltipData(
+                    tooltipPadding: const EdgeInsets.all(8),
+                    tooltipRoundedRadius: 8,
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      final day = group.x;
+                      final v = rod.toY;
+                      return BarTooltipItem(
+                        '${v.toStringAsFixed(2)} bpm\nNgày $day',
+                        const TextStyle(color: Colors.white, fontSize: 12),
+                      );
+                    },
+                  ),
                 ),
                 titlesData: FlTitlesData(
                   leftTitles: const AxisTitles(

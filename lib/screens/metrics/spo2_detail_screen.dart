@@ -14,10 +14,12 @@ class Spo2DetailScreen extends StatefulWidget {
 
 enum _Spo2Range { day, week, month }
 
-class _Spo2DetailScreenState extends State<Spo2DetailScreen> {
+class _Spo2DetailScreenState extends State<Spo2DetailScreen>
+    with WidgetsBindingObserver {
   bool _loading = true;
   String? _error;
   _Spo2Range _mode = _Spo2Range.day;
+  bool _fetching = false;
 
   // chart data
   List<FlSpot> _daySpots = const [];
@@ -34,20 +36,38 @@ class _Spo2DetailScreenState extends State<Spo2DetailScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadAll();
   }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadAll();
+    }
+  }
+
   Future<void> _loadAll() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    if (_fetching) return;
+    _fetching = true;
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     try {
       final svc = GoogleFitService();
       final now = DateTime.now();
 
-      // Day (last 24h)
-      final dayStart = now.subtract(const Duration(hours: 24));
+      // Day anchored to today's 00:00 -> now
+      final dayStart = DateTime(now.year, now.month, now.day);
       final dayData = await _fetchRawSpo2(svc, dayStart, now);
       final daySpots = _mapToDaySpots(dayData, dayStart);
       final dayStats = _calcStats(dayData);
@@ -99,6 +119,7 @@ class _Spo2DetailScreenState extends State<Spo2DetailScreen> {
       if (!mounted) return;
       setState(() => _error = e.toString());
     } finally {
+      _fetching = false;
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -202,7 +223,16 @@ class _Spo2DetailScreenState extends State<Spo2DetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('SpO₂')),
+      appBar: AppBar(
+        title: const Text('SpO₂'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Làm mới',
+            onPressed: _loadAll,
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: _loading
@@ -329,6 +359,21 @@ class _Spo2DetailScreenState extends State<Spo2DetailScreen> {
                   drawVerticalLine: false,
                   horizontalInterval: 20,
                 ),
+                barTouchData: BarTouchData(
+                  enabled: true,
+                  touchTooltipData: BarTouchTooltipData(
+                    tooltipPadding: const EdgeInsets.all(8),
+                    tooltipRoundedRadius: 8,
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      final hour = group.x;
+                      final v = rod.toY;
+                      return BarTooltipItem(
+                        '${v.toStringAsFixed(0)} %\n${hour}h',
+                        const TextStyle(color: Colors.white, fontSize: 12),
+                      );
+                    },
+                  ),
+                ),
                 titlesData: FlTitlesData(
                   leftTitles: const AxisTitles(
                     sideTitles: SideTitles(showTitles: false),
@@ -414,6 +459,31 @@ class _Spo2DetailScreenState extends State<Spo2DetailScreen> {
                   drawVerticalLine: false,
                   horizontalInterval: 20,
                 ),
+                barTouchData: BarTouchData(
+                  enabled: true,
+                  touchTooltipData: BarTouchTooltipData(
+                    tooltipPadding: const EdgeInsets.all(8),
+                    tooltipRoundedRadius: 8,
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      const dayLabels = [
+                        'T2',
+                        'T3',
+                        'T4',
+                        'T5',
+                        'T6',
+                        'T7',
+                        'CN',
+                      ];
+                      final idx = group.x.clamp(0, 6);
+                      final label = dayLabels[idx];
+                      final v = rod.toY;
+                      return BarTooltipItem(
+                        '${v.toStringAsFixed(0)} %\n$label',
+                        const TextStyle(color: Colors.white, fontSize: 12),
+                      );
+                    },
+                  ),
+                ),
                 titlesData: FlTitlesData(
                   leftTitles: const AxisTitles(
                     sideTitles: SideTitles(showTitles: false),
@@ -493,6 +563,21 @@ class _Spo2DetailScreenState extends State<Spo2DetailScreen> {
                   show: true,
                   drawVerticalLine: false,
                   horizontalInterval: 20,
+                ),
+                barTouchData: BarTouchData(
+                  enabled: true,
+                  touchTooltipData: BarTouchTooltipData(
+                    tooltipPadding: const EdgeInsets.all(8),
+                    tooltipRoundedRadius: 8,
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      final day = group.x;
+                      final v = rod.toY;
+                      return BarTooltipItem(
+                        '${v.toStringAsFixed(0)} %\nNgày $day',
+                        const TextStyle(color: Colors.white, fontSize: 12),
+                      );
+                    },
+                  ),
                 ),
                 titlesData: FlTitlesData(
                   leftTitles: const AxisTitles(

@@ -203,9 +203,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           if (value == null || value.isEmpty) {
                             return 'Vui lòng nhập mật khẩu';
                           }
-                          if (value.length < 6) {
+                          final v = value;
+                          if (v.length < 6) {
                             return 'Mật khẩu phải có ít nhất 6 ký tự';
                           }
+                          final hasUpper = RegExp(r'[A-Z]').hasMatch(v);
+                          final hasLetter = RegExp(r'[A-Za-z]').hasMatch(v);
+                          final hasDigit = RegExp(r'[0-9]').hasMatch(v);
+                          final hasSpecial = RegExp(
+                            r'[!@#\$%^&*(),.?":{}|<>_\-]',
+                          ).hasMatch(v);
+                          if (!hasUpper)
+                            return 'Mật khẩu phải có ít nhất 1 chữ hoa (A-Z)';
+                          if (!hasLetter)
+                            return 'Mật khẩu phải có ít nhất 1 chữ cái';
+                          if (!hasDigit)
+                            return 'Mật khẩu phải có ít nhất 1 chữ số (0-9)';
+                          if (!hasSpecial)
+                            return 'Mật khẩu phải có ít nhất 1 ký tự đặc biệt (ví dụ: !@#&*)';
                           return null;
                         },
                       ),
