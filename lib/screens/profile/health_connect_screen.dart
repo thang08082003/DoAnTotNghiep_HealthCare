@@ -231,6 +231,9 @@ class _GoogleFitConnectScreenState
       HealthDataType.SLEEP_SESSION,
       HealthDataType.SLEEP_ASLEEP,
       HealthDataType.SLEEP_AWAKE,
+      HealthDataType.SLEEP_LIGHT,
+      HealthDataType.SLEEP_DEEP,
+      HealthDataType.SLEEP_REM,
     ];
     for (final t in types) {
       try {

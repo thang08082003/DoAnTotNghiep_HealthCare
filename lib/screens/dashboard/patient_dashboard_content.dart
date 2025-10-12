@@ -5,6 +5,7 @@ import '../../providers/user_provider.dart';
 import '../doctors/doctors_following_list_screen.dart';
 import '../metrics/heart_rate_detail_screen.dart';
 import '../metrics/spo2_detail_screen.dart';
+import '../metrics/sleep_detail_screen.dart';
 import '../../data/services/health_connect_service.dart';
 import 'package:health/health.dart';
 
@@ -165,11 +166,21 @@ class PatientDashboardContent extends ConsumerWidget {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: _buildMetricCard(
-                              icon: Icons.nightlight_round,
-                              iconColor: Colors.indigo,
-                              label: 'Giấc ngủ',
-                              value: sleepText,
+                            child: InkWell(
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const _LazySleepDetail(),
+                                  ),
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: _buildMetricCard(
+                                icon: Icons.nightlight_round,
+                                iconColor: Colors.indigo,
+                                label: 'Giấc ngủ',
+                                value: sleepText,
+                              ),
                             ),
                           ),
                         ],
@@ -230,6 +241,19 @@ class PatientDashboardContent extends ConsumerWidget {
                     MaterialPageRoute(
                       builder: (_) => const DoctorsFollowingListScreen(),
                     ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildQuickAccessCard(
+                icon: Icons.nightlight_round,
+                title: 'Chi tiết giấc ngủ',
+                subtitle: 'Xem biểu đồ & chi tiết',
+                color: Colors.indigo.withValues(alpha: 0.08),
+                iconColor: Colors.indigo,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const _LazySleepDetail()),
                   );
                 },
               ),
@@ -453,6 +477,12 @@ class _LazySpo2Detail extends StatelessWidget {
   const _LazySpo2Detail();
   @override
   Widget build(BuildContext context) => const Spo2DetailScreen();
+}
+
+class _LazySleepDetail extends StatelessWidget {
+  const _LazySleepDetail();
+  @override
+  Widget build(BuildContext context) => const SleepDetailScreen();
 }
 
 // ------ Health Connect latest metrics helpers ------

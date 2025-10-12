@@ -71,13 +71,15 @@ class GoogleFitService {
     // Request Health permissions so the OS dialog can appear (HC on Android 14+ or Health Connect app on <=13)
     final types = <HealthDataType>[
       HealthDataType.HEART_RATE,
+
       HealthDataType.BLOOD_OXYGEN,
       HealthDataType.SLEEP_SESSION,
       HealthDataType.SLEEP_ASLEEP,
       HealthDataType.SLEEP_AWAKE,
-      // Optional extras that won't fail if unavailable
-      // HealthDataType.HEART_RATE_VARIABILITY_SDNN,
-      // HealthDataType.STEPS,
+      // Detailed sleep stages when available
+      HealthDataType.SLEEP_LIGHT,
+      HealthDataType.SLEEP_DEEP,
+      HealthDataType.SLEEP_REM,
     ];
     // Newer health API can infer read access; if permissions param isn't supported, ignore.
     bool granted = false;
@@ -120,8 +122,12 @@ class GoogleFitService {
     final types = <HealthDataType>[
       HealthDataType.HEART_RATE,
       HealthDataType.BLOOD_OXYGEN,
+      HealthDataType.SLEEP_SESSION,
       HealthDataType.SLEEP_ASLEEP,
       HealthDataType.SLEEP_AWAKE,
+      HealthDataType.SLEEP_LIGHT,
+      HealthDataType.SLEEP_DEEP,
+      HealthDataType.SLEEP_REM,
     ];
     bool hasPerms = false;
     try {
@@ -255,6 +261,20 @@ class GoogleFitService {
   }) async {
     final ok = await ensureConnected();
     if (!ok) throw StateError('Không thể kết nối Health Connect');
+    return _health.getHealthDataFromTypes(
+      startTime: start,
+      endTime: end,
+      types: types,
+    );
+  }
+
+  // Fast path: assumes ensureConnected() was called by the caller; avoids
+  // re-checking permissions for every small range to speed up batch queries.
+  Future<List<HealthDataPoint>> getDataFast({
+    required List<HealthDataType> types,
+    required DateTime start,
+    required DateTime end,
+  }) async {
     return _health.getHealthDataFromTypes(
       startTime: start,
       endTime: end,
