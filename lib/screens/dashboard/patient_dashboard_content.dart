@@ -244,19 +244,6 @@ class PatientDashboardContent extends ConsumerWidget {
                   );
                 },
               ),
-              const SizedBox(height: 12),
-              _buildQuickAccessCard(
-                icon: Icons.nightlight_round,
-                title: 'Chi tiết giấc ngủ',
-                subtitle: 'Xem biểu đồ & chi tiết',
-                color: Colors.indigo.withValues(alpha: 0.08),
-                iconColor: Colors.indigo,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const _LazySleepDetail()),
-                  );
-                },
-              ),
             ],
           ),
         );
