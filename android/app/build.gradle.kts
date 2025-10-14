@@ -56,3 +56,17 @@ dependencies {
     implementation("com.google.firebase:firebase-common-ktx")
     implementation("com.google.firebase:firebase-auth-ktx")
 }
+
+// Chaquopy configuration must be nested under android.defaultConfig in Kotlin DSL
+android {
+    defaultConfig {
+        // Default config
+    }
+    // The default Python source directory is src/main/python, so no extra sourceSets
+    // configuration is necessary. Uncomment below only if you need a custom path.
+    // sourceSets {
+    //     getByName("main") {
+    //         python.srcDir("src/main/python")
+    //     }
+    // }
+}

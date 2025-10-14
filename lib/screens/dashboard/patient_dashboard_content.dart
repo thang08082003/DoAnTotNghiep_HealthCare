@@ -6,6 +6,7 @@ import '../doctors/doctors_following_list_screen.dart';
 import '../metrics/heart_rate_detail_screen.dart';
 import '../metrics/spo2_detail_screen.dart';
 import '../metrics/sleep_detail_screen.dart';
+import '../metrics/hrv_detail_screen.dart';
 import '../../data/services/health_connect_service.dart';
 import 'package:health/health.dart';
 
@@ -134,11 +135,21 @@ class PatientDashboardContent extends ConsumerWidget {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: _buildMetricCard(
-                              icon: Icons.show_chart,
-                              iconColor: Colors.deepPurple,
-                              label: 'HRV',
-                              value: hrvText,
+                            child: InkWell(
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const HrvDetailScreen(),
+                                  ),
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: _buildMetricCard(
+                                icon: Icons.show_chart,
+                                iconColor: Colors.deepPurple,
+                                label: 'HRV',
+                                value: hrvText,
+                              ),
                             ),
                           ),
                         ],
