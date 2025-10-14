@@ -4,20 +4,24 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:health/health.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../providers/health_metrics_providers.dart';
+import '../../providers/user_provider.dart';
 
 import '../../data/resources/gene/app_colors.dart';
 import '../../data/services/health_connect_service.dart';
 
-class HrvDetailScreen extends StatefulWidget {
+class HrvDetailScreen extends ConsumerStatefulWidget {
   const HrvDetailScreen({super.key});
 
   @override
-  State<HrvDetailScreen> createState() => _HrvDetailScreenState();
+  ConsumerState<HrvDetailScreen> createState() => _HrvDetailScreenState();
 }
 
 enum _Range { day, week, month }
 
-class _HrvDetailScreenState extends State<HrvDetailScreen>
+class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
     with WidgetsBindingObserver {
   static const MethodChannel _channel = MethodChannel(
     'com.example.healthcare/hrv',
@@ -35,10 +39,34 @@ class _HrvDetailScreenState extends State<HrvDetailScreen>
 
   // Day: raw RMSSD points
   List<_TimedSample> _dayRmssd = const [];
+  // Day: raw SDNN points (manual measurements only, no longer fetched from Health Connect)
+  List<_TimedSample> _daySdnn = const [];
+  // Day: pNN50
+  List<_TimedSample> _dayPnn50 = const [];
+  // Day: HR during measurement
+  List<_TimedSample> _dayHr = const [];
+  // Day: HRV Score (store as double for uniform handling)
+  List<_TimedSample> _dayScore = const [];
   // Week/Month: averages
   late DateTime _weekStart;
   List<double> _weekRmssdAvg = List.filled(7, 0);
   List<double> _monthRmssdAvg = const [];
+
+  // Week/Month: manual metrics (all samples in range – we only need aggregated stats)
+  List<double> _weekPnn50 = const [];
+  List<double> _weekHr = const [];
+  List<double> _weekScore = const [];
+
+  List<double> _monthPnn50 = const [];
+  List<double> _monthHr = const [];
+  List<double> _monthScore = const [];
+
+  // Colors per metric
+  static const Color _colorRmssd = Colors.teal;
+  static const Color _colorSdnn = Colors.blueGrey; // daily only (manual)
+  static const Color _colorPnn50 = Colors.orange;
+  static const Color _colorHr = Colors.redAccent;
+  static const Color _colorScore = Colors.purple;
 
   @override
   void initState() {
@@ -118,6 +146,7 @@ class _HrvDetailScreenState extends State<HrvDetailScreen>
               .whereType<_TimedSample>()
               .toList()
             ..sort((a, b) => a.time.compareTo(b.time));
+      // _daySdnn now only accumulates manual results (see _measureHrv)
 
       // Week
       final weekStart = _startOfWeek(now);
@@ -129,6 +158,67 @@ class _HrvDetailScreenState extends State<HrvDetailScreen>
       final mStart = DateTime(now.year, now.month, 1);
       final mEnd = DateTime(now.year, now.month + 1, 1);
       _monthRmssdAvg = await _dailyAvgRmssd(svc, mStart, mEnd);
+
+      // Fetch manual measurement metrics (pNN50 / HR / Score) from Firestore for week & month
+      try {
+        final user = await ref.read(currentUserProvider.future);
+        if (user != null) {
+          final hrvCol = FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('hrv');
+
+          // Week range query
+          final weekSnap = await hrvCol
+              .where(
+                'ts',
+                isGreaterThanOrEqualTo: weekStart.millisecondsSinceEpoch,
+              )
+              .where('ts', isLessThan: weekEnd.millisecondsSinceEpoch)
+              .get();
+          final wP = <double>[];
+          final wH = <double>[];
+          final wS = <double>[];
+          for (final doc in weekSnap.docs) {
+            final d = doc.data();
+            final pnn50 = (d['pnn50'] as num?)?.toDouble();
+            final hr = (d['hr'] as num?)?.toDouble();
+            final score = (d['score'] as num?)?.toDouble();
+            if (pnn50 != null && pnn50.isFinite) wP.add(pnn50);
+            if (hr != null && hr.isFinite) wH.add(hr);
+            if (score != null && score.isFinite) wS.add(score);
+          }
+          _weekPnn50 = wP;
+          _weekHr = wH;
+          _weekScore = wS;
+
+          // Month range query
+          final monthSnap = await hrvCol
+              .where(
+                'ts',
+                isGreaterThanOrEqualTo: mStart.millisecondsSinceEpoch,
+              )
+              .where('ts', isLessThan: mEnd.millisecondsSinceEpoch)
+              .get();
+          final mP = <double>[];
+          final mH = <double>[];
+          final mS = <double>[];
+          for (final doc in monthSnap.docs) {
+            final d = doc.data();
+            final pnn50 = (d['pnn50'] as num?)?.toDouble();
+            final hr = (d['hr'] as num?)?.toDouble();
+            final score = (d['score'] as num?)?.toDouble();
+            if (pnn50 != null && pnn50.isFinite) mP.add(pnn50);
+            if (hr != null && hr.isFinite) mH.add(hr);
+            if (score != null && score.isFinite) mS.add(score);
+          }
+          _monthPnn50 = mP;
+          _monthHr = mH;
+          _monthScore = mS;
+        }
+      } catch (_) {
+        // Ignore Firestore errors for manual metrics to not block main data
+      }
 
       if (mounted) {
         setState(() => _loading = false);
@@ -243,11 +333,50 @@ class _HrvDetailScreenState extends State<HrvDetailScreen>
         }
         // Optionally add a point to the day series for visualization
         if (rmssd != null && rmssd.isFinite) {
+          final now = DateTime.now();
           setState(() {
             _dayRmssd = List<_TimedSample>.from(_dayRmssd)
-              ..add(_TimedSample(time: DateTime.now(), value: rmssd))
+              ..add(_TimedSample(time: now, value: rmssd))
               ..sort((a, b) => a.time.compareTo(b.time));
+            if (sdnn != null && sdnn.isFinite) {
+              _daySdnn = List<_TimedSample>.from(_daySdnn)
+                ..add(_TimedSample(time: now, value: sdnn))
+                ..sort((a, b) => a.time.compareTo(b.time));
+            }
+            if (pnn50 != null && pnn50.isFinite) {
+              _dayPnn50 = List<_TimedSample>.from(_dayPnn50)
+                ..add(_TimedSample(time: now, value: pnn50))
+                ..sort((a, b) => a.time.compareTo(b.time));
+            }
+            if (hr != null && hr.isFinite) {
+              _dayHr = List<_TimedSample>.from(_dayHr)
+                ..add(_TimedSample(time: now, value: hr))
+                ..sort((a, b) => a.time.compareTo(b.time));
+            }
+            if (score != null) {
+              _dayScore = List<_TimedSample>.from(_dayScore)
+                ..add(_TimedSample(time: now, value: score.toDouble()))
+                ..sort((a, b) => a.time.compareTo(b.time));
+            }
           });
+          // Persist manual measurement (rmssd + sdnn if present)
+          try {
+            final user = await ref.read(currentUserProvider.future);
+            if (user != null) {
+              await ref
+                  .read(healthMetricsRepositoryProvider)
+                  .saveManualHrv(
+                    user.uid,
+                    rmssd: rmssd,
+                    sdnn: sdnn,
+                    pnn50: pnn50,
+                    hr: hr,
+                    score: score,
+                    level: level,
+                    ts: now,
+                  );
+            }
+          } catch (_) {}
         }
       }
     } on PlatformException catch (e) {
@@ -405,7 +534,7 @@ class _HrvDetailScreenState extends State<HrvDetailScreen>
             ),
           ),
           const SizedBox(height: 12),
-          _summaryCard('Tổng kết hàng ngày', minV, maxV, avgV),
+          _summarySectionDay(minV, maxV, avgV),
         ],
       ),
     );
@@ -567,7 +696,7 @@ class _HrvDetailScreenState extends State<HrvDetailScreen>
             ),
           ),
           const SizedBox(height: 12),
-          _summaryCard('Tổng kết hàng tuần', minV, maxV, avgV),
+          _summarySectionWeek(minV, maxV, avgV),
         ],
       ),
     );
@@ -640,47 +769,267 @@ class _HrvDetailScreenState extends State<HrvDetailScreen>
             ),
           ),
           const SizedBox(height: 12),
-          _summaryCard('Tổng kết hàng tháng', minV, maxV, avgV),
+          _summarySectionMonth(minV, maxV, avgV),
         ],
       ),
     );
   }
 
-  Widget _summaryCard(String title, double minV, double maxV, double avgV) {
-    Widget cell(String label, double v) => Column(
-      children: [
-        Text(label, style: const TextStyle(color: AppColors.textSecondary)),
-        const SizedBox(height: 4),
-        Text(
-          v == 0 ? '-' : v.toStringAsFixed(0),
-          style: const TextStyle(fontWeight: FontWeight.w600),
+  // (legacy helper removed: formatting now handled in _buildSummaryTable extension)
+
+  Widget _wrapSummary(String title, List<Widget> children) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.05),
+          blurRadius: 10,
+          offset: const Offset(0, 2),
         ),
       ],
-    );
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        ...children,
+      ],
+    ),
+  );
+
+  Widget _summarySectionDay(double rmssdMin, double rmssdMax, double rmssdAvg) {
+    final sdnnStats = _summary(_daySdnn.map((e) => e.value).toList());
+    final pnnStats = _summary(_dayPnn50.map((e) => e.value).toList());
+    final hrStats = _summary(_dayHr.map((e) => e.value).toList());
+    final scoreStats = _summary(_dayScore.map((e) => e.value).toList());
+    final metrics = <_MetricSummary>[
+      _MetricSummary('RMSSD', rmssdMin, rmssdAvg, rmssdMax, 'ms', _colorRmssd),
+      _MetricSummary(
+        'SDNN',
+        sdnnStats.$1,
+        sdnnStats.$3,
+        sdnnStats.$2,
+        'ms',
+        _colorSdnn,
+      ),
+      _MetricSummary(
+        'pNN50',
+        pnnStats.$1,
+        pnnStats.$3,
+        pnnStats.$2,
+        '%',
+        _colorPnn50,
+      ),
+      _MetricSummary('HR', hrStats.$1, hrStats.$3, hrStats.$2, 'bpm', _colorHr),
+      _MetricSummary(
+        'Score',
+        scoreStats.$1,
+        scoreStats.$3,
+        scoreStats.$2,
+        '',
+        _colorScore,
+      ),
+    ];
+    return _wrapSummary('Tổng kết hàng ngày', [
+      _buildSummaryTable(metrics, showHeaders: false),
+      if (_lastMeasure?['hrvLevel'] != null)
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            'Level: ${_lastMeasure!['hrvLevel']}',
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
           ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          cell('Tối thiểu', minV),
-          cell('Trung bình', avgV),
-          cell('Tối đa', maxV),
-        ],
-      ),
-    );
+        ),
+    ]);
   }
+
+  Widget _summarySectionWeek(
+    double rmssdMin,
+    double rmssdMax,
+    double rmssdAvg,
+  ) {
+    final pnnStats = _summary(_weekPnn50);
+    final hrStats = _summary(_weekHr);
+    final scoreStats = _summary(_weekScore);
+    final metrics = <_MetricSummary>[
+      _MetricSummary('RMSSD', rmssdMin, rmssdAvg, rmssdMax, 'ms', _colorRmssd),
+      _MetricSummary(
+        'pNN50',
+        pnnStats.$1,
+        pnnStats.$3,
+        pnnStats.$2,
+        '%',
+        _colorPnn50,
+      ),
+      _MetricSummary('HR', hrStats.$1, hrStats.$3, hrStats.$2, 'bpm', _colorHr),
+      _MetricSummary(
+        'Score',
+        scoreStats.$1,
+        scoreStats.$3,
+        scoreStats.$2,
+        '',
+        _colorScore,
+      ),
+    ];
+    return _wrapSummary('Tổng kết hàng tuần', [_buildSummaryTable(metrics)]);
+  }
+
+  Widget _summarySectionMonth(
+    double rmssdMin,
+    double rmssdMax,
+    double rmssdAvg,
+  ) {
+    final pnnStats = _summary(_monthPnn50);
+    final hrStats = _summary(_monthHr);
+    final scoreStats = _summary(_monthScore);
+    final metrics = <_MetricSummary>[
+      _MetricSummary('RMSSD', rmssdMin, rmssdAvg, rmssdMax, 'ms', _colorRmssd),
+      _MetricSummary(
+        'pNN50',
+        pnnStats.$1,
+        pnnStats.$3,
+        pnnStats.$2,
+        '%',
+        _colorPnn50,
+      ),
+      _MetricSummary('HR', hrStats.$1, hrStats.$3, hrStats.$2, 'bpm', _colorHr),
+      _MetricSummary(
+        'Score',
+        scoreStats.$1,
+        scoreStats.$3,
+        scoreStats.$2,
+        '',
+        _colorScore,
+      ),
+    ];
+    return _wrapSummary('Tổng kết hàng tháng', [_buildSummaryTable(metrics)]);
+  }
+}
+
+class _MetricSummary {
+  final String name;
+  final double min;
+  final double avg;
+  final double max;
+  final String unit;
+  final Color color;
+  const _MetricSummary(
+    this.name,
+    this.min,
+    this.avg,
+    this.max,
+    this.unit,
+    this.color,
+  );
+}
+
+extension on double {
+  String fmt(String unit) => this == 0
+      ? '-'
+      : '${toStringAsFixed(0)}${unit.isNotEmpty ? ' $unit' : ''}';
+}
+
+Widget _buildSummaryTable(
+  List<_MetricSummary> metrics, {
+  bool showHeaders = true,
+}) {
+  // We intentionally omit textual headers (min/avg/max) when showHeaders == false
+  return Table(
+    columnWidths: const {
+      0: FlexColumnWidth(1.6),
+      1: FlexColumnWidth(1),
+      2: FlexColumnWidth(1),
+      3: FlexColumnWidth(1),
+    },
+    defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+    children: [
+      if (showHeaders)
+        const TableRow(
+          children: [
+            SizedBox(),
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 4),
+              child: Center(
+                child: Text(
+                  'Min',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 4),
+              child: Center(
+                child: Text(
+                  'Avg',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 4),
+              child: Center(
+                child: Text(
+                  'Max',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+          ],
+        ),
+      for (final m in metrics)
+        TableRow(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: m.color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      '${m.name}${m.unit.isNotEmpty ? ' (${m.unit})' : ''}',
+                      style: TextStyle(
+                        color: m.color,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Center(
+              child: Text(
+                m.min.fmt(m.unit),
+                style: TextStyle(color: m.color, fontSize: 13),
+              ),
+            ),
+            Center(
+              child: Text(
+                m.avg.fmt(m.unit),
+                style: TextStyle(color: m.color, fontSize: 13),
+              ),
+            ),
+            Center(
+              child: Text(
+                m.max.fmt(m.unit),
+                style: TextStyle(color: m.color, fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+    ],
+  );
 }
 
 class _TimedSample {
