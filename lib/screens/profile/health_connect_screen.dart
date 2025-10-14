@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../data/services/health_connect_service.dart';
 import 'package:health/health.dart';
+import '../../providers/health_metrics_providers.dart';
+import '../../providers/user_provider.dart';
 
 class GoogleFitConnectScreen extends ConsumerStatefulWidget {
   const GoogleFitConnectScreen({super.key});
@@ -154,6 +156,73 @@ class _GoogleFitConnectScreenState
               label: Text(
                 _loading ? 'Đang xử lý...' : 'Kết nối và tải dữ liệu',
               ),
+            ),
+            const SizedBox(height: 8),
+            Consumer(
+              builder: (context, ref, _) {
+                return ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryColor,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: _loading
+                      ? null
+                      : () async {
+                          setState(() => _loading = true);
+                          try {
+                            final user = await ref.read(
+                              currentUserProvider.future,
+                            );
+                            if (user == null) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Chưa đăng nhập'),
+                                  ),
+                                );
+                              }
+                              return;
+                            }
+                            final repo = ref.read(
+                              healthMetricsRepositoryProvider,
+                            );
+                            final res = await repo.syncLast24h(user.uid);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    res.granted
+                                        ? 'Đã đồng bộ 24h: HR ${res.heartRate}, SpO₂ ${res.spo2}, HRV ${res.hrv}, Ngủ ${res.sleep}'
+                                        : 'Chưa cấp quyền Health Connect',
+                                  ),
+                                ),
+                              );
+                            }
+                            // invalidate providers so any dashboard rebuild after pop sees new data
+                            ref.invalidate(heartRateStreamProvider(user.uid));
+                            ref.invalidate(spo2StreamProvider(user.uid));
+                            ref.invalidate(hrvStreamProvider(user.uid));
+                            ref.invalidate(
+                              sleepSessionsStreamProvider(user.uid),
+                            );
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Lỗi đồng bộ: $e')),
+                              );
+                            }
+                          } finally {
+                            if (mounted) setState(() => _loading = false);
+                          }
+                        },
+                  icon: const Icon(Icons.sync),
+                  label: Text(
+                    _loading
+                        ? 'Đang đồng bộ...'
+                        : 'Đồng bộ 24h lên hệ thống (Firestore)',
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(

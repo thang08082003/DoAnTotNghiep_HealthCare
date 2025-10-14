@@ -508,3 +508,86 @@ class _MetricsFromFirestore extends ConsumerWidget {
     );
   }
 }
+
+class _SyncButton extends ConsumerStatefulWidget {
+  final String userId;
+  const _SyncButton({required this.userId});
+
+  @override
+  ConsumerState<_SyncButton> createState() => _SyncButtonState();
+}
+
+class _SyncButtonState extends ConsumerState<_SyncButton> {
+  bool _loading = false;
+  String? _lastResult;
+
+  Future<void> _runSync() async {
+    if (_loading) return;
+    setState(() => _loading = true);
+    try {
+      final repo = ref.read(healthMetricsRepositoryProvider);
+      final res = await repo.syncLast24h(widget.userId);
+      final msg = res.granted
+          ? 'Đồng bộ xong: HR ${res.heartRate}, SpO₂ ${res.spo2}, HRV ${res.hrv}, Ngủ ${res.sleep}'
+          : 'Chưa cấp quyền Health Connect';
+      setState(() => _lastResult = msg);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(msg)));
+      }
+      // Invalidate streams so UI refreshes fast (though snapshots auto update after writes)
+      ref.invalidate(heartRateStreamProvider(widget.userId));
+      ref.invalidate(spo2StreamProvider(widget.userId));
+      ref.invalidate(hrvStreamProvider(widget.userId));
+      ref.invalidate(sleepSessionsStreamProvider(widget.userId));
+    } catch (e) {
+      final msg = 'Lỗi đồng bộ: $e';
+      setState(() => _lastResult = msg);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(msg)));
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ElevatedButton.icon(
+          onPressed: _loading ? null : _runSync,
+          icon: _loading
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.sync),
+          label: Text(
+            _loading ? 'Đang đồng bộ...' : 'Đồng bộ 24h từ Health Connect',
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primaryColor,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          ),
+        ),
+        if (_lastResult != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            _lastResult!,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}

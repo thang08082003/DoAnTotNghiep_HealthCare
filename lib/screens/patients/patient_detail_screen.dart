@@ -1023,44 +1023,10 @@ class _MetricsOverviewCard extends ConsumerWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Tổng quan chỉ số 7 ngày',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 12),
-              _row('Nhịp tim TB', _fmt(o.avgHr, 'bpm')),
-              _row('SpO₂ TB', _fmt(o.avgSpo2, '%')),
-              _row('HRV SDNN TB', _fmt(o.avgHrvSdnn, 'ms')),
-              _row('HRV RMSSD TB', _fmt(o.avgHrvRmssd, 'ms')),
-              _row('Tổng giấc ngủ', _dur(o.totalSleep)),
-            ],
-          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start),
         );
       },
     );
-  }
-
-  Widget _row(String label, String value) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 4),
-    child: Row(
-      children: [
-        Expanded(child: Text(label, style: const TextStyle(fontSize: 13))),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
-      ],
-    ),
-  );
-
-  String _fmt(double? v, String unit) =>
-      (v == null || v.isNaN) ? '-' : '${v.toStringAsFixed(0)} $unit';
-  String _dur(Duration d) {
-    if (d == Duration.zero) return '-';
-    final h = d.inHours;
-    final m = d.inMinutes.remainder(60);
-    if (h == 0) return '${m}m';
-    return '${h}h ${m}m';
   }
 }
 

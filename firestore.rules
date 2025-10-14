@@ -1,11 +1,26 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper: check if a user (by uid) is a doctor
+    function isDoctorUser(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.role == 'doctor';
+    }
     // Users collection - users can read/write their own data
     // Also allow authenticated users to read all users for doctor selection
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       allow read: if request.auth != null; // Allow reading all users for doctor queries
+    }
+
+    // Subcollections under users (health metric collections, reviews, etc.)
+    // Allow the owner (patient) full access; allow doctors read-only to view metrics.
+    match /users/{userId}/{document=**} {
+      // Owner can read & write
+      allow write: if request.auth != null && request.auth.uid == userId;
+      // Read if owner OR authenticated doctor
+      allow read: if request.auth != null && (
+        request.auth.uid == userId || isDoctorUser(request.auth.uid)
+      );
     }
     
     // Doctors collection - authenticated users can read all doctors
