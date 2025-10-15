@@ -4,10 +4,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:healthcare/data/resources/gene/app_colors.dart';
 import 'package:healthcare/router/app_router.dart';
 import 'package:healthcare/router/navigation_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io' show Platform;
+import 'package:healthcare/data/services/android_passive_listener_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  // Auto-reapply passive listener if previously enabled (Android only)
+  try {
+    if (Platform.isAndroid) {
+      final prefs = await SharedPreferences.getInstance();
+      final on = prefs.getBool('passive_listener_enabled') ?? false;
+      if (on) {
+        // Fire-and-forget; WorkManager will schedule periodic + immediate drain
+        await AndroidPassiveListenerService.enable();
+      }
+    }
+  } catch (_) {}
   runApp(const ProviderScope(child: HealthCareApp()));
 }
 

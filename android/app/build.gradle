@@ -47,4 +47,8 @@ dependencies {
     implementation 'com.google.firebase:firebase-firestore-ktx'
     implementation 'com.google.firebase:firebase-common-ktx'
     implementation 'com.google.firebase:firebase-auth-ktx'
+    // Health Connect client for Passive Listener
+    implementation 'androidx.health.connect:connect-client:1.1.0-alpha10'
+    // WorkManager (Java/Kotlin interop if needed on native side)
+    implementation 'androidx.work:work-runtime-ktx:2.9.1'
 }

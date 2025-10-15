@@ -77,6 +77,11 @@
             android:name=".IncomingCallActionReceiver"
             android:exported="false"/>
 
+        <!-- Passive health changes receiver (triggered via explicit PendingIntent) -->
+        <receiver
+            android:name=".HealthPassiveReceiver"
+            android:exported="false"/>
+
         <!-- Allow Android Health Permissions Hub to deep link into this app's UI -->
         <activity-alias
             android:name="ViewPermissionUsageActivity"

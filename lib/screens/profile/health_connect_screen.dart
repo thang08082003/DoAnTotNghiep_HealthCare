@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../data/services/health_connect_service.dart';
 import 'package:health/health.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io' show Platform;
+import 'package:flutter/services.dart';
 import '../../providers/health_metrics_providers.dart';
 import '../../providers/user_provider.dart';
 
@@ -23,6 +26,54 @@ class _GoogleFitConnectScreenState
   DateTime? _latestSpo2Time;
   Duration? _lastNightSleep;
   String? _error;
+  bool _passiveEnabled = false;
+  static const _prefsPassiveKey = 'passive_listener_enabled';
+  static const _passiveChannel = MethodChannel(
+    'com.example.healthcare/passive',
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPassiveToggle();
+  }
+
+  Future<void> _loadPassiveToggle() async {
+    final prefs = await SharedPreferences.getInstance();
+    final on = prefs.getBool(_prefsPassiveKey) ?? false;
+    if (mounted) setState(() => _passiveEnabled = on);
+  }
+
+  Future<void> _setPassiveToggle(bool value) async {
+    setState(() => _passiveEnabled = value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefsPassiveKey, value);
+    // Call into native to register/unregister
+    if (!Platform.isAndroid) return;
+    try {
+      if (value) {
+        await _passiveChannel.invokeMethod('enablePassiveListener');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Đã bật đồng bộ thụ động (Passive)')),
+          );
+        }
+      } else {
+        await _passiveChannel.invokeMethod('disablePassiveListener');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Đã tắt đồng bộ thụ động (Passive)')),
+          );
+        }
+      }
+    } on PlatformException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi Passive listener: ${e.message}')),
+        );
+      }
+    }
+  }
 
   Future<void> _connectAndFetch() async {
     setState(() {
@@ -156,6 +207,55 @@ class _GoogleFitConnectScreenState
               label: Text(
                 _loading ? 'Đang xử lý...' : 'Kết nối và tải dữ liệu',
               ),
+            ),
+            const SizedBox(height: 8),
+            // Passive Listener toggle under settings, below connect button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Đồng bộ thụ động (Passive Listener)',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                Switch(
+                  value: _passiveEnabled,
+                  onChanged: _loading
+                      ? null
+                      : (v) {
+                          _setPassiveToggle(v);
+                        },
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Trigger immediate drain now (manual)
+            ElevatedButton.icon(
+              onPressed: _loading
+                  ? null
+                  : () async {
+                      try {
+                        await _passiveChannel.invokeMethod(
+                          'enablePassiveListener',
+                        );
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Đã kích hoạt đồng bộ ngay'),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Lỗi kích hoạt: $e')),
+                          );
+                        }
+                      }
+                    },
+              icon: const Icon(Icons.play_circle_fill),
+              label: const Text('Đồng bộ ngay (chạy 1 lần)'),
             ),
             const SizedBox(height: 8),
             Consumer(

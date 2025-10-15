@@ -160,6 +160,33 @@ class HealthMetricsService {
     );
   }
 
+  // ---- Migration: consolidate legacy 'hrv_measure' -> canonical 'hrv' ----
+  // Some older builds may have saved manual HRV into 'hrv_measure'.
+  // This moves all documents to 'hrv' (same document IDs, fields preserved).
+  // Set deleteSource=true to remove the legacy documents after copying.
+  Future<int> migrateLegacyHrvMeasure(
+    String uid, {
+    bool deleteSource = false,
+  }) async {
+    final legacy = await _userCol(uid, 'hrv_measure').get();
+    if (legacy.docs.isEmpty) return 0;
+    int moved = 0;
+    // Firestore WriteBatch max 500 ops; chunk if necessary
+    const maxOps = 400; // safe margin
+    for (int i = 0; i < legacy.docs.length; i += maxOps) {
+      final chunk = legacy.docs.skip(i).take(maxOps).toList();
+      final b = _fs.batch();
+      for (final d in chunk) {
+        final targetRef = _userCol(uid, 'hrv').doc(d.id);
+        b.set(targetRef, d.data(), SetOptions(merge: true));
+        if (deleteSource) b.delete(d.reference);
+      }
+      await b.commit();
+      moved += chunk.length;
+    }
+    return moved;
+  }
+
   // ---- One-off fetch for overview (client aggregate) ----
   Future<PatientMetricsOverview> overview(
     String uid, {

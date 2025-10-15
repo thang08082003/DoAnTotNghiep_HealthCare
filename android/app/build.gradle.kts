@@ -55,6 +55,10 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-common-ktx")
     implementation("com.google.firebase:firebase-auth-ktx")
+
+    // Android Health Connect client and WorkManager (native passive + periodic drain)
+    implementation("androidx.health.connect:connect-client:1.1.0-beta01")
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
 }
 
 // Chaquopy configuration must be nested under android.defaultConfig in Kotlin DSL

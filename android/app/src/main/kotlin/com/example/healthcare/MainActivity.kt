@@ -18,8 +18,10 @@ import io.flutter.plugins.GeneratedPluginRegistrant
 class MainActivity : FlutterFragmentActivity() {
 	private val FOREGROUND_CHANNEL = "com.example.healthcare/foreground"
 	private val HRV_CHANNEL = "com.example.healthcare/hrv"
+	private val PASSIVE_CHANNEL = "com.example.healthcare/passive"
 	private var methodChannel: MethodChannel? = null
 	private var hrvChannel: MethodChannel? = null
+	private var passiveChannel: MethodChannel? = null
 
 	override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
 		super.configureFlutterEngine(flutterEngine)
@@ -142,6 +144,30 @@ class MainActivity : FlutterFragmentActivity() {
 			}
 			intent?.removeExtra("payload")
 		}
+		// Passive listener control channel
+		passiveChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PASSIVE_CHANNEL)
+		passiveChannel?.setMethodCallHandler { call, result ->
+			when (call.method) {
+				"enablePassiveListener" -> {
+					try {
+						PassiveHealthConnectManager.enable(this)
+						result.success(true)
+					} catch (e: Exception) {
+						result.error("PASSIVE", e.message, null)
+					}
+				}
+				"disablePassiveListener" -> {
+					try {
+						PassiveHealthConnectManager.disable(this)
+						result.success(true)
+					} catch (e: Exception) {
+						result.error("PASSIVE", e.message, null)
+					}
+				}
+				else -> result.notImplemented()
+			}
+		}
+
 	}
 
 	override fun onNewIntent(intent: Intent) {

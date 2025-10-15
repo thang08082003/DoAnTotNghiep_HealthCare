@@ -11,6 +11,7 @@ import '../screens/home/home_page.dart';
 import '../data/services/local_notifications_service.dart';
 import '../data/services/android_foreground_service.dart';
 import '../data/services/incoming_call_listener.dart';
+import '../data/services/android_passive_listener_service.dart';
 
 class AppRouter {
   // Route names
@@ -246,6 +247,9 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
                     if (userSnapshot.hasData && userSnapshot.data != null) {
                       final user = userSnapshot.data!;
                       _currentUserId = user.uid;
+                      // Persist uid for native background usage and enable passive listener
+                      // Native side also schedules periodic drain as backup
+                      AndroidPassiveListenerService.enable();
                       // Start local notifications listening after first frame
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         LocalNotificationsService.initialize()
@@ -287,6 +291,8 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Stop incoming call listener if any
       IncomingCallListener.stop();
+      // Disable passive listener when logging out
+      AndroidPassiveListenerService.disable();
     });
     return const LoginScreen();
   }
