@@ -211,7 +211,7 @@ class ForegroundNotificationService : Service() {
         )
 
         val builder = NotificationCompat.Builder(this, CALL_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_phone_call)
+            .setSmallIcon(R.drawable.ic_stat_notify)
             .setContentTitle("Cuộc gọi đến")
             .setContentText("Từ $callerName")
             .setCategory(NotificationCompat.CATEGORY_CALL)
