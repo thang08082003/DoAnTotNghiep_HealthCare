@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/health_metrics_providers.dart';
 import '../../providers/user_provider.dart';
+import 'hrv_measure_screen.dart';
 
 import '../../data/resources/gene/app_colors.dart';
 import '../../data/services/health_connect_service.dart';
@@ -26,6 +27,7 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
   static const MethodChannel _channel = MethodChannel(
     'com.example.healthcare/hrv',
   );
+  // _openMeasureScreen removed; use native _measureHrv()
 
   bool _loading = true;
   String? _error;
@@ -56,10 +58,15 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
   List<double> _weekPnn50 = const [];
   List<double> _weekHr = const [];
   List<double> _weekScore = const [];
+  // Week/Month: daily average Score for charts
+  List<double> _weekScoreAvg = List.filled(7, 0);
+  List<double> _weekSdnn = const [];
 
   List<double> _monthPnn50 = const [];
   List<double> _monthHr = const [];
   List<double> _monthScore = const [];
+  List<double> _monthScoreAvg = const [];
+  List<double> _monthSdnn = const [];
 
   // Colors per metric
   static const Color _colorRmssd = Colors.teal;
@@ -111,53 +118,154 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
       });
     }
     try {
-      final svc = GoogleFitService();
-      if (!_connected) {
-        try {
-          final ok = await svc.ensureConnected();
-          _connected = ok;
-        } catch (e) {
-          // if ensureConnected fails (e.g., missing app/permissions), surface error but avoid endless loops
-          _connected = false;
-          rethrow;
-        }
-      }
       final now = DateTime.now();
 
       // Day
       final dayStart = DateTime(now.year, now.month, now.day);
-      final dayPts = await svc.getData(
-        types: const [HealthDataType.HEART_RATE_VARIABILITY_RMSSD],
-        start: dayStart,
-        end: now,
-      );
-      _dayRmssd =
-          dayPts
-              .map((p) {
-                final v = p.value;
-                if (v is NumericHealthValue) {
-                  return _TimedSample(
-                    time: p.dateFrom,
-                    value: v.numericValue.toDouble(),
-                  );
-                }
-                return null;
-              })
-              .whereType<_TimedSample>()
-              .toList()
-            ..sort((a, b) => a.time.compareTo(b.time));
+      // Lấy HRV từ Firestore cho ngày hiện tại (đầy đủ các trường)
+      try {
+        final user = await ref.read(currentUserProvider.future);
+        if (user != null) {
+          final col = FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('hrv');
+          final snap = await col
+              .where('ts', isGreaterThanOrEqualTo: Timestamp.fromDate(dayStart.toUtc()))
+              .where('ts', isLessThan: Timestamp.fromDate(now.toUtc()))
+              .get();
+          final rmssdPts = <_TimedSample>[];
+          final sdnnPts = <_TimedSample>[];
+          final pnnPts = <_TimedSample>[];
+          final hrPts = <_TimedSample>[];
+          final scorePts = <_TimedSample>[];
+          for (final doc in snap.docs) {
+            final data = doc.data();
+            final tst = data['ts'];
+            if (tst is! Timestamp) continue;
+            final t = tst.toDate().toLocal();
+            final rmssd = (data['rmssd'] as num?)?.toDouble();
+            final sdnn = (data['sdnn'] as num?)?.toDouble();
+            final pnn50 = (data['pnn50'] as num?)?.toDouble();
+            final hr = (data['hr'] as num?)?.toDouble();
+            final score = (data['score'] as num?)?.toDouble();
+            if (rmssd != null && rmssd.isFinite && rmssd > 0) {
+              rmssdPts.add(_TimedSample(time: t, value: rmssd));
+            }
+            if (sdnn != null && sdnn.isFinite && sdnn > 0) {
+              sdnnPts.add(_TimedSample(time: t, value: sdnn));
+            }
+            if (pnn50 != null && pnn50.isFinite && pnn50 > 0) {
+              pnnPts.add(_TimedSample(time: t, value: pnn50));
+            }
+            if (hr != null && hr.isFinite && hr > 0) {
+              hrPts.add(_TimedSample(time: t, value: hr));
+            }
+            if (score != null && score.isFinite && score >= 0) {
+              scorePts.add(_TimedSample(time: t, value: score));
+            }
+          }
+          rmssdPts.sort((a, b) => a.time.compareTo(b.time));
+          sdnnPts.sort((a, b) => a.time.compareTo(b.time));
+          pnnPts.sort((a, b) => a.time.compareTo(b.time));
+          hrPts.sort((a, b) => a.time.compareTo(b.time));
+          scorePts.sort((a, b) => a.time.compareTo(b.time));
+          _dayRmssd = rmssdPts;
+          _daySdnn = sdnnPts;
+          _dayPnn50 = pnnPts;
+          _dayHr = hrPts;
+          _dayScore = scorePts;
+        } else {
+          _dayRmssd = const [];
+          _daySdnn = const [];
+          _dayPnn50 = const [];
+          _dayHr = const [];
+          _dayScore = const [];
+        }
+      } catch (_) {
+        _dayRmssd = const [];
+        _daySdnn = const [];
+        _dayPnn50 = const [];
+        _dayHr = const [];
+        _dayScore = const [];
+      }
       // _daySdnn now only accumulates manual results (see _measureHrv)
 
       // Week
       final weekStart = _startOfWeek(now);
       final weekEnd = weekStart.add(const Duration(days: 7));
       _weekStart = weekStart;
-      _weekRmssdAvg = await _dailyAvgRmssd(svc, weekStart, weekEnd);
+      // Trung bình theo ngày trong tuần từ Firestore (Score)
+      try {
+        final user = await ref.read(currentUserProvider.future);
+        if (user != null) {
+          final col = FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('hrv');
+          final snap = await col
+              .where('ts', isGreaterThanOrEqualTo: Timestamp.fromDate(weekStart.toUtc()))
+              .where('ts', isLessThan: Timestamp.fromDate(weekEnd.toUtc()))
+              .get();
+          final days = 7;
+          final sums = List<double>.filled(days, 0);
+          final counts = List<int>.filled(days, 0);
+          for (final doc in snap.docs) {
+            final d = doc.data();
+            final tst = d['ts'];
+            final score = (d['score'] as num?)?.toDouble();
+            if (tst is! Timestamp || score == null || !score.isFinite || score < 0) continue;
+            final idx = tst.toDate().toLocal().difference(weekStart).inDays;
+            if (idx < 0 || idx >= days) continue;
+            sums[idx] += score;
+            counts[idx] += 1;
+          }
+          _weekScoreAvg = [
+            for (int i = 0; i < days; i++) counts[i] == 0 ? 0 : (sums[i] / counts[i])
+          ];
+        } else {
+          _weekScoreAvg = List<double>.filled(7, 0);
+        }
+      } catch (_) {
+        _weekScoreAvg = List<double>.filled(7, 0);
+      }
 
       // Month
       final mStart = DateTime(now.year, now.month, 1);
       final mEnd = DateTime(now.year, now.month + 1, 1);
-      _monthRmssdAvg = await _dailyAvgRmssd(svc, mStart, mEnd);
+      try {
+        final user = await ref.read(currentUserProvider.future);
+        if (user != null) {
+          final col = FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('hrv');
+          final snap = await col
+              .where('ts', isGreaterThanOrEqualTo: Timestamp.fromDate(mStart.toUtc()))
+              .where('ts', isLessThan: Timestamp.fromDate(mEnd.toUtc()))
+              .get();
+          final days = mEnd.difference(mStart).inDays;
+          final sums = List<double>.filled(days, 0);
+          final counts = List<int>.filled(days, 0);
+          for (final doc in snap.docs) {
+            final d = doc.data();
+            final tst = d['ts'];
+            final score = (d['score'] as num?)?.toDouble();
+            if (tst is! Timestamp || score == null || !score.isFinite || score < 0) continue;
+            final idx = tst.toDate().toLocal().difference(mStart).inDays;
+            if (idx < 0 || idx >= days) continue;
+            sums[idx] += score;
+            counts[idx] += 1;
+          }
+          _monthScoreAvg = [
+            for (int i = 0; i < days; i++) counts[i] == 0 ? 0 : (sums[i] / counts[i])
+          ];
+        } else {
+          _monthScoreAvg = const [];
+        }
+      } catch (_) {
+        _monthScoreAvg = const [];
+      }
 
       // Fetch manual measurement metrics (pNN50 / HR / Score) from Firestore for week & month
       try {
@@ -170,51 +278,53 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
 
           // Week range query
           final weekSnap = await hrvCol
-              .where(
-                'ts',
-                isGreaterThanOrEqualTo: weekStart.millisecondsSinceEpoch,
-              )
-              .where('ts', isLessThan: weekEnd.millisecondsSinceEpoch)
+              .where('ts', isGreaterThanOrEqualTo: Timestamp.fromDate(weekStart.toUtc()))
+              .where('ts', isLessThan: Timestamp.fromDate(weekEnd.toUtc()))
               .get();
           final wP = <double>[];
           final wH = <double>[];
           final wS = <double>[];
+          final wSd = <double>[];
           for (final doc in weekSnap.docs) {
             final d = doc.data();
             final pnn50 = (d['pnn50'] as num?)?.toDouble();
             final hr = (d['hr'] as num?)?.toDouble();
             final score = (d['score'] as num?)?.toDouble();
+            final sdnn = (d['sdnn'] as num?)?.toDouble();
             if (pnn50 != null && pnn50.isFinite) wP.add(pnn50);
             if (hr != null && hr.isFinite) wH.add(hr);
             if (score != null && score.isFinite) wS.add(score);
+            if (sdnn != null && sdnn.isFinite) wSd.add(sdnn);
           }
           _weekPnn50 = wP;
           _weekHr = wH;
           _weekScore = wS;
+          _weekSdnn = wSd;
 
           // Month range query
           final monthSnap = await hrvCol
-              .where(
-                'ts',
-                isGreaterThanOrEqualTo: mStart.millisecondsSinceEpoch,
-              )
-              .where('ts', isLessThan: mEnd.millisecondsSinceEpoch)
+              .where('ts', isGreaterThanOrEqualTo: Timestamp.fromDate(mStart.toUtc()))
+              .where('ts', isLessThan: Timestamp.fromDate(mEnd.toUtc()))
               .get();
           final mP = <double>[];
           final mH = <double>[];
           final mS = <double>[];
+          final mSd = <double>[];
           for (final doc in monthSnap.docs) {
             final d = doc.data();
             final pnn50 = (d['pnn50'] as num?)?.toDouble();
             final hr = (d['hr'] as num?)?.toDouble();
             final score = (d['score'] as num?)?.toDouble();
+            final sdnn = (d['sdnn'] as num?)?.toDouble();
             if (pnn50 != null && pnn50.isFinite) mP.add(pnn50);
             if (hr != null && hr.isFinite) mH.add(hr);
             if (score != null && score.isFinite) mS.add(score);
+            if (sdnn != null && sdnn.isFinite) mSd.add(sdnn);
           }
           _monthPnn50 = mP;
           _monthHr = mH;
           _monthScore = mS;
+          _monthSdnn = mSd;
         }
       } catch (_) {
         // Ignore Firestore errors for manual metrics to not block main data
@@ -236,34 +346,7 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
     }
   }
 
-  Future<List<double>> _dailyAvgRmssd(
-    GoogleFitService svc,
-    DateTime start,
-    DateTime end,
-  ) async {
-    final days = end.difference(start).inDays;
-    if (days <= 0) return const <double>[];
-    final pts = await svc.getData(
-      types: const [HealthDataType.HEART_RATE_VARIABILITY_RMSSD],
-      start: start,
-      end: end,
-    );
-    final sums = List<double>.filled(days, 0);
-    final counts = List<int>.filled(days, 0);
-    for (final p in pts) {
-      final v = p.value;
-      if (v is! NumericHealthValue) continue;
-      final idx = p.dateFrom.difference(start).inDays;
-      if (idx < 0 || idx >= days) continue;
-      sums[idx] += v.numericValue.toDouble();
-      counts[idx] += 1;
-    }
-    return [
-      for (int i = 0; i < days; i++) counts[i] == 0 ? 0 : (sums[i] / counts[i]),
-    ];
-  }
-
-  // Previously used to map RMSSD to a score scale; no longer needed as we plot RMSSD directly.
+  // daily avg logic moved to repository via provider
 
   (double min, double max, double avg) _summary(List<double> values) {
     final nonZero = values.where((v) => v > 0).toList();
@@ -464,17 +547,38 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
   }
 
   Widget _buildDay() {
+    // Dùng score cho biểu đồ dạng cột
     final now = DateTime.now();
     final start = DateTime(now.year, now.month, now.day);
-    final spots = <FlSpot>[];
-    for (final s in _dayRmssd) {
-      final x = s.time.difference(start).inMinutes / 60.0;
-      final y = s.value;
-      spots.add(FlSpot(x.clamp(0, 24), y));
+    // Bucket theo giờ 0..23
+    final buckets = List<List<double>>.generate(24, (_) => []);
+    for (final s in _dayScore) {
+      final hour = s.time.difference(start).inHours;
+      if (hour >= 0 && hour < 24) buckets[hour].add(s.value);
     }
-    final (minV, maxV, avgV) = _summary(spots.map((e) => e.y).toList());
-    const double minY = 0.0;
-    const double maxY = 200.0;
+    final hourlyAvg = buckets
+        .map((b) => b.isEmpty ? 0.0 : (b.reduce((a, b2) => a + b2) / b.length))
+        .toList();
+    final bars = <BarChartGroupData>[];
+    for (int i = 0; i < 24; i++) {
+      final y = hourlyAvg[i];
+      bars.add(
+        BarChartGroupData(
+          x: i,
+          barRods: [
+            BarChartRodData(
+              toY: y,
+              color: AppColors.primaryColor,
+              width: 8,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ],
+        ),
+      );
+    }
+    // Tính Min/Avg/Max cho RMSSD theo dữ liệu trong ngày
+    final rmssdValues = _dayRmssd.map((e) => e.value).toList();
+    final (rmssdMin, rmssdMax, rmssdAvg) = _summary(rmssdValues);
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -483,58 +587,51 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
           const SizedBox(height: 12),
           SizedBox(
             height: 220,
-            child: LineChart(
-              LineChartData(
-                minX: 0,
-                maxX: 24,
-                minY: minY,
-                maxY: maxY,
+            child: bars.isEmpty
+                ? const Center(child: Text('Chưa có dữ liệu'))
+                : BarChart(
+                    BarChartData(
+                      minY: 0,
+                      maxY: 100,
                 gridData: const FlGridData(
                   show: true,
                   drawVerticalLine: false,
-                  horizontalInterval: 20.0,
-                ),
-                titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 50.0,
-                      reservedSize: 28,
-                      getTitlesWidget: (v, m) => Text('${v.round()}'),
-                    ),
-                  ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
+                        horizontalInterval: 20,
+                      ),
+                      barTouchData: BarTouchData(
+                        enabled: true,
+                        touchTooltipData: BarTouchTooltipData(
+                          tooltipRoundedRadius: 8,
+                          getTooltipItem: (group, gi, rod, ri) => BarTooltipItem(
+                            '${rod.toY.toStringAsFixed(0)}',
+                            const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ),
+                      titlesData: FlTitlesData(
+                        leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      interval: 6.0,
-                      getTitlesWidget: (v, m) {
-                        final iv = v.round();
-                        if ({0, 6, 12, 18, 24}.contains(iv))
-                          return Text('${iv}h');
+                            reservedSize: 20,
+                            getTitlesWidget: (v, meta) {
+                              final tick = v.toInt();
+                              if (tick == 0 || tick == 6 || tick == 12 || tick == 18) {
+                                return Text('${tick}h', style: const TextStyle(fontSize: 10));
+                              }
                         return const SizedBox.shrink();
                       },
                     ),
                   ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                ),
-                lineBarsData: [
-                  LineChartBarData(
-                    isCurved: false,
-                    color: AppColors.primaryColor,
-                    dotData: const FlDotData(show: false),
-                    spots: spots,
-                  ),
-                ],
-              ),
+                      ),
+                      barGroups: bars,
+                    ),
             ),
           ),
           const SizedBox(height: 12),
-          _summarySectionDay(minV, maxV, avgV),
+          _summarySectionDay(rmssdMin, rmssdMax, rmssdAvg),
         ],
       ),
     );
@@ -542,25 +639,63 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
 
   Widget _buildCircularMeasureButton() {
     final size = 180.0;
-    final progress = _measuring
-        ? _measureProgress
-        : (_lastMeasure == null ? 0.0 : 1.0);
+    final progress = _measuring ? _measureProgress : 0.0; // không hiển thị vòng quay trước khi đo
     return GestureDetector(
-      onTap: _measuring ? null : _measureHrv,
+      onTap: _measuring
+          ? null
+          : () async {
+              final res = await Navigator.of(context).push<Map<String, dynamic>>(
+                MaterialPageRoute(builder: (_) => const HrvMeasureScreen()),
+              );
+              if (res != null) {
+                setState(() => _lastMeasure = res);
+                try {
+                  final rmssd = (res['rmssd'] as num?)?.toDouble();
+                  final sdnn = (res['sdnn'] as num?)?.toDouble();
+                  final pnn50 = (res['pnn50'] as num?)?.toDouble();
+                  final hr = (res['hr'] as num?)?.toDouble();
+                  final score = (res['hrvScore'] as num?)?.toInt();
+                  final level = res['hrvLevel']?.toString();
+                  final now = DateTime.now();
+                  final user = await ref.read(currentUserProvider.future);
+                  if (user != null) {
+                    await ref.read(healthMetricsRepositoryProvider).saveManualHrv(
+                          user.uid,
+                          rmssd: rmssd,
+                          sdnn: sdnn,
+                          pnn50: pnn50,
+                          hr: hr,
+                          score: score,
+                          level: level,
+                          ts: now,
+                        );
+                  }
+                  // Cập nhật hiển thị nhanh trong ngày
+                  if (score != null) {
+                    setState(() {
+                      _dayScore = List<_TimedSample>.from(_dayScore)
+                        ..add(_TimedSample(time: now, value: score.toDouble()))
+                        ..sort((a, b) => a.time.compareTo(b.time));
+                    });
+                  }
+                  await _loadAll();
+                } catch (_) {}
+              }
+            },
       child: Stack(
         alignment: Alignment.center,
         children: [
           SizedBox(
             width: size,
             height: size,
-            child: CircularProgressIndicator(
-              value: progress == 0 ? null : progress,
+            child: progress > 0
+                ? CircularProgressIndicator(
+                    value: progress,
               strokeWidth: 10,
               backgroundColor: Colors.grey.shade200,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                _measuring ? AppColors.primaryColor : Colors.teal,
-              ),
-            ),
+                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
+                  )
+                : const SizedBox.shrink(),
           ),
           Container(
             width: size - 24,
@@ -590,7 +725,7 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
                   )
                 : (_lastMeasure == null
                       ? const Text(
-                          'HRV',
+                          'Đo HRV',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -632,46 +767,42 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
   }
 
   Widget _buildWeek() {
-    final spots = <FlSpot>[];
+    final bars = <BarChartGroupData>[];
     for (int i = 0; i < 7; i++) {
-      final double y = _weekRmssdAvg.length > i ? _weekRmssdAvg[i] : 0.0;
-      if (y > 0) spots.add(FlSpot(i.toDouble(), y));
+      final double y = _weekScoreAvg.length > i ? _weekScoreAvg[i] : 0.0;
+      bars.add(
+        BarChartGroupData(
+          x: i,
+          barRods: [
+            BarChartRodData(
+              toY: y,
+              color: AppColors.primaryColor,
+              width: 10,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ],
+        ),
+      );
     }
-    final (minV, maxV, avgV) = _summary(spots.map((e) => e.y).toList());
-    const double minY = 0.0;
-    const double maxY = 200.0;
+    final (minV, maxV, avgV) = _summary(_weekScoreAvg);
     return SingleChildScrollView(
       child: Column(
         children: [
           SizedBox(
             height: 220,
-            child: LineChart(
-              LineChartData(
-                minX: 0,
-                maxX: 6,
-                minY: minY,
-                maxY: maxY,
-                gridData: const FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 20.0,
-                ),
+            child: BarChart(
+              BarChartData(
+                minY: 0,
+                maxY: 100,
+                gridData: const FlGridData(show: true, drawVerticalLine: false, horizontalInterval: 20),
                 titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 50.0,
-                      reservedSize: 28,
-                      getTitlesWidget: (v, m) => Text('${v.round()}'),
-                    ),
-                  ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
+                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      interval: 1.0,
+                      interval: 1,
                       getTitlesWidget: (v, m) {
                         final i = v.round();
                         if (i < 0 || i > 6) return const SizedBox.shrink();
@@ -680,18 +811,8 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
                       },
                     ),
                   ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
                 ),
-                lineBarsData: [
-                  LineChartBarData(
-                    isCurved: false,
-                    color: AppColors.primaryColor,
-                    dotData: const FlDotData(show: false),
-                    spots: spots,
-                  ),
-                ],
+                barGroups: bars,
               ),
             ),
           ),
@@ -705,47 +826,43 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
   Widget _buildMonth() {
     final now = DateTime.now();
     final days = DateTime(now.year, now.month + 1, 0).day;
-    final spots = <FlSpot>[];
-    for (int i = 0; i < _monthRmssdAvg.length; i++) {
-      final double y = _monthRmssdAvg[i];
-      if (y > 0) spots.add(FlSpot((i + 1).toDouble(), y));
+    final bars = <BarChartGroupData>[];
+    for (int i = 0; i < _monthScoreAvg.length; i++) {
+      final double y = _monthScoreAvg[i];
+      bars.add(
+        BarChartGroupData(
+          x: i + 1,
+          barRods: [
+            BarChartRodData(
+              toY: y,
+              color: AppColors.primaryColor,
+              width: 8,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ],
+        ),
+      );
     }
-    final (minV, maxV, avgV) = _summary(spots.map((e) => e.y).toList());
+    final (minV, maxV, avgV) = _summary(_monthScoreAvg);
     const ticks = {1, 7, 14, 21, 28};
-    const double minY = 0.0;
-    const double maxY = 200.0;
     return SingleChildScrollView(
       child: Column(
         children: [
           SizedBox(
             height: 220,
-            child: LineChart(
-              LineChartData(
-                minX: 1,
-                maxX: days.toDouble(),
-                minY: minY,
-                maxY: maxY,
-                gridData: const FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 20.0,
-                ),
+            child: BarChart(
+              BarChartData(
+                minY: 0,
+                maxY: 100,
+                gridData: const FlGridData(show: true, drawVerticalLine: false, horizontalInterval: 20),
                 titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 50.0,
-                      reservedSize: 28,
-                      getTitlesWidget: (v, m) => Text('${v.round()}'),
-                    ),
-                  ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
+                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      interval: 1.0,
+                      interval: 1,
                       getTitlesWidget: (v, m) {
                         final d = v.round();
                         if (ticks.contains(d)) return Text('$d');
@@ -753,18 +870,8 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
                       },
                     ),
                   ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
                 ),
-                lineBarsData: [
-                  LineChartBarData(
-                    isCurved: false,
-                    color: AppColors.primaryColor,
-                    dotData: const FlDotData(show: true),
-                    spots: spots,
-                  ),
-                ],
+                barGroups: bars,
               ),
             ),
           ),
@@ -835,7 +942,7 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
       ),
     ];
     return _wrapSummary('Tổng kết hàng ngày', [
-      _buildSummaryTable(metrics, showHeaders: false),
+      _buildSummaryTable(metrics, showHeaders: true),
       if (_lastMeasure?['hrvLevel'] != null)
         Padding(
           padding: const EdgeInsets.only(top: 4),
@@ -852,11 +959,13 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
     double rmssdMax,
     double rmssdAvg,
   ) {
+    final sdnnStats = _summary(_weekSdnn);
     final pnnStats = _summary(_weekPnn50);
     final hrStats = _summary(_weekHr);
     final scoreStats = _summary(_weekScore);
     final metrics = <_MetricSummary>[
       _MetricSummary('RMSSD', rmssdMin, rmssdAvg, rmssdMax, 'ms', _colorRmssd),
+      _MetricSummary('SDNN', sdnnStats.$1, sdnnStats.$3, sdnnStats.$2, 'ms', _colorSdnn),
       _MetricSummary(
         'pNN50',
         pnnStats.$1,
@@ -883,11 +992,13 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
     double rmssdMax,
     double rmssdAvg,
   ) {
+    final sdnnStats = _summary(_monthSdnn);
     final pnnStats = _summary(_monthPnn50);
     final hrStats = _summary(_monthHr);
     final scoreStats = _summary(_monthScore);
     final metrics = <_MetricSummary>[
       _MetricSummary('RMSSD', rmssdMin, rmssdAvg, rmssdMax, 'ms', _colorRmssd),
+      _MetricSummary('SDNN', sdnnStats.$1, sdnnStats.$3, sdnnStats.$2, 'ms', _colorSdnn),
       _MetricSummary(
         'pNN50',
         pnnStats.$1,

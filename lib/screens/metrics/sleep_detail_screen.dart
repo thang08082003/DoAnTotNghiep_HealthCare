@@ -612,8 +612,8 @@ class _SleepDetailScreenState extends State<SleepDetailScreen>
             height: 200,
             child: LineChart(
               LineChartData(
-                minX: 0,
-                maxX: 6,
+                minX: -0.5,
+                maxX: 6.5,
                 minY: 0,
                 maxY: 24,
                 gridData: const FlGridData(
@@ -894,8 +894,8 @@ class _SleepDetailScreenState extends State<SleepDetailScreen>
             height: 200,
             child: LineChart(
               LineChartData(
-                minX: 1,
-                maxX: daysInMonth.toDouble(),
+                minX: -0.5,
+                maxX: daysInMonth.toDouble() + 0.5,
                 minY: 0,
                 maxY: 24,
                 gridData: const FlGridData(
@@ -911,12 +911,9 @@ class _SleepDetailScreenState extends State<SleepDetailScreen>
                       vertical: 4,
                     ),
                     getTooltipItems: (spots) => spots.map((s) {
-                      final now = DateTime.now();
-                      final maxDay = DateTime(now.year, now.month + 1, 0).day;
-                      final day = s.x.round().clamp(1, maxDay);
-                      final d = DateTime(now.year, now.month, day);
+                      final day = s.x.round().clamp(1, daysInMonth);
                       return LineTooltipItem(
-                        '${_fmtDay(d)} • ${_fmtHHMMFromHourDouble(s.y)}',
+                        '$day • ${_fmtHHMMFromHourDouble(s.y)}',
                         const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
@@ -946,13 +943,10 @@ class _SleepDetailScreenState extends State<SleepDetailScreen>
                     sideTitles: SideTitles(
                       showTitles: true,
                       interval: 1,
+                      reservedSize: 20,
                       getTitlesWidget: (v, m) {
                         final d = v.round();
-                        if (ticks.contains(d))
-                          return Text(
-                            '$d',
-                            style: const TextStyle(fontSize: 10),
-                          );
+                        if ({1, 7, 14, 21, 28}.contains(d)) return Text('$d');
                         return const SizedBox.shrink();
                       },
                     ),

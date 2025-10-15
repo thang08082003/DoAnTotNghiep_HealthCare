@@ -330,7 +330,7 @@ class _LazySleepDetail extends StatelessWidget {
 String _fmtBpm(double? v) =>
     v == null || v <= 0 ? '-' : '${v.toStringAsFixed(0)} bpm';
 String _fmtMs(double? v) =>
-    v == null || v <= 0 ? '-' : '${v.toStringAsFixed(0)} ms';
+    v == null || v <= 0 ? '-' : '${v.toStringAsFixed(0)}';
 String _fmtPct(double? v) =>
     v == null || v <= 0 ? '-' : '${v.toStringAsFixed(0)} %';
 String _fmtDur(Duration? d) {
@@ -362,7 +362,7 @@ class _MetricsFromFirestore extends ConsumerWidget {
     final hrvSample = hrvAsync.valueOrNull?.isNotEmpty == true
         ? hrvAsync.value!.first
         : null;
-    final hrvVal = hrvSample?.sdnn ?? hrvSample?.rmssd;
+    final hrvVal = hrvSample?.score?.toDouble();
     Duration? lastSleepDur;
     if (sleepAsync.valueOrNull?.isNotEmpty == true) {
       // Consider most recent session starting within last 36h
