@@ -23,6 +23,7 @@ import 'dart:async';
 import 'doctor_reviews_screen.dart';
 import '../../data/services/user_service.dart';
 import '../profile/edit_doctor_profile_screen.dart';
+import '../../data/services/follow_request_service.dart';
 
 class DoctorDetailScreen extends ConsumerStatefulWidget {
   final String doctorId;
@@ -556,109 +557,130 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
               return const SizedBox.shrink();
             }
 
-            final service = DoctorOrdersService();
-            return Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+            // Hide orders unless follow request status is accepted
+            return FutureBuilder<String?>(
+              future: FollowRequestService.getRequestStatus(
+                patientId: currentUser.uid,
+                doctorId: widget.doctorId,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Chỉ định của bác sĩ',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: AppColors.textPrimary,
+              builder: (context, statusSnap) {
+                if (statusSnap.connectionState == ConnectionState.waiting) {
+                  return const SizedBox.shrink();
+                }
+                final status = (statusSnap.data ?? '').toLowerCase();
+                if (status != 'accepted') {
+                  return const SizedBox.shrink();
+                }
+
+                final service = DoctorOrdersService();
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.grey.withValues(alpha: 0.2),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  StreamBuilder<List<DoctorOrder>>(
-                    stream: service.watchOrders(
-                      patientId: currentUser.uid,
-                      doctorId: widget.doctorId,
-                    ),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                          child: LinearProgressIndicator(minHeight: 2),
-                        );
-                      }
-                      final orders = snapshot.data ?? const <DoctorOrder>[];
-                      if (orders.isEmpty) {
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Icon(
-                              Icons.assignment_turned_in,
-                              size: 18,
-                              color: AppColors.textSecondary,
-                            ),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Chưa có chỉ định nào được thêm. Khi bác sĩ đưa ra chỉ định (thuốc, xét nghiệm, chế độ sinh hoạt), nội dung sẽ hiển thị tại đây.',
-                                style: TextStyle(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Chỉ định của bác sĩ',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      StreamBuilder<List<DoctorOrder>>(
+                        stream: service.watchOrders(
+                          patientId: currentUser.uid,
+                          doctorId: widget.doctorId,
+                        ),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: LinearProgressIndicator(minHeight: 2),
+                            );
+                          }
+                          final orders = snapshot.data ?? const <DoctorOrder>[];
+                          if (orders.isEmpty) {
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: const [
+                                Icon(
+                                  Icons.assignment_turned_in,
+                                  size: 18,
                                   color: AppColors.textSecondary,
                                 ),
-                              ),
-                            ),
-                          ],
-                        );
-                      }
-
-                      // Hiển thị tối đa 3 chỉ định gần nhất
-                      final preview = orders.take(3).toList();
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ListView.separated(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: preview.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 8),
-                            itemBuilder: (context, i) => _orderTile(preview[i]),
-                          ),
-                          if (orders.length > 3) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              '+${orders.length - 3} chỉ định khác',
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 12),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: OutlinedButton.icon(
-                              icon: const Icon(Icons.list_alt),
-                              label: const Text('Xem tất cả'),
-                              onPressed: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => PatientOrdersListScreen(
-                                      patientId: currentUser.uid,
-                                      doctorId: widget.doctorId,
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Chưa có chỉ định nào được thêm. Khi bác sĩ đưa ra chỉ định (thuốc, xét nghiệm, chế độ sinh hoạt), nội dung sẽ hiển thị tại đây.',
+                                    style: TextStyle(
+                                      color: AppColors.textSecondary,
                                     ),
                                   ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      );
-                    },
+                                ),
+                              ],
+                            );
+                          }
+
+                          // Hiển thị tối đa 3 chỉ định gần nhất
+                          final preview = orders.take(3).toList();
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ListView.separated(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: preview.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 8),
+                                itemBuilder: (context, i) =>
+                                    _orderTile(preview[i]),
+                              ),
+                              if (orders.length > 3) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  '+${orders.length - 3} chỉ định khác',
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 12),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(Icons.list_alt),
+                                  label: const Text('Xem tất cả'),
+                                  onPressed: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => PatientOrdersListScreen(
+                                          patientId: currentUser.uid,
+                                          doctorId: widget.doctorId,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             );
           },
         );

@@ -1030,15 +1030,7 @@ class _MetricsOverviewCard extends ConsumerWidget {
             o.hrvSamples == 0) {
           return const SizedBox.shrink();
         }
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
-          ),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start),
-        );
+        return const SizedBox.shrink();
       },
     );
   }
