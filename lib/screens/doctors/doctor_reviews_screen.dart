@@ -458,8 +458,9 @@ class _AvatarThumb extends StatelessWidget {
         .where((e) => e.isNotEmpty)
         .toList();
     if (parts.isEmpty) return '?';
-    if (parts.length == 1)
+    if (parts.length == 1) {
       return parts.first.characters.take(1).toString().toUpperCase();
+    }
     return (parts.first.characters.take(1).toString() +
             parts.last.characters.take(1).toString())
         .toUpperCase();

@@ -507,8 +507,9 @@ class _SleepDetailScreenState extends State<SleepDetailScreen>
                       reservedSize: 28,
                       getTitlesWidget: (v, m) {
                         final iv = v.round();
-                        if (iv % 2 == 0 && iv >= 0 && iv <= 10)
+                        if (iv % 2 == 0 && iv >= 0 && iv <= 10) {
                           return Text('$iv');
+                        }
                         return const SizedBox.shrink();
                       },
                     ),
@@ -649,8 +650,9 @@ class _SleepDetailScreenState extends State<SleepDetailScreen>
                       reservedSize: 28,
                       getTitlesWidget: (v, m) {
                         final iv = v.round();
-                        if (iv % 6 == 0 && iv >= 0 && iv <= 24)
+                        if (iv % 6 == 0 && iv >= 0 && iv <= 24) {
                           return Text('$iv');
+                        }
                         return const SizedBox.shrink();
                       },
                     ),
@@ -791,8 +793,9 @@ class _SleepDetailScreenState extends State<SleepDetailScreen>
                       reservedSize: 28,
                       getTitlesWidget: (v, m) {
                         final iv = v.round();
-                        if (iv % 2 == 0 && iv >= 0 && iv <= 10)
+                        if (iv % 2 == 0 && iv >= 0 && iv <= 10) {
                           return Text('$iv');
+                        }
                         return const SizedBox.shrink();
                       },
                     ),
@@ -806,11 +809,12 @@ class _SleepDetailScreenState extends State<SleepDetailScreen>
                       interval: 1,
                       getTitlesWidget: (v, m) {
                         final d = v.round();
-                        if (ticks.contains(d))
+                        if (ticks.contains(d)) {
                           return Text(
                             '$d',
                             style: const TextStyle(fontSize: 10),
                           );
+                        }
                         return const SizedBox.shrink();
                       },
                     ),
@@ -865,11 +869,12 @@ class _SleepDetailScreenState extends State<SleepDetailScreen>
                       interval: 1,
                       getTitlesWidget: (v, m) {
                         final d = v.round();
-                        if (ticks.contains(d))
+                        if (ticks.contains(d)) {
                           return Text(
                             '$d',
                             style: const TextStyle(fontSize: 10),
                           );
+                        }
                         return const SizedBox.shrink();
                       },
                     ),
@@ -930,8 +935,9 @@ class _SleepDetailScreenState extends State<SleepDetailScreen>
                       reservedSize: 28,
                       getTitlesWidget: (v, m) {
                         final iv = v.round();
-                        if (iv % 6 == 0 && iv >= 0 && iv <= 24)
+                        if (iv % 6 == 0 && iv >= 0 && iv <= 24) {
                           return Text('$iv');
+                        }
                         return const SizedBox.shrink();
                       },
                     ),
@@ -1059,9 +1065,9 @@ class _SleepDetailScreenState extends State<SleepDetailScreen>
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            Text('Light: ${fmtMin(l)} (${lp}%)'),
-            Text('Deep: ${fmtMin(d)} (${dp}%)'),
-            Text('REM: ${fmtMin(r)} (${rp}%)'),
+            Text('Light: ${fmtMin(l)} ($lp%)'),
+            Text('Deep: ${fmtMin(d)} ($dp%)'),
+            Text('REM: ${fmtMin(r)} ($rp%)'),
           ],
         ),
       );

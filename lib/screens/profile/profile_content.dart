@@ -11,7 +11,6 @@ import '../../data/resources/gene/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../router/app_router.dart';
-// Removed old full-screen editors; fields are now edited inline via dialogs
 import 'health_connect_screen.dart';
 import '../../data/models/doctor_model.dart';
 import '../../data/models/user_model.dart';
@@ -288,7 +287,7 @@ class _PatientInfoCard extends StatelessWidget {
           // Bệnh theo dõi (Disease Focus) - chọn từ enum
           InkWell(
             onTap: () async {
-              final selected = await _showDiseaseFocusDialog(
+              final selected = await _showDiseaseFocusSheet(
                 context,
                 current: diseaseFocusEnum,
               );
@@ -363,7 +362,7 @@ class _PatientInfoCard extends StatelessWidget {
           InkWell(
             onTap: () async {
               final current = _displayOrNA(medicalHistory);
-              final result = await _showEditDialog(
+              final result = await _showEditBottomSheet(
                 context,
                 title: 'Tiền sử bệnh (tối đa 150 ký tự)',
                 initialValue: current == 'Chưa cập nhật' ? '' : current,
@@ -406,7 +405,7 @@ class _PatientInfoCard extends StatelessWidget {
     return InkWell(
       onTap: () async {
         final current = value == 'Chưa cập nhật' ? '' : value;
-        final result = await _showEditDialog(
+        final result = await _showEditBottomSheet(
           context,
           title: label,
           initialValue: current,
@@ -439,118 +438,9 @@ class _PatientInfoCard extends StatelessWidget {
       ),
     );
   }
-
-  Future<String?> _showEditDialog(
-    BuildContext context, {
-    required String title,
-    String initialValue = '',
-    TextInputType keyboardType = TextInputType.text,
-    int maxLines = 1,
-    int? charLimit,
-  }) async {
-    final ctl = TextEditingController(text: initialValue);
-    return showDialog<String>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setState) {
-          final len = ctl.text.characters.length;
-          final over = charLimit != null && len > charLimit;
-          return AlertDialog(
-            title: Text(title),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: ctl,
-                  keyboardType: keyboardType,
-                  maxLines: maxLines,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    border: const OutlineInputBorder(),
-                    helperText: charLimit != null
-                        ? '$len/$charLimit ký tự'
-                        : null,
-                    helperStyle: TextStyle(
-                      fontSize: 12,
-                      color: over ? Colors.red : AppColors.textSecondary,
-                    ),
-                  ),
-                ),
-                if (over)
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: EdgeInsets.only(top: 4),
-                      child: Text(
-                        'Vượt quá số ký tự cho phép',
-                        style: TextStyle(color: Colors.red, fontSize: 12),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Huỷ'),
-              ),
-              ElevatedButton(
-                onPressed: over ? null : () => Navigator.of(ctx).pop(ctl.text),
-                child: const Text('Lưu'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
 }
 
 // Dialog helpers for Disease Focus selection
-enum _DiseaseFocusDialogResult { clear }
-
-Future<Object?> _showDiseaseFocusDialog(
-  BuildContext context, {
-  DiseaseFocus? current,
-}) {
-  return showDialog<Object?>(
-    context: context,
-    builder: (ctx) {
-      return AlertDialog(
-        title: const Text('Chọn bệnh theo dõi'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              ...DiseaseFocus.values.map((f) {
-                final selected = f == current;
-                return ListTile(
-                  leading: Icon(
-                    selected
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_off,
-                    color: selected
-                        ? AppColors.primaryColor
-                        : AppColors.textSecondary,
-                  ),
-                  title: Text(f.displayName),
-                  onTap: () => Navigator.of(ctx).pop(f),
-                );
-              }),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Đóng'),
-          ),
-        ],
-      );
-    },
-  );
-}
 
 class _DoctorInfoCard extends StatelessWidget {
   final DoctorModel doctor;
@@ -662,7 +552,7 @@ class _DoctorInfoCard extends StatelessWidget {
           InkWell(
             onTap: () async {
               final current = description.trim();
-              final result = await _showDoctorDescriptionCharDialog(
+              final result = await _showEditBottomSheet(
                 context,
                 title: 'Mô tả (tối đa 150 ký tự)',
                 initialValue: current == 'Chưa cập nhật' ? '' : current,
@@ -677,12 +567,6 @@ class _DoctorInfoCard extends StatelessWidget {
                     .doc(doctor.uid)
                     .update({'description': FieldValue.delete()});
               } else {
-                if (trimmed.length > 150) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Vượt quá 150 ký tự')),
-                  );
-                  return;
-                }
                 await FirebaseFirestore.instance
                     .collection('users')
                     .doc(doctor.uid)
@@ -718,9 +602,11 @@ class _DoctorInfoCard extends StatelessWidget {
   }
 }
 
+enum _DiseaseFocusDialogResult { clear }
+
 // ===== Top-level reusable helpers for inline field editing dialogs =====
 
-Future<String?> _showEditDialog(
+Future<String?> _showEditBottomSheet(
   BuildContext context, {
   required String title,
   String initialValue = '',
@@ -730,130 +616,155 @@ Future<String?> _showEditDialog(
 }) async {
   final ctl = TextEditingController(text: initialValue);
   final limit = charLimit ?? (maxLines > 1 ? 1000 : null);
-  return showDialog<String>(
+  return showModalBottomSheet<String>(
     context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setState) {
-        final currentLength = ctl.text.characters.length;
-        return AlertDialog(
-          title: Text(title),
-          content: Column(
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (ctx) => Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(ctx).viewInsets.bottom,
+        left: 16,
+        right: 16,
+        top: 16,
+      ),
+      child: StatefulBuilder(
+        builder: (ctx, setState) {
+          final currentLength = ctl.text.characters.length;
+          final content = Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
-                width: double.maxFinite,
-                child: TextField(
-                  controller: ctl,
-                  keyboardType: keyboardType,
-                  maxLines: maxLines,
-                  minLines: maxLines > 1 ? (maxLines / 2).ceil() : 1,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    border: const OutlineInputBorder(),
-                    counterText: limit != null
-                        ? '${currentLength.toString()}/${limit.toString()}'
-                        : null,
-                  ),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: ctl,
+                keyboardType: keyboardType,
+                maxLines: maxLines,
+                minLines: maxLines > 1 ? (maxLines / 2).ceil() : 1,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  counterText: limit != null ? '$currentLength/$limit' : null,
                 ),
               ),
               if (limit != null)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Text(
-                      'Tối đa $limit ký tự',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    'Tối đa $limit ký tự',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
                     ),
                   ),
                 ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: const Text('Huỷ'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (limit != null && ctl.text.characters.length > limit) {
+                        return;
+                      }
+                      Navigator.of(ctx).pop(ctl.text);
+                    },
+                    child: const Text('Lưu'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
             ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Huỷ'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (limit != null && ctl.text.characters.length > limit) {
-                  return; // Do nothing if over limit
-                }
-                Navigator.of(ctx).pop(ctl.text);
-              },
-              child: const Text('Lưu'),
-            ),
-          ],
-        );
-      },
+          );
+          return SafeArea(child: content);
+        },
+      ),
     ),
   );
 }
 
-Future<String?> _showDoctorDescriptionCharDialog(
+Future<Object?> _showDiseaseFocusSheet(
   BuildContext context, {
-  required String title,
-  String initialValue = '',
-  int maxLines = 6,
-  int charLimit = 150,
-}) async {
-  final ctl = TextEditingController(text: initialValue);
-  return showDialog<String>(
+  DiseaseFocus? current,
+}) {
+  return showModalBottomSheet<Object?>(
     context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setState) {
-        final length = ctl.text.characters.length;
-        final over = length > charLimit;
-        return AlertDialog(
-          title: Text(title),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: ctl,
-                maxLines: maxLines,
-                minLines: (maxLines / 2).ceil(),
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  border: const OutlineInputBorder(),
-                  helperText: '$length/$charLimit ký tự',
-                  helperStyle: TextStyle(
-                    color: over ? Colors.red : AppColors.textSecondary,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-              if (over)
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: EdgeInsets.only(top: 4),
-                    child: Text(
-                      'Vượt quá số ký tự cho phép',
-                      style: TextStyle(color: Colors.red, fontSize: 12),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Huỷ'),
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (ctx) {
+      final content = Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Chọn bệnh theo dõi',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
-            ElevatedButton(
-              onPressed: over ? null : () => Navigator.of(ctx).pop(ctl.text),
-              child: const Text('Lưu'),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.clear, color: AppColors.textSecondary),
+              title: const Text('Xoá lựa chọn'),
+              onTap: () =>
+                  Navigator.of(ctx).pop(_DiseaseFocusDialogResult.clear),
+            ),
+            const Divider(height: 0),
+            SizedBox(
+              width: double.maxFinite,
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  ...DiseaseFocus.values.map((f) {
+                    final selected = f == current;
+                    return ListTile(
+                      leading: Icon(
+                        selected
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_off,
+                        color: selected
+                            ? AppColors.primaryColor
+                            : AppColors.textSecondary,
+                      ),
+                      title: Text(f.displayName),
+                      onTap: () => Navigator.of(ctx).pop(f),
+                    );
+                  }),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Đóng'),
+              ),
             ),
           ],
-        );
-      },
-    ),
+        ),
+      );
+      return SafeArea(child: content);
+    },
   );
 }
+
+// (Đã thay bằng _showEditBottomSheet)
 
 Widget _editableRow(
   BuildContext context, {
@@ -867,7 +778,7 @@ Widget _editableRow(
   return InkWell(
     onTap: () async {
       final current = value == 'Chưa cập nhật' ? '' : value;
-      final result = await _showEditDialog(
+      final result = await _showEditBottomSheet(
         context,
         title: label,
         initialValue: current,
@@ -944,7 +855,7 @@ class _AvatarPickerState extends State<_AvatarPicker> {
       final ext = picked.name.split('.').last.toLowerCase();
       // Tạo file mới với timestamp để tránh cache URL cũ
       final ts = DateTime.now().millisecondsSinceEpoch;
-      final path = 'avatars/${widget.uid}/profile_$ts.${ext}';
+      final path = 'avatars/${widget.uid}/profile_$ts.$ext';
       final fileData = await picked.readAsBytes();
 
       String url;
@@ -1027,8 +938,7 @@ class _AvatarPickerState extends State<_AvatarPicker> {
             backgroundImage: hasAvatar
                 ? NetworkImage(
                     hasAvatar
-                        ? effectiveUrl +
-                              '?v=${DateTime.now().millisecondsSinceEpoch}'
+                        ? '$effectiveUrl?v=${DateTime.now().millisecondsSinceEpoch}'
                         : effectiveUrl,
                   )
                 : null,

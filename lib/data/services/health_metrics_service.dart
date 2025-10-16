@@ -113,11 +113,12 @@ class HealthMetricsService {
       uid,
       'spo2',
     ).orderBy('ts', descending: true);
-    if (from != null)
+    if (from != null) {
       q = q.where(
         'ts',
         isGreaterThanOrEqualTo: Timestamp.fromDate(from.toUtc()),
       );
+    }
     if (limit != null) q = q.limit(limit);
     return q.snapshots().map(
       (s) => s.docs.map((d) => Spo2Sample.fromFirestore(d)).toList(),
@@ -129,11 +130,12 @@ class HealthMetricsService {
       uid,
       'hrv',
     ).orderBy('ts', descending: true);
-    if (from != null)
+    if (from != null) {
       q = q.where(
         'ts',
         isGreaterThanOrEqualTo: Timestamp.fromDate(from.toUtc()),
       );
+    }
     if (limit != null) q = q.limit(limit);
     return q.snapshots().map(
       (s) => s.docs.map((d) => HrvSample.fromFirestore(d)).toList(),
@@ -149,11 +151,12 @@ class HealthMetricsService {
       uid,
       'sleep_sessions',
     ).orderBy('start', descending: true);
-    if (from != null)
+    if (from != null) {
       q = q.where(
         'start',
         isGreaterThanOrEqualTo: Timestamp.fromDate(from.toUtc()),
       );
+    }
     if (limit != null) q = q.limit(limit);
     return q.snapshots().map(
       (s) => s.docs.map((d) => SleepSession.fromFirestore(d)).toList(),
@@ -238,10 +241,12 @@ class HealthMetricsService {
         if (sd != null) sdnnVals.add(sd);
         if (rm != null) rmssdVals.add(rm);
       }
-      if (sdnnVals.isNotEmpty)
+      if (sdnnVals.isNotEmpty) {
         avgSdnn = sdnnVals.reduce((a, b) => a + b) / sdnnVals.length;
-      if (rmssdVals.isNotEmpty)
+      }
+      if (rmssdVals.isNotEmpty) {
         avgRmssd = rmssdVals.reduce((a, b) => a + b) / rmssdVals.length;
+      }
     }
     Duration totalSleep = Duration.zero;
     for (final d in sleepDocs.docs) {

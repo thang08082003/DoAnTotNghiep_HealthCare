@@ -83,10 +83,11 @@ class _EditPatientProfileScreenState
       final ageText = _ageCtrl.text.trim();
       if (ageText.isNotEmpty) {
         final age = int.tryParse(ageText);
-        if (age != null)
+        if (age != null) {
           updates['age'] = age;
-        else
+        } else {
           updates['age'] = ageText; // fallback string
+        }
       } else {
         updates['age'] = FieldValue.delete();
       }

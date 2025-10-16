@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../chat/image_preview_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/doctor_model.dart';
 import '../../data/models/user_model.dart';
@@ -888,10 +889,12 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
       final url = m.mediaUrl!;
       return GestureDetector(
         onTap: () async {
-          final uri = Uri.tryParse(url);
-          if (uri != null) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-          }
+          if (!mounted) return;
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ImagePreviewScreen(imageUrl: url),
+            ),
+          );
         },
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
@@ -907,9 +910,20 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
       final name = m.fileName ?? 'Tệp đính kèm';
       return InkWell(
         onTap: () async {
-          final uri = Uri.tryParse(url);
-          if (uri != null) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          final mime = (m.mimeType ?? '').toLowerCase();
+          final isImageLike = mime.startsWith('image/');
+          if (isImageLike) {
+            if (!mounted) return;
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ImagePreviewScreen(imageUrl: url),
+              ),
+            );
+          } else {
+            final uri = Uri.tryParse(url);
+            if (uri != null) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            }
           }
         },
         child: Row(

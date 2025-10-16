@@ -213,14 +213,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           final hasSpecial = RegExp(
                             r'[!@#\$%^&*(),.?":{}|<>_\-]',
                           ).hasMatch(v);
-                          if (!hasUpper)
+                          if (!hasUpper) {
                             return 'Mật khẩu phải có ít nhất 1 chữ hoa (A-Z)';
-                          if (!hasLetter)
+                          }
+                          if (!hasLetter) {
                             return 'Mật khẩu phải có ít nhất 1 chữ cái';
-                          if (!hasDigit)
+                          }
+                          if (!hasDigit) {
                             return 'Mật khẩu phải có ít nhất 1 chữ số (0-9)';
-                          if (!hasSpecial)
+                          }
+                          if (!hasSpecial) {
                             return 'Mật khẩu phải có ít nhất 1 ký tự đặc biệt (ví dụ: !@#&*)';
+                          }
                           return null;
                         },
                       ),

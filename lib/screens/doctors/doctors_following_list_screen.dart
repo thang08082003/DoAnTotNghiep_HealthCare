@@ -58,7 +58,7 @@ class _DoctorsFollowingListScreenState
       final results = await Future.wait(futures);
       final doctors = results
           .whereType<UserModel>()
-          .where((u) => u is DoctorModel)
+          .whereType<DoctorModel>()
           .cast<DoctorModel>()
           .toList();
       setState(() {

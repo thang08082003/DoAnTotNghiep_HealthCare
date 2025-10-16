@@ -165,7 +165,7 @@ class _RecentReviewsPreview extends StatelessWidget {
           }
           return Column(
             children: [
-              ...reviews.map((r) => _reviewItem(context, r)).toList(),
+              ...reviews.map((r) => _reviewItem(context, r)),
               const SizedBox(height: 8),
               Align(
                 alignment: Alignment.centerRight,

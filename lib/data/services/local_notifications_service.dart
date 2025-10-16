@@ -100,8 +100,9 @@ class LocalNotificationsService {
           (snapshot) {
             for (final change in snapshot.docChanges) {
               if (change.type != DocumentChangeType.added &&
-                  change.type != DocumentChangeType.modified)
+                  change.type != DocumentChangeType.modified) {
                 continue;
+              }
               final data = change.doc.data() ?? {};
               // Skip incoming call notifications on Flutter side; handled by in-app screen or native
               final skipType = (data['type'] as String?) ?? '';

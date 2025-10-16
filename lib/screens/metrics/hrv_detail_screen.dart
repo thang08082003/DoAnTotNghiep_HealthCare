@@ -1,9 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/services.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:health/health.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/health_metrics_providers.dart';
@@ -11,7 +8,6 @@ import '../../providers/user_provider.dart';
 import 'hrv_measure_screen.dart';
 
 import '../../data/resources/gene/app_colors.dart';
-import '../../data/services/health_connect_service.dart';
 
 class HrvDetailScreen extends ConsumerStatefulWidget {
   const HrvDetailScreen({super.key});
@@ -24,19 +20,14 @@ enum _Range { day, week, month }
 
 class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
     with WidgetsBindingObserver {
-  static const MethodChannel _channel = MethodChannel(
-    'com.example.healthcare/hrv',
-  );
-  // _openMeasureScreen removed; use native _measureHrv()
-
   bool _loading = true;
   String? _error;
   _Range _mode = _Range.day;
-  bool _isFetching = false; // re-entrancy guard
-  bool _connected = false; // ensureConnected only once per mount
+  bool _isFetching = false;
+
   DateTime? _lastLoadAt; // debounce resumed refresh
-  bool _measuring = false; // UI state during native measurement
-  double _measureProgress = 0; // 0..1 during measurement
+  final bool _measuring = false; // UI state during native measurement
+  final double _measureProgress = 0; // 0..1 during measurement
   Map<String, dynamic>? _lastMeasure; // store last detailed results
 
   // Day: raw RMSSD points
@@ -51,8 +42,6 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
   List<_TimedSample> _dayScore = const [];
   // Week/Month: averages
   late DateTime _weekStart;
-  List<double> _weekRmssdAvg = List.filled(7, 0);
-  List<double> _monthRmssdAvg = const [];
 
   // Week/Month: manual metrics (all samples in range – we only need aggregated stats)
   List<double> _weekPnn50 = const [];
@@ -131,7 +120,10 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
               .doc(user.uid)
               .collection('hrv');
           final snap = await col
-              .where('ts', isGreaterThanOrEqualTo: Timestamp.fromDate(dayStart.toUtc()))
+              .where(
+                'ts',
+                isGreaterThanOrEqualTo: Timestamp.fromDate(dayStart.toUtc()),
+              )
               .where('ts', isLessThan: Timestamp.fromDate(now.toUtc()))
               .get();
           final rmssdPts = <_TimedSample>[];
@@ -204,7 +196,10 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
               .doc(user.uid)
               .collection('hrv');
           final snap = await col
-              .where('ts', isGreaterThanOrEqualTo: Timestamp.fromDate(weekStart.toUtc()))
+              .where(
+                'ts',
+                isGreaterThanOrEqualTo: Timestamp.fromDate(weekStart.toUtc()),
+              )
               .where('ts', isLessThan: Timestamp.fromDate(weekEnd.toUtc()))
               .get();
           final days = 7;
@@ -214,14 +209,20 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
             final d = doc.data();
             final tst = d['ts'];
             final score = (d['score'] as num?)?.toDouble();
-            if (tst is! Timestamp || score == null || !score.isFinite || score < 0) continue;
+            if (tst is! Timestamp ||
+                score == null ||
+                !score.isFinite ||
+                score < 0) {
+              continue;
+            }
             final idx = tst.toDate().toLocal().difference(weekStart).inDays;
             if (idx < 0 || idx >= days) continue;
             sums[idx] += score;
             counts[idx] += 1;
           }
           _weekScoreAvg = [
-            for (int i = 0; i < days; i++) counts[i] == 0 ? 0 : (sums[i] / counts[i])
+            for (int i = 0; i < days; i++)
+              counts[i] == 0 ? 0 : (sums[i] / counts[i]),
           ];
         } else {
           _weekScoreAvg = List<double>.filled(7, 0);
@@ -241,7 +242,10 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
               .doc(user.uid)
               .collection('hrv');
           final snap = await col
-              .where('ts', isGreaterThanOrEqualTo: Timestamp.fromDate(mStart.toUtc()))
+              .where(
+                'ts',
+                isGreaterThanOrEqualTo: Timestamp.fromDate(mStart.toUtc()),
+              )
               .where('ts', isLessThan: Timestamp.fromDate(mEnd.toUtc()))
               .get();
           final days = mEnd.difference(mStart).inDays;
@@ -251,14 +255,20 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
             final d = doc.data();
             final tst = d['ts'];
             final score = (d['score'] as num?)?.toDouble();
-            if (tst is! Timestamp || score == null || !score.isFinite || score < 0) continue;
+            if (tst is! Timestamp ||
+                score == null ||
+                !score.isFinite ||
+                score < 0) {
+              continue;
+            }
             final idx = tst.toDate().toLocal().difference(mStart).inDays;
             if (idx < 0 || idx >= days) continue;
             sums[idx] += score;
             counts[idx] += 1;
           }
           _monthScoreAvg = [
-            for (int i = 0; i < days; i++) counts[i] == 0 ? 0 : (sums[i] / counts[i])
+            for (int i = 0; i < days; i++)
+              counts[i] == 0 ? 0 : (sums[i] / counts[i]),
           ];
         } else {
           _monthScoreAvg = const [];
@@ -278,7 +288,10 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
 
           // Week range query
           final weekSnap = await hrvCol
-              .where('ts', isGreaterThanOrEqualTo: Timestamp.fromDate(weekStart.toUtc()))
+              .where(
+                'ts',
+                isGreaterThanOrEqualTo: Timestamp.fromDate(weekStart.toUtc()),
+              )
               .where('ts', isLessThan: Timestamp.fromDate(weekEnd.toUtc()))
               .get();
           final wP = <double>[];
@@ -303,7 +316,10 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
 
           // Month range query
           final monthSnap = await hrvCol
-              .where('ts', isGreaterThanOrEqualTo: Timestamp.fromDate(mStart.toUtc()))
+              .where(
+                'ts',
+                isGreaterThanOrEqualTo: Timestamp.fromDate(mStart.toUtc()),
+              )
               .where('ts', isLessThan: Timestamp.fromDate(mEnd.toUtc()))
               .get();
           final mP = <double>[];
@@ -356,135 +372,6 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
     final max = nonZero.last;
     final avg = nonZero.reduce((a, b) => a + b) / nonZero.length;
     return (min, max, avg);
-  }
-
-  Future<void> _measureHrv() async {
-    if (_measuring) return;
-    // Request camera permission
-    final camGranted = await Permission.camera.request().isGranted;
-    if (!camGranted) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cần quyền camera để đo HRV')),
-        );
-      }
-      return;
-    }
-    // Call into native (Android) to run camera + ppg_hrv.py via Chaquopy or similar
-    try {
-      setState(() {
-        _measuring = true;
-        _measureProgress = 0;
-        _lastMeasure = null;
-      });
-      // Fake progress locally based on durationSec
-      const durationSec = 60;
-      final start = DateTime.now();
-      Future.doWhile(() async {
-        if (!_measuring) return false;
-        final elapsed = DateTime.now().difference(start).inMilliseconds;
-        setState(
-          () => _measureProgress = (elapsed / (durationSec * 1000)).clamp(
-            0.0,
-            1.0,
-          ),
-        );
-        await Future.delayed(const Duration(milliseconds: 200));
-        return _measureProgress < 0.999;
-      });
-      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>(
-        'measureHrv',
-        {'durationSec': durationSec, 'useFlash': true},
-      );
-      if (result != null) {
-        final rmssd = (result['rmssd'] as num?)?.toDouble();
-        final sdnn = (result['sdnn'] as num?)?.toDouble();
-        final pnn50 = (result['pnn50'] as num?)?.toDouble();
-        final hr = (result['hr'] as num?)?.toDouble();
-        final score = (result['hrvScore'] as num?)?.toInt();
-        final level = result['hrvLevel']?.toString();
-        _lastMeasure = {
-          'rmssd': rmssd,
-          'sdnn': sdnn,
-          'pnn50': pnn50,
-          'hr': hr,
-          'hrvScore': score,
-          'hrvLevel': level,
-        };
-        if (mounted) {
-          // no dialog; results will be rendered inside the circular button
-        }
-        // Optionally add a point to the day series for visualization
-        if (rmssd != null && rmssd.isFinite) {
-          final now = DateTime.now();
-          setState(() {
-            _dayRmssd = List<_TimedSample>.from(_dayRmssd)
-              ..add(_TimedSample(time: now, value: rmssd))
-              ..sort((a, b) => a.time.compareTo(b.time));
-            if (sdnn != null && sdnn.isFinite) {
-              _daySdnn = List<_TimedSample>.from(_daySdnn)
-                ..add(_TimedSample(time: now, value: sdnn))
-                ..sort((a, b) => a.time.compareTo(b.time));
-            }
-            if (pnn50 != null && pnn50.isFinite) {
-              _dayPnn50 = List<_TimedSample>.from(_dayPnn50)
-                ..add(_TimedSample(time: now, value: pnn50))
-                ..sort((a, b) => a.time.compareTo(b.time));
-            }
-            if (hr != null && hr.isFinite) {
-              _dayHr = List<_TimedSample>.from(_dayHr)
-                ..add(_TimedSample(time: now, value: hr))
-                ..sort((a, b) => a.time.compareTo(b.time));
-            }
-            if (score != null) {
-              _dayScore = List<_TimedSample>.from(_dayScore)
-                ..add(_TimedSample(time: now, value: score.toDouble()))
-                ..sort((a, b) => a.time.compareTo(b.time));
-            }
-          });
-          // Persist manual measurement (rmssd + sdnn if present)
-          try {
-            final user = await ref.read(currentUserProvider.future);
-            if (user != null) {
-              await ref
-                  .read(healthMetricsRepositoryProvider)
-                  .saveManualHrv(
-                    user.uid,
-                    rmssd: rmssd,
-                    sdnn: sdnn,
-                    pnn50: pnn50,
-                    hr: hr,
-                    score: score,
-                    level: level,
-                    ts: now,
-                  );
-            }
-          } catch (_) {}
-        }
-      }
-    } on PlatformException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Không thể đo HRV: ${e.message ?? e.code}')),
-        );
-      }
-    } on MissingPluginException {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Chức năng đo HRV sẽ sớm được kích hoạt (cần tích hợp camera + Python).',
-            ),
-          ),
-        );
-      }
-    } finally {
-      if (mounted)
-        setState(() {
-          _measuring = false;
-          _measureProgress = 1;
-        });
-    }
   }
 
   @override
@@ -593,42 +480,55 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
                     BarChartData(
                       minY: 0,
                       maxY: 100,
-                gridData: const FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
+                      gridData: const FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
                         horizontalInterval: 20,
                       ),
                       barTouchData: BarTouchData(
                         enabled: true,
                         touchTooltipData: BarTouchTooltipData(
                           tooltipRoundedRadius: 8,
-                          getTooltipItem: (group, gi, rod, ri) => BarTooltipItem(
-                            '${rod.toY.toStringAsFixed(0)}',
-                            const TextStyle(color: Colors.white),
-                          ),
+                          getTooltipItem: (group, gi, rod, ri) =>
+                              BarTooltipItem(
+                                rod.toY.toStringAsFixed(0),
+                                const TextStyle(color: Colors.white),
+                              ),
                         ),
                       ),
                       titlesData: FlTitlesData(
-                        leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
+                        leftTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
                             reservedSize: 20,
                             getTitlesWidget: (v, meta) {
                               final tick = v.toInt();
-                              if (tick == 0 || tick == 6 || tick == 12 || tick == 18) {
-                                return Text('${tick}h', style: const TextStyle(fontSize: 10));
+                              if (tick == 0 ||
+                                  tick == 6 ||
+                                  tick == 12 ||
+                                  tick == 18) {
+                                return Text(
+                                  '${tick}h',
+                                  style: const TextStyle(fontSize: 10),
+                                );
                               }
-                        return const SizedBox.shrink();
-                      },
-                    ),
-                  ),
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ),
                       ),
                       barGroups: bars,
                     ),
-            ),
+                  ),
           ),
           const SizedBox(height: 12),
           _summarySectionDay(rmssdMin, rmssdMax, rmssdAvg),
@@ -639,14 +539,17 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
 
   Widget _buildCircularMeasureButton() {
     final size = 180.0;
-    final progress = _measuring ? _measureProgress : 0.0; // không hiển thị vòng quay trước khi đo
+    final progress = _measuring
+        ? _measureProgress
+        : 0.0; // không hiển thị vòng quay trước khi đo
     return GestureDetector(
       onTap: _measuring
           ? null
           : () async {
-              final res = await Navigator.of(context).push<Map<String, dynamic>>(
-                MaterialPageRoute(builder: (_) => const HrvMeasureScreen()),
-              );
+              final res = await Navigator.of(context)
+                  .push<Map<String, dynamic>>(
+                    MaterialPageRoute(builder: (_) => const HrvMeasureScreen()),
+                  );
               if (res != null) {
                 setState(() => _lastMeasure = res);
                 try {
@@ -659,7 +562,9 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
                   final now = DateTime.now();
                   final user = await ref.read(currentUserProvider.future);
                   if (user != null) {
-                    await ref.read(healthMetricsRepositoryProvider).saveManualHrv(
+                    await ref
+                        .read(healthMetricsRepositoryProvider)
+                        .saveManualHrv(
                           user.uid,
                           rmssd: rmssd,
                           sdnn: sdnn,
@@ -691,9 +596,11 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
             child: progress > 0
                 ? CircularProgressIndicator(
                     value: progress,
-              strokeWidth: 10,
-              backgroundColor: Colors.grey.shade200,
-                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
+                    strokeWidth: 10,
+                    backgroundColor: Colors.grey.shade200,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppColors.primaryColor,
+                    ),
                   )
                 : const SizedBox.shrink(),
           ),
@@ -705,7 +612,7 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black,
                   blurRadius: 10,
                 ),
               ],
@@ -761,7 +668,7 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
         Text('pNN50 ${fmt(pnn50, ' %')}'),
         Text('HR ${fmt(hr, ' bpm')}'),
         if (level != null)
-          Text('(${level})', style: const TextStyle(color: Colors.black54)),
+          Text('($level)', style: const TextStyle(color: Colors.black54)),
       ],
     );
   }
@@ -794,11 +701,21 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
               BarChartData(
                 minY: 0,
                 maxY: 100,
-                gridData: const FlGridData(show: true, drawVerticalLine: false, horizontalInterval: 20),
+                gridData: const FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: 20,
+                ),
                 titlesData: FlTitlesData(
-                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  leftTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
@@ -824,8 +741,6 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
   }
 
   Widget _buildMonth() {
-    final now = DateTime.now();
-    final days = DateTime(now.year, now.month + 1, 0).day;
     final bars = <BarChartGroupData>[];
     for (int i = 0; i < _monthScoreAvg.length; i++) {
       final double y = _monthScoreAvg[i];
@@ -854,11 +769,21 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
               BarChartData(
                 minY: 0,
                 maxY: 100,
-                gridData: const FlGridData(show: true, drawVerticalLine: false, horizontalInterval: 20),
+                gridData: const FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: 20,
+                ),
                 titlesData: FlTitlesData(
-                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  leftTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
@@ -892,7 +817,7 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
       borderRadius: BorderRadius.circular(12),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.05),
+          color: Colors.black,
           blurRadius: 10,
           offset: const Offset(0, 2),
         ),
@@ -965,7 +890,14 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
     final scoreStats = _summary(_weekScore);
     final metrics = <_MetricSummary>[
       _MetricSummary('RMSSD', rmssdMin, rmssdAvg, rmssdMax, 'ms', _colorRmssd),
-      _MetricSummary('SDNN', sdnnStats.$1, sdnnStats.$3, sdnnStats.$2, 'ms', _colorSdnn),
+      _MetricSummary(
+        'SDNN',
+        sdnnStats.$1,
+        sdnnStats.$3,
+        sdnnStats.$2,
+        'ms',
+        _colorSdnn,
+      ),
       _MetricSummary(
         'pNN50',
         pnnStats.$1,
@@ -998,7 +930,14 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
     final scoreStats = _summary(_monthScore);
     final metrics = <_MetricSummary>[
       _MetricSummary('RMSSD', rmssdMin, rmssdAvg, rmssdMax, 'ms', _colorRmssd),
-      _MetricSummary('SDNN', sdnnStats.$1, sdnnStats.$3, sdnnStats.$2, 'ms', _colorSdnn),
+      _MetricSummary(
+        'SDNN',
+        sdnnStats.$1,
+        sdnnStats.$3,
+        sdnnStats.$2,
+        'ms',
+        _colorSdnn,
+      ),
       _MetricSummary(
         'pNN50',
         pnnStats.$1,

@@ -4,8 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 DateTime _fromTs(dynamic v) {
   if (v is Timestamp) return v.toDate();
   if (v is DateTime) return v;
-  if (v is int)
+  if (v is int) {
     return DateTime.fromMillisecondsSinceEpoch(v, isUtc: true).toLocal();
+  }
   throw ArgumentError('Unsupported timestamp value: $v');
 }
 

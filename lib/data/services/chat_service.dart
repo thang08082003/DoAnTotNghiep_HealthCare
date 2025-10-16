@@ -4,6 +4,7 @@ import '../models/chat_message.dart';
 import '../services/media_upload_service.dart';
 import '../models/notification_model.dart';
 import 'notification_service.dart';
+// ignore: depend_on_referenced_packages
 import 'package:mime/mime.dart' as mime;
 
 class ChatService {

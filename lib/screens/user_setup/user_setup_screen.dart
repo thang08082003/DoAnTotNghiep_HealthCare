@@ -340,8 +340,9 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
               ),
             ),
             validator: (v) {
-              if (v == null || v.trim().isEmpty)
+              if (v == null || v.trim().isEmpty) {
                 return 'Vui lòng nhập số điện thoại';
+              }
               final digits = v.replaceAll(RegExp(r'[^0-9]'), '');
               if (digits.length != 10) return 'Phải có đúng 10 số';
               return null;
@@ -398,8 +399,9 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
               counterText: '',
             ),
             validator: (v) {
-              if (v == null || v.trim().isEmpty)
+              if (v == null || v.trim().isEmpty) {
                 return 'Vui lòng nhập tiền sử bệnh';
+              }
               if (v.trim().length > 150) return 'Tối đa 150 ký tự';
               return null;
             },
@@ -451,8 +453,9 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
               ),
             ),
             validator: (v) {
-              if (v == null || v.trim().isEmpty)
+              if (v == null || v.trim().isEmpty) {
                 return 'Vui lòng nhập số điện thoại';
+              }
               final digits = v.replaceAll(RegExp(r'[^0-9]'), '');
               if (digits.length != 10) return 'Phải có đúng 10 số';
               return null;

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../chat/image_preview_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../components/loading/loading_widget.dart';
 import '../../data/models/user_model.dart';
@@ -385,18 +386,18 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
     final hrvAsync = ref.watch(hrvStreamProvider(widget.patientId));
     final sleepAsync = ref.watch(sleepSessionsStreamProvider(widget.patientId));
 
-    double? _avg(List<double> v) =>
+    double? avg(List<double> v) =>
         v.isEmpty ? null : v.reduce((a, b) => a + b) / v.length;
-    (double? min, double? max, double? avg) _triple(List<double> v) {
+    (double? min, double? max, double? avg) triple(List<double> v) {
       if (v.isEmpty) return (null, null, null);
       v.sort();
-      return (v.first, v.last, _avg(v));
+      return (v.first, v.last, avg(v));
     }
 
-    String _fmtNum(double? v, String unit) =>
+    String fmtNum(double? v, String unit) =>
         v == null ? '-' : '${v.toStringAsFixed(0)} $unit';
-    String _fmtScore(double? v) => v == null ? '-' : v.toStringAsFixed(0);
-    String _fmtDur(int minutes) {
+    String fmtScore(double? v) => v == null ? '-' : v.toStringAsFixed(0);
+    String fmtDur(int minutes) {
       if (minutes <= 0) return '-';
       final h = minutes ~/ 60;
       final m = minutes % 60;
@@ -427,8 +428,8 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
         .where((s) => isToday(s.start))
         .toList();
 
-    final (hrMin, hrMax, hrAvg) = _triple(List<double>.from(hrVals));
-    final (spo2Min, spo2Max, spo2Avg) = _triple(List<double>.from(spo2Vals));
+    final (hrMin, hrMax, hrAvg) = triple(List<double>.from(hrVals));
+    final (spo2Min, spo2Max, spo2Avg) = triple(List<double>.from(spo2Vals));
 
     hrvSamples.sort((a, b) => a.ts.compareTo(b.ts));
     final latestHrv = hrvSamples.isEmpty ? null : hrvSamples.last; // take score
@@ -465,9 +466,9 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
                 title: 'Nhịp tim',
                 body: _statRow(
                   'Min/Avg/Max',
-                  _fmtNum(hrMin, 'bpm'),
-                  _fmtNum(hrAvg, 'bpm'),
-                  _fmtNum(hrMax, 'bpm'),
+                  fmtNum(hrMin, 'bpm'),
+                  fmtNum(hrAvg, 'bpm'),
+                  fmtNum(hrMax, 'bpm'),
                 ),
                 loading: hrAsync.isLoading,
               ),
@@ -475,9 +476,9 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
                 title: 'SpO₂',
                 body: _statRow(
                   'Min/Avg/Max',
-                  _fmtNum(spo2Min, '%'),
-                  _fmtNum(spo2Avg, '%'),
-                  _fmtNum(spo2Max, '%'),
+                  fmtNum(spo2Min, '%'),
+                  fmtNum(spo2Avg, '%'),
+                  fmtNum(spo2Max, '%'),
                 ),
                 loading: spo2Async.isLoading,
               ),
@@ -488,7 +489,7 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _kv('Score', _fmtScore(latestHrv.score?.toDouble())),
+                          _kv('Score', fmtScore(latestHrv.score?.toDouble())),
                           if (latestHrv.level != null)
                             _kv('Level', latestHrv.level!),
                         ],
@@ -500,12 +501,12 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
                 body: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _kv('Tổng', _fmtDur(totalSleepMinutes)),
+                    _kv('Tổng', fmtDur(totalSleepMinutes)),
                     const SizedBox(height: 4),
                     if (sleepSessions.isNotEmpty)
                       ...sleepSessions.map(
                         (s) => Text(
-                          '${s.start.hour.toString().padLeft(2, '0')}:${s.start.minute.toString().padLeft(2, '0')} - ${_fmtDur(s.durationMinutes)}',
+                          '${s.start.hour.toString().padLeft(2, '0')}:${s.start.minute.toString().padLeft(2, '0')} - ${fmtDur(s.durationMinutes)}',
                           style: const TextStyle(fontSize: 12),
                         ),
                       )
@@ -730,10 +731,12 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
       final url = m.mediaUrl!;
       return GestureDetector(
         onTap: () async {
-          final uri = Uri.tryParse(url);
-          if (uri != null) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-          }
+          if (!mounted) return;
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ImagePreviewScreen(imageUrl: url),
+            ),
+          );
         },
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
@@ -749,9 +752,20 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
       final name = m.fileName ?? 'Tệp đính kèm';
       return InkWell(
         onTap: () async {
-          final uri = Uri.tryParse(url);
-          if (uri != null) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          final mime = (m.mimeType ?? '').toLowerCase();
+          final isImageLike = mime.startsWith('image/');
+          if (isImageLike) {
+            if (!mounted) return;
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ImagePreviewScreen(imageUrl: url),
+              ),
+            );
+          } else {
+            final uri = Uri.tryParse(url);
+            if (uri != null) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            }
           }
         },
         child: Row(

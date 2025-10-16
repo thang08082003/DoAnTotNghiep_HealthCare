@@ -14,8 +14,8 @@ import '../profile/profile_content.dart';
 import '../patients/patients_list_content.dart';
 
 class HomePage extends BasePage {
-  const HomePage({super.key, required UserRole userRole})
-    : super(title: 'Trang chủ', userRole: userRole);
+  const HomePage({super.key, required super.userRole})
+    : super(title: 'Trang chủ');
 
   @override
   HomePageState createState() => HomePageState();

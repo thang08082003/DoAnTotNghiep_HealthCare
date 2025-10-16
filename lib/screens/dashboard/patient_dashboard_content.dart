@@ -329,8 +329,7 @@ class _LazySleepDetail extends StatelessWidget {
 
 String _fmtBpm(double? v) =>
     v == null || v <= 0 ? '-' : '${v.toStringAsFixed(0)} bpm';
-String _fmtMs(double? v) =>
-    v == null || v <= 0 ? '-' : '${v.toStringAsFixed(0)}';
+String _fmtMs(double? v) => v == null || v <= 0 ? '-' : v.toStringAsFixed(0);
 String _fmtPct(double? v) =>
     v == null || v <= 0 ? '-' : '${v.toStringAsFixed(0)} %';
 String _fmtDur(Duration? d) {
