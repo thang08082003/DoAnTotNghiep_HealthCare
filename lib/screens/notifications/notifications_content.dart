@@ -7,11 +7,20 @@ import '../../data/services/notification_service.dart';
 import '../../providers/user_provider.dart';
 import '../../data/services/follow_request_service.dart';
 
-class NotificationsListContent extends ConsumerWidget {
+class NotificationsListContent extends ConsumerStatefulWidget {
   const NotificationsListContent({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NotificationsListContent> createState() =>
+      _NotificationsListContentState();
+}
+
+class _NotificationsListContentState
+    extends ConsumerState<NotificationsListContent> {
+  final Set<String> _locallyReadIds = <String>{};
+
+  @override
+  Widget build(BuildContext context) {
     final userAsync = ref.watch(currentUserProvider);
     return userAsync.when(
       loading: () => const LoadingWidget(),
@@ -32,8 +41,7 @@ class NotificationsListContent extends ConsumerWidget {
               return Center(child: Text('Lỗi tải thông báo: ${snap.error}'));
             }
             final items = (snap.data ?? const []);
-            final visible = items.where((n) => !n.isRead).toList();
-            if (visible.isEmpty) {
+            if (items.isEmpty) {
               return const Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -54,9 +62,10 @@ class NotificationsListContent extends ConsumerWidget {
             }
             return ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: visible.length,
+              itemCount: items.length,
               itemBuilder: (context, index) {
-                final n = visible[index];
+                final n = items[index];
+                final isReadLocal = n.isRead || _locallyReadIds.contains(n.id);
                 final icon = _iconForNotification(n.type);
                 final iconColor = _colorForNotification(n.type);
                 return Dismissible(
@@ -76,8 +85,6 @@ class NotificationsListContent extends ConsumerWidget {
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.done_all, color: Colors.white),
-                        SizedBox(width: 8),
                         Icon(Icons.delete_forever, color: Colors.white),
                       ],
                     ),
@@ -87,12 +94,10 @@ class NotificationsListContent extends ConsumerWidget {
                     return true;
                   },
                   onDismissed: (_) async {
-                    await NotificationService.markReadAndDelete(n.id);
+                    await NotificationService.deleteNotification(n.id);
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Đã đánh dấu đã đọc và xoá thông báo'),
-                        ),
+                        const SnackBar(content: Text('Đã xoá thông báo')),
                       );
                     }
                   },
@@ -102,12 +107,12 @@ class NotificationsListContent extends ConsumerWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: n.isRead
+                      color: isReadLocal
                           ? Colors.white
                           : AppColors.primaryColor.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: n.isRead
+                        color: isReadLocal
                             ? Colors.grey.withValues(alpha: 0.2)
                             : AppColors.primaryColor.withValues(alpha: 0.2),
                       ),
@@ -124,7 +129,7 @@ class NotificationsListContent extends ConsumerWidget {
                       title: Text(
                         n.title,
                         style: TextStyle(
-                          fontWeight: n.isRead
+                          fontWeight: isReadLocal
                               ? FontWeight.normal
                               : FontWeight.bold,
                           color: AppColors.textPrimary,
@@ -224,8 +229,20 @@ class NotificationsListContent extends ConsumerWidget {
                             ),
                         ],
                       ),
-                      // Tap does nothing now (swipe handles delete/read)
-                      onTap: () {},
+                      // Tap: mark as read (do not delete; keep item visible)
+                      onTap: () async {
+                        if (!isReadLocal) {
+                          setState(() {
+                            _locallyReadIds.add(n.id);
+                          });
+                          await NotificationService.markAsRead(n.id);
+                        }
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Đã đánh dấu đã đọc')),
+                          );
+                        }
+                      },
                     ),
                   ),
                 );
