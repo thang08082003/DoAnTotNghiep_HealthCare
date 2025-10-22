@@ -1,20 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../data/services/health_connect_service.dart';
 import 'package:health/health.dart';
+import '../../providers/health_metrics_providers.dart';
+import '../../data/models/health_metric_models.dart';
 
-class HeartRateDetailScreen extends StatefulWidget {
-  const HeartRateDetailScreen({super.key});
+class HeartRateDetailScreen extends ConsumerStatefulWidget {
+  final String?
+  userId; // nếu có userId -> lấy từ Firestore (bác sĩ theo dõi bệnh nhân)
+  const HeartRateDetailScreen({super.key, this.userId});
 
   @override
-  State<HeartRateDetailScreen> createState() => _HeartRateDetailScreenState();
+  ConsumerState<HeartRateDetailScreen> createState() =>
+      _HeartRateDetailScreenState();
 }
 
 enum _RangeMode { day, week, month }
 
-class _HeartRateDetailScreenState extends State<HeartRateDetailScreen> {
+class _HeartRateDetailScreenState extends ConsumerState<HeartRateDetailScreen> {
   bool _loading = true;
   String? _error;
   bool _fetching = false;
@@ -58,58 +64,122 @@ class _HeartRateDetailScreenState extends State<HeartRateDetailScreen> {
       });
     }
     try {
-      final svc = GoogleFitService();
-
-      // Day range anchored to today's 00:00 -> now
+      // Phân nhánh nguồn dữ liệu: nếu có userId -> Firestore; ngược lại -> Health Connect
       final now = DateTime.now();
-      final dayStart = DateTime(now.year, now.month, now.day);
-      final dayData = await _fetchRawHr(svc, dayStart, now);
-      final daySpots = _mapToDaySpots(dayData, dayStart);
-      final dayStats = _calcStats(dayData);
-      final dayHourly = _hourlyAveragesFromSpots(daySpots);
+      if (widget.userId != null) {
+        final repo = ref.read(healthMetricsRepositoryProvider);
 
-      // Week range (Mon..Sun of current week)
-      final monday = _startOfWeek(now);
-      final sunday = monday.add(const Duration(days: 7));
-      final weekData = await _fetchRawHr(svc, monday, sunday);
-      final weekDailyAverages = _dailyAverages(weekData, monday, 7);
-      final weekSpots = List<FlSpot>.generate(7, (i) {
-        final v = weekDailyAverages[i];
-        return FlSpot(i.toDouble(), (v ?? 0));
-      });
-      final weekStats = _calcStats(weekData);
+        // Day range anchored to today's 00:00 -> now
+        final dayStart = DateTime(now.year, now.month, now.day);
+        final daySamples = await repo
+            .heartRateStream(widget.userId!, from: dayStart)
+            .first;
+        final daySpots = _mapFsToDaySpots(daySamples, dayStart);
+        final dayStats = _calcFsStats(daySamples);
+        final dayHourly = _hourlyAveragesFromSpots(daySpots);
 
-      // Month range (first..last day of current month)
-      final firstDay = DateTime(now.year, now.month, 1);
-      final firstNextMonth = DateTime(now.year, now.month + 1, 1);
-      final monthData = await _fetchRawHr(svc, firstDay, firstNextMonth);
-      final lastDay = firstNextMonth.subtract(const Duration(days: 1)).day;
-      final monthDailyAverages = _dailyAverages(monthData, firstDay, lastDay);
-      final monthSpots = List<FlSpot>.generate(lastDay, (i) {
-        final dayIndex = i + 1; // 1..lastDay
-        final v = monthDailyAverages[i];
-        return FlSpot(dayIndex.toDouble(), (v ?? 0));
-      });
-      final monthStats = _calcStats(monthData);
+        // Week range (Mon..Sun)
+        final monday = _startOfWeek(now);
+        final weekSamples = await repo
+            .heartRateStream(widget.userId!, from: monday)
+            .first;
+        final weekDailyAverages = _dailyAveragesFromFs(weekSamples, monday, 7);
+        final weekSpots = List<FlSpot>.generate(7, (i) {
+          final v = weekDailyAverages[i];
+          return FlSpot(i.toDouble(), (v ?? 0));
+        });
+        final weekStats = _calcFsStats(weekSamples);
 
-      if (!mounted) return;
-      setState(() {
-        _daySpots = daySpots;
-        _dayMin = dayStats.min;
-        _dayMax = dayStats.max;
-        _dayAvg = dayStats.avg;
-        _dayHourlyAvg = dayHourly;
+        // Month range (first..last day)
+        final firstDay = DateTime(now.year, now.month, 1);
+        final firstNextMonth = DateTime(now.year, now.month + 1, 1);
+        final lastDay = firstNextMonth.subtract(const Duration(days: 1)).day;
+        final monthSamples = await repo
+            .heartRateStream(widget.userId!, from: firstDay)
+            .first;
+        final monthDailyAverages = _dailyAveragesFromFs(
+          monthSamples,
+          firstDay,
+          lastDay,
+        );
+        final monthSpots = List<FlSpot>.generate(lastDay, (i) {
+          final dayIndex = i + 1; // 1..lastDay
+          final v = monthDailyAverages[i];
+          return FlSpot(dayIndex.toDouble(), (v ?? 0));
+        });
+        final monthStats = _calcFsStats(monthSamples);
 
-        _weekSpots = weekSpots;
-        _weekMin = weekStats.min;
-        _weekMax = weekStats.max;
-        _weekAvg = weekStats.avg;
+        if (!mounted) return;
+        setState(() {
+          _daySpots = daySpots;
+          _dayMin = dayStats.min;
+          _dayMax = dayStats.max;
+          _dayAvg = dayStats.avg;
+          _dayHourlyAvg = dayHourly;
 
-        _monthSpots = monthSpots;
-        _monthMin = monthStats.min;
-        _monthMax = monthStats.max;
-        _monthAvg = monthStats.avg;
-      });
+          _weekSpots = weekSpots;
+          _weekMin = weekStats.min;
+          _weekMax = weekStats.max;
+          _weekAvg = weekStats.avg;
+
+          _monthSpots = monthSpots;
+          _monthMin = monthStats.min;
+          _monthMax = monthStats.max;
+          _monthAvg = monthStats.avg;
+        });
+      } else {
+        final svc = GoogleFitService();
+
+        // Day range anchored to today's 00:00 -> now
+        final dayStart = DateTime(now.year, now.month, now.day);
+        final dayData = await _fetchRawHr(svc, dayStart, now);
+        final daySpots = _mapToDaySpots(dayData, dayStart);
+        final dayStats = _calcStats(dayData);
+        final dayHourly = _hourlyAveragesFromSpots(daySpots);
+
+        // Week range (Mon..Sun of current week)
+        final monday = _startOfWeek(now);
+        final sunday = monday.add(const Duration(days: 7));
+        final weekData = await _fetchRawHr(svc, monday, sunday);
+        final weekDailyAverages = _dailyAverages(weekData, monday, 7);
+        final weekSpots = List<FlSpot>.generate(7, (i) {
+          final v = weekDailyAverages[i];
+          return FlSpot(i.toDouble(), (v ?? 0));
+        });
+        final weekStats = _calcStats(weekData);
+
+        // Month range (first..last day of current month)
+        final firstDay = DateTime(now.year, now.month, 1);
+        final firstNextMonth = DateTime(now.year, now.month + 1, 1);
+        final monthData = await _fetchRawHr(svc, firstDay, firstNextMonth);
+        final lastDay = firstNextMonth.subtract(const Duration(days: 1)).day;
+        final monthDailyAverages = _dailyAverages(monthData, firstDay, lastDay);
+        final monthSpots = List<FlSpot>.generate(lastDay, (i) {
+          final dayIndex = i + 1; // 1..lastDay
+          final v = monthDailyAverages[i];
+          return FlSpot(dayIndex.toDouble(), (v ?? 0));
+        });
+        final monthStats = _calcStats(monthData);
+
+        if (!mounted) return;
+        setState(() {
+          _daySpots = daySpots;
+          _dayMin = dayStats.min;
+          _dayMax = dayStats.max;
+          _dayAvg = dayStats.avg;
+          _dayHourlyAvg = dayHourly;
+
+          _weekSpots = weekSpots;
+          _weekMin = weekStats.min;
+          _weekMax = weekStats.max;
+          _weekAvg = weekStats.avg;
+
+          _monthSpots = monthSpots;
+          _monthMin = monthStats.min;
+          _monthMax = monthStats.max;
+          _monthAvg = monthStats.avg;
+        });
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = e.toString());
@@ -117,6 +187,50 @@ class _HeartRateDetailScreenState extends State<HeartRateDetailScreen> {
       _fetching = false;
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  // --- Firestore mapping helpers ---
+  List<FlSpot> _mapFsToDaySpots(List<HeartRateSample> samples, DateTime start) {
+    final List<FlSpot> pts = [];
+    for (final s in samples) {
+      final hours = s.ts.difference(start).inMinutes / 60.0;
+      if (hours >= 0 && hours <= 24 && s.bpm > 0) {
+        pts.add(FlSpot(hours, s.bpm));
+      }
+    }
+    pts.sort((a, b) => a.x.compareTo(b.x));
+    return pts;
+  }
+
+  List<double?> _dailyAveragesFromFs(
+    List<HeartRateSample> samples,
+    DateTime startDay,
+    int count,
+  ) {
+    final buckets = List<List<double>>.generate(count, (_) => []);
+    for (final s in samples) {
+      if (s.bpm <= 0) continue;
+      final dayIndex = s.ts.difference(startDay).inDays;
+      if (dayIndex >= 0 && dayIndex < count) {
+        buckets[dayIndex].add(s.bpm);
+      }
+    }
+    return buckets
+        .map(
+          (list) => list.isEmpty
+              ? null
+              : (list.reduce((a, b) => a + b) / list.length),
+        )
+        .toList();
+  }
+
+  _Stats _calcFsStats(List<HeartRateSample> samples) {
+    final values = samples.map((e) => e.bpm).where((v) => v > 0).toList();
+    if (values.isEmpty) return const _Stats(null, null, null);
+    final min = values.reduce((a, b) => a < b ? a : b);
+    final max = values.reduce((a, b) => a > b ? a : b);
+    final avg = values.reduce((a, b) => a + b) / values.length;
+    return _Stats(min, max, avg);
   }
 
   // Build 24 hourly averages from scattered spots in range [0,24)

@@ -19,6 +19,7 @@ import '../../data/models/call_session.dart';
 // import '../call/incoming_call_sheet.dart'; // reserved for future incoming overlay
 import 'dart:async';
 import '../../providers/health_metrics_providers.dart';
+import '../../components/today_health_info_section.dart';
 
 class PatientDetailScreen extends ConsumerStatefulWidget {
   final String patientId;
@@ -190,11 +191,13 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
             ],
           ),
           const SizedBox(height: 16),
+          // Đưa "Thông tin sức khỏe" lên ngay dưới phần thông tin bệnh nhân
+          _buildReportsSection(),
+          const SizedBox(height: 16),
           _buildDoctorCreateOrderSection(),
           const SizedBox(height: 16),
           _MetricsOverviewCard(patientId: widget.patientId),
           const SizedBox(height: 16),
-          _buildReportsSection(),
         ],
       ),
     );
@@ -380,152 +383,7 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
   }
 
   Widget _buildReportsSection() {
-    // Doctor-facing report: only today's Heart Rate, SpO2, HRV Score, Sleep
-    final hrAsync = ref.watch(heartRateStreamProvider(widget.patientId));
-    final spo2Async = ref.watch(spo2StreamProvider(widget.patientId));
-    final hrvAsync = ref.watch(hrvStreamProvider(widget.patientId));
-    final sleepAsync = ref.watch(sleepSessionsStreamProvider(widget.patientId));
-
-    double? avg(List<double> v) =>
-        v.isEmpty ? null : v.reduce((a, b) => a + b) / v.length;
-    (double? min, double? max, double? avg) triple(List<double> v) {
-      if (v.isEmpty) return (null, null, null);
-      v.sort();
-      return (v.first, v.last, avg(v));
-    }
-
-    String fmtNum(double? v, String unit) =>
-        v == null ? '-' : '${v.toStringAsFixed(0)} $unit';
-    String fmtScore(double? v) => v == null ? '-' : v.toStringAsFixed(0);
-    String fmtDur(int minutes) {
-      if (minutes <= 0) return '-';
-      final h = minutes ~/ 60;
-      final m = minutes % 60;
-      if (h == 0) return '${m}m';
-      return '${h}h ${m}m';
-    }
-
-    final now = DateTime.now();
-    final dayStart = DateTime(now.year, now.month, now.day);
-    bool isToday(DateTime ts) => !ts.isBefore(dayStart);
-
-    final hrVals =
-        hrAsync.asData?.value
-            .where((e) => isToday(e.ts))
-            .map((e) => e.bpm)
-            .toList() ??
-        [];
-    final spo2Vals =
-        spo2Async.asData?.value
-            .where((e) => isToday(e.ts))
-            .map((e) => e.percentage)
-            .toList() ??
-        [];
-    final hrvSamples = (hrvAsync.asData?.value ?? [])
-        .where((s) => isToday(s.ts))
-        .toList();
-    final sleepSessions = (sleepAsync.asData?.value ?? [])
-        .where((s) => isToday(s.start))
-        .toList();
-
-    final (hrMin, hrMax, hrAvg) = triple(List<double>.from(hrVals));
-    final (spo2Min, spo2Max, spo2Avg) = triple(List<double>.from(spo2Vals));
-
-    hrvSamples.sort((a, b) => a.ts.compareTo(b.ts));
-    final latestHrv = hrvSamples.isEmpty ? null : hrvSamples.last; // take score
-
-    final totalSleepMinutes = sleepSessions.fold<int>(
-      0,
-      (sum, s) => sum + s.durationMinutes,
-    );
-    // Removed weekly/month aggregates; only today's sleep considered.
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Báo cáo',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            runSpacing: 12,
-            children: [
-              _miniCard(
-                title: 'Nhịp tim',
-                body: _statRow(
-                  'Min/Avg/Max',
-                  fmtNum(hrMin, 'bpm'),
-                  fmtNum(hrAvg, 'bpm'),
-                  fmtNum(hrMax, 'bpm'),
-                ),
-                loading: hrAsync.isLoading,
-              ),
-              _miniCard(
-                title: 'SpO₂',
-                body: _statRow(
-                  'Min/Avg/Max',
-                  fmtNum(spo2Min, '%'),
-                  fmtNum(spo2Avg, '%'),
-                  fmtNum(spo2Max, '%'),
-                ),
-                loading: spo2Async.isLoading,
-              ),
-              _miniCard(
-                title: 'HRV Score',
-                body: latestHrv == null
-                    ? const Text('-', style: TextStyle(fontSize: 13))
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _kv('Score', fmtScore(latestHrv.score?.toDouble())),
-                          if (latestHrv.level != null)
-                            _kv('Level', latestHrv.level!),
-                        ],
-                      ),
-                loading: hrvAsync.isLoading,
-              ),
-              _miniCard(
-                title: 'Ngủ hôm nay',
-                body: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _kv('Tổng', fmtDur(totalSleepMinutes)),
-                    const SizedBox(height: 4),
-                    if (sleepSessions.isNotEmpty)
-                      ...sleepSessions.map(
-                        (s) => Text(
-                          '${s.start.hour.toString().padLeft(2, '0')}:${s.start.minute.toString().padLeft(2, '0')} - ${fmtDur(s.durationMinutes)}',
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      )
-                    else
-                      const Text('-', style: TextStyle(fontSize: 12)),
-                  ],
-                ),
-                loading: sleepAsync.isLoading,
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            '* Chỉ số của hôm nay',
-            style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
-          ),
-        ],
-      ),
-    );
+    return TodayHealthInfoSection(userId: widget.patientId);
   }
 
   Widget _buildMessagesTab() {
@@ -932,87 +790,6 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
     return 'Chưa cập nhật';
   }
 }
-
-Widget _miniCard({
-  required String title,
-  required Widget body,
-  bool loading = false,
-}) {
-  return Container(
-    width: double.infinity,
-    margin: const EdgeInsets.only(bottom: 4),
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
-    ),
-    child: loading
-        ? const SizedBox(
-            height: 48,
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-          )
-        : Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 6),
-              body,
-            ],
-          ),
-  );
-}
-
-Widget _kv(String k, String v) => Padding(
-  padding: const EdgeInsets.symmetric(vertical: 2),
-  child: Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    children: [
-      Expanded(child: Text(k, style: const TextStyle(fontSize: 12))),
-      const SizedBox(width: 8),
-      Text(
-        v,
-        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-      ),
-    ],
-  ),
-);
-
-Widget _statRow(String label, String min, String avg, String max) => Column(
-  crossAxisAlignment: CrossAxisAlignment.start,
-  children: [
-    Text(
-      label,
-      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-    ),
-    const SizedBox(height: 2),
-    Row(
-      children: [
-        Expanded(child: Text(min, style: const TextStyle(fontSize: 12))),
-        Expanded(
-          child: Center(
-            child: Text(
-              avg,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ),
-        Expanded(
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: Text(max, style: const TextStyle(fontSize: 12)),
-          ),
-        ),
-      ],
-    ),
-  ],
-);
 
 class _MetricsOverviewCard extends ConsumerWidget {
   final String patientId;
