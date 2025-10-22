@@ -2,20 +2,24 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:health/health.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/resources/gene/app_colors.dart';
 import '../../data/services/health_connect_service.dart';
+import '../../providers/health_metrics_providers.dart';
+import '../../data/models/health_metric_models.dart';
 
-class SleepDetailScreen extends StatefulWidget {
-  const SleepDetailScreen({super.key});
+class SleepDetailScreen extends ConsumerStatefulWidget {
+  final String? userId; // nếu có userId -> lấy Firestore (role bác sĩ)
+  const SleepDetailScreen({super.key, this.userId});
 
   @override
-  State<SleepDetailScreen> createState() => _SleepDetailScreenState();
+  ConsumerState<SleepDetailScreen> createState() => _SleepDetailScreenState();
 }
 
 enum _SleepRange { day, week, month }
 
-class _SleepDetailScreenState extends State<SleepDetailScreen>
+class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
     with WidgetsBindingObserver {
   bool _loading = true;
   String? _error;
@@ -78,38 +82,79 @@ class _SleepDetailScreenState extends State<SleepDetailScreen>
       });
     }
     try {
-      final svc = GoogleFitService();
-      await svc.ensureConnected();
       final now = DateTime.now();
+      if (widget.userId != null) {
+        // Firestore source (role bác sĩ)
+        final repo = ref.read(healthMetricsRepositoryProvider);
+        // Day
+        final dayStart = DateTime(now.year, now.month, now.day);
+        final daySessions = await repo
+            .sleepStream(widget.userId!, from: dayStart)
+            .first;
+        final dayTotals = _sumSleepStagesFromFs(daySessions);
+        _dayLight = dayTotals.light;
+        _dayDeep = dayTotals.deep;
+        _dayRem = dayTotals.rem;
 
-      // Day: today 00:00 -> now
-      final dayStart = DateTime(now.year, now.month, now.day);
-      final dayStages = await _getStages(svc, dayStart, now);
-      _dayLight = dayStages.light;
-      _dayDeep = dayStages.deep;
-      _dayRem = dayStages.rem;
+        // Week
+        final mon = _startOfWeek(now);
+        final nextMon = mon.add(const Duration(days: 7));
+        final weekSessions = await repo
+            .sleepStream(widget.userId!, from: mon)
+            .first;
+        _weekStart = mon;
+        _weekDaily = _dailyFromFs(weekSessions, mon, nextMon);
+        _weekBedtimeHours = _bedtimeFromFs(weekSessions, mon, nextMon);
 
-      // Week: Mon..Sun current week
-      final mon = _startOfWeek(now);
-      final nextMon = mon.add(const Duration(days: 7));
-      final weekDaily = await _getDailyStages(svc, mon, nextMon);
-      _weekStart = mon;
-      _weekDaily = weekDaily;
-      _weekBedtimeHours = await _computeBedtimeHoursForRange(svc, mon, nextMon);
+        // Month
+        final first = DateTime(now.year, now.month, 1);
+        final firstNext = DateTime(now.year, now.month + 1, 1);
+        final monthSessions = await repo
+            .sleepStream(widget.userId!, from: first)
+            .first;
+        _monthDaily = _dailyFromFs(monthSessions, first, firstNext);
+        _monthBedtimeHours = _bedtimeFromFs(monthSessions, first, firstNext);
 
-      // Month: 1st .. next month 1st
-      final first = DateTime(now.year, now.month, 1);
-      final firstNext = DateTime(now.year, now.month + 1, 1);
-      final monthDaily = await _getDailyStages(svc, first, firstNext);
-      _monthDaily = monthDaily;
-      _monthBedtimeHours = await _computeBedtimeHoursForRange(
-        svc,
-        first,
-        firstNext,
-      );
+        if (!mounted) return;
+        setState(() {});
+      } else {
+        // Health Connect source (role bệnh nhân)
+        final svc = GoogleFitService();
+        await svc.ensureConnected();
 
-      if (!mounted) return;
-      setState(() {});
+        // Day: today 00:00 -> now
+        final dayStart = DateTime(now.year, now.month, now.day);
+        final dayStages = await _getStages(svc, dayStart, now);
+        _dayLight = dayStages.light;
+        _dayDeep = dayStages.deep;
+        _dayRem = dayStages.rem;
+
+        // Week: Mon..Sun current week
+        final mon = _startOfWeek(now);
+        final nextMon = mon.add(const Duration(days: 7));
+        final weekDaily = await _getDailyStages(svc, mon, nextMon);
+        _weekStart = mon;
+        _weekDaily = weekDaily;
+        _weekBedtimeHours = await _computeBedtimeHoursForRange(
+          svc,
+          mon,
+          nextMon,
+        );
+
+        // Month: 1st .. next month 1st
+        final first = DateTime(now.year, now.month, 1);
+        final firstNext = DateTime(now.year, now.month + 1, 1);
+        final monthDaily = await _getDailyStages(svc, first, firstNext);
+        _monthDaily = monthDaily;
+        _monthBedtimeHours = await _computeBedtimeHoursForRange(
+          svc,
+          first,
+          firstNext,
+        );
+
+        if (!mounted) return;
+        setState(() {});
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = e.toString());
@@ -117,6 +162,82 @@ class _SleepDetailScreenState extends State<SleepDetailScreen>
       _fetching = false;
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  // --- Firestore helpers ---
+  _StageTotals _sumSleepStagesFromFs(List<SleepSession> sessions) {
+    // Firestore SleepSession không có stage chi tiết, phân bổ toàn bộ vào Light để hiển thị tổng
+    int light = 0, deep = 0, rem = 0;
+    for (final s in sessions) {
+      light += s.durationMinutes;
+    }
+    return _StageTotals(light: light, deep: deep, rem: rem);
+  }
+
+  List<_StageDaily> _dailyFromFs(
+    List<SleepSession> sessions,
+    DateTime start,
+    DateTime end,
+  ) {
+    final days = end.difference(start).inDays;
+    final totals = List<int>.filled(days, 0);
+    for (final s in sessions) {
+      // Clamp within range
+      DateTime from = s.start.isBefore(start) ? start : s.start;
+      DateTime to = s.end.isAfter(end) ? end : s.end;
+      if (!to.isAfter(from)) continue;
+      while (from.isBefore(to)) {
+        final dayStart = DateTime(from.year, from.month, from.day);
+        final dayEnd = dayStart.add(const Duration(days: 1));
+        final segEnd = to.isBefore(dayEnd) ? to : dayEnd;
+        final minutes = segEnd.difference(from).inMinutes;
+        final idx = from.difference(start).inDays;
+        if (idx >= 0 && idx < days && minutes > 0) {
+          totals[idx] += minutes;
+        }
+        from = segEnd;
+      }
+    }
+    final out = <_StageDaily>[];
+    for (int i = 0; i < days; i++) {
+      final t = _StageTotals(light: totals[i], deep: 0, rem: 0);
+      final total = t.totalMinutes;
+      final pct = total == 0
+          ? const _StagePct.zero()
+          : _StagePct(light: 100.0, deep: 0.0, rem: 0.0);
+      out.add(_StageDaily(totals: t, percentages: pct));
+    }
+    return out;
+  }
+
+  List<double?> _bedtimeFromFs(
+    List<SleepSession> sessions,
+    DateTime start,
+    DateTime end,
+  ) {
+    final days = end.difference(start).inDays;
+    final out = List<double?>.filled(days, null);
+    for (int i = 0; i < days; i++) {
+      final dayStart = DateTime(
+        start.year,
+        start.month,
+        start.day,
+      ).add(Duration(days: i));
+      final windowStart = dayStart.subtract(const Duration(hours: 6));
+      final windowEnd = dayStart.add(const Duration(hours: 12));
+      DateTime? earliest;
+      for (final s in sessions) {
+        final ps = s.start;
+        if (!ps.isBefore(windowEnd) || ps.isBefore(windowStart)) continue;
+        if (earliest == null || ps.isBefore(earliest)) {
+          earliest = ps;
+        }
+      }
+      if (earliest != null) {
+        out[i] = earliest.hour + earliest.minute / 60.0;
+      }
+    }
+    return out;
   }
 
   DateTime _startOfWeek(DateTime now) {

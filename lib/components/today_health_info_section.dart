@@ -30,23 +30,18 @@ class TodayHealthInfoSection extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
         if (effectiveUserId != null)
-          _MetricsFromFirestore(userId: effectiveUserId),
+          _MetricsFromFirestore(
+            displayUserId: effectiveUserId,
+            navigateUserId: userId,
+          ),
       ],
     );
   }
 }
 
-class _LazySpo2Detail extends StatelessWidget {
-  const _LazySpo2Detail();
-  @override
-  Widget build(BuildContext context) => const Spo2DetailScreen();
-}
+// removed _LazySpo2Detail; navigate with userId directly
 
-class _LazySleepDetail extends StatelessWidget {
-  const _LazySleepDetail();
-  @override
-  Widget build(BuildContext context) => const SleepDetailScreen();
-}
+// removed _LazySleepDetail; navigate with userId directly
 
 String _fmtBpm(double? v) =>
     v == null || v <= 0 ? '-' : '${v.toStringAsFixed(0)} bpm';
@@ -62,15 +57,20 @@ String _fmtDur(Duration? d) {
 }
 
 class _MetricsFromFirestore extends ConsumerWidget {
-  final String userId;
-  const _MetricsFromFirestore({required this.userId});
+  final String displayUserId; // dùng để đọc stream từ Firestore
+  final String?
+  navigateUserId; // dùng để điều hướng: null => màn chi tiết dùng Health Connect
+  const _MetricsFromFirestore({
+    required this.displayUserId,
+    required this.navigateUserId,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final hrAsync = ref.watch(heartRateStreamProvider(userId));
-    final spo2Async = ref.watch(spo2StreamProvider(userId));
-    final hrvAsync = ref.watch(hrvStreamProvider(userId));
-    final sleepAsync = ref.watch(sleepSessionsStreamProvider(userId));
+    final hrAsync = ref.watch(heartRateStreamProvider(displayUserId));
+    final spo2Async = ref.watch(spo2StreamProvider(displayUserId));
+    final hrvAsync = ref.watch(hrvStreamProvider(displayUserId));
+    final sleepAsync = ref.watch(sleepSessionsStreamProvider(displayUserId));
 
     // Combine latest values (simple strategy: each AsyncValue separately and rebuild when any changes)
     final hr = hrAsync.valueOrNull?.isNotEmpty == true
@@ -103,7 +103,8 @@ class _MetricsFromFirestore extends ConsumerWidget {
               child: InkWell(
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => HeartRateDetailScreen(userId: userId),
+                    builder: (_) =>
+                        HeartRateDetailScreen(userId: navigateUserId),
                   ),
                 ),
                 borderRadius: BorderRadius.circular(12),
@@ -119,7 +120,9 @@ class _MetricsFromFirestore extends ConsumerWidget {
             Expanded(
               child: InkWell(
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const HrvDetailScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => HrvDetailScreen(userId: navigateUserId),
+                  ),
                 ),
                 borderRadius: BorderRadius.circular(12),
                 child: _buildMetricCard(
@@ -138,7 +141,9 @@ class _MetricsFromFirestore extends ConsumerWidget {
             Expanded(
               child: InkWell(
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const _LazySpo2Detail()),
+                  MaterialPageRoute(
+                    builder: (_) => Spo2DetailScreen(userId: navigateUserId),
+                  ),
                 ),
                 borderRadius: BorderRadius.circular(12),
                 child: _buildMetricCard(
@@ -153,7 +158,9 @@ class _MetricsFromFirestore extends ConsumerWidget {
             Expanded(
               child: InkWell(
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const _LazySleepDetail()),
+                  MaterialPageRoute(
+                    builder: (_) => SleepDetailScreen(userId: navigateUserId),
+                  ),
                 ),
                 borderRadius: BorderRadius.circular(12),
                 child: _buildMetricCard(

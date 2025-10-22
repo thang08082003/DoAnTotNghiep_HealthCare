@@ -10,7 +10,9 @@ import 'hrv_measure_screen.dart';
 import '../../data/resources/gene/app_colors.dart';
 
 class HrvDetailScreen extends ConsumerStatefulWidget {
-  const HrvDetailScreen({super.key});
+  final String?
+  userId; // Nếu có userId: xem dữ liệu HRV của bệnh nhân (Firestore), ẩn nút đo
+  const HrvDetailScreen({super.key, this.userId});
 
   @override
   ConsumerState<HrvDetailScreen> createState() => _HrvDetailScreenState();
@@ -109,15 +111,18 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
     try {
       final now = DateTime.now();
 
+      // Xác định UID cần đọc: ưu tiên widget.userId (bác sĩ xem bệnh nhân), nếu không thì current user
+      final currentUser = await ref.read(currentUserProvider.future);
+      final String? effectiveUid = widget.userId ?? currentUser?.uid;
+
       // Day
       final dayStart = DateTime(now.year, now.month, now.day);
       // Lấy HRV từ Firestore cho ngày hiện tại (đầy đủ các trường)
       try {
-        final user = await ref.read(currentUserProvider.future);
-        if (user != null) {
+        if (effectiveUid != null) {
           final col = FirebaseFirestore.instance
               .collection('users')
-              .doc(user.uid)
+              .doc(effectiveUid)
               .collection('hrv');
           final snap = await col
               .where(
@@ -189,11 +194,10 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
       _weekStart = weekStart;
       // Trung bình theo ngày trong tuần từ Firestore (Score)
       try {
-        final user = await ref.read(currentUserProvider.future);
-        if (user != null) {
+        if (effectiveUid != null) {
           final col = FirebaseFirestore.instance
               .collection('users')
-              .doc(user.uid)
+              .doc(effectiveUid)
               .collection('hrv');
           final snap = await col
               .where(
@@ -235,11 +239,10 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
       final mStart = DateTime(now.year, now.month, 1);
       final mEnd = DateTime(now.year, now.month + 1, 1);
       try {
-        final user = await ref.read(currentUserProvider.future);
-        if (user != null) {
+        if (effectiveUid != null) {
           final col = FirebaseFirestore.instance
               .collection('users')
-              .doc(user.uid)
+              .doc(effectiveUid)
               .collection('hrv');
           final snap = await col
               .where(
@@ -279,11 +282,10 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
 
       // Fetch manual measurement metrics (pNN50 / HR / Score) from Firestore for week & month
       try {
-        final user = await ref.read(currentUserProvider.future);
-        if (user != null) {
+        if (effectiveUid != null) {
           final hrvCol = FirebaseFirestore.instance
               .collection('users')
-              .doc(user.uid)
+              .doc(effectiveUid)
               .collection('hrv');
 
           // Week range query
@@ -470,7 +472,8 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Center(child: _buildCircularMeasureButton()),
+          if (widget.userId == null)
+            Center(child: _buildCircularMeasureButton()),
           const SizedBox(height: 12),
           SizedBox(
             height: 220,
@@ -610,12 +613,7 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
             decoration: BoxDecoration(
               color: Colors.white,
               shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black,
-                  blurRadius: 10,
-                ),
-              ],
+              boxShadow: [BoxShadow(color: Colors.black, blurRadius: 10)],
             ),
             alignment: Alignment.center,
             child: _measuring
