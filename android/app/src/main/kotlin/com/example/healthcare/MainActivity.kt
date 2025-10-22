@@ -59,6 +59,11 @@ class MainActivity : FlutterFragmentActivity() {
 			when (call.method) {
 				"enablePassiveListener" -> {
 					try {
+						val role = call.argument<String>("role") ?: ""
+						if (role.equals("doctor", ignoreCase = true)) {
+							result.error("PASSIVE", "Passive sync is not allowed for doctor role", null)
+							return@setMethodCallHandler
+						}
 						PassiveHealthConnectManager.enable(this)
 						result.success(true)
 					} catch (e: Exception) {

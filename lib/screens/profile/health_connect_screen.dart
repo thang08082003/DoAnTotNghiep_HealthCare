@@ -52,7 +52,23 @@ class _GoogleFitConnectScreenState
     if (!Platform.isAndroid) return;
     try {
       if (value) {
-        await _passiveChannel.invokeMethod('enablePassiveListener');
+        // Block for doctors
+        final user = await ref.read(currentUserProvider.future);
+        if (user != null && user.isDoctor) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Bác sĩ không được bật Passive Sync'),
+              ),
+            );
+          }
+          setState(() => _passiveEnabled = false);
+          await prefs.setBool(_prefsPassiveKey, false);
+          return;
+        }
+        await _passiveChannel.invokeMethod('enablePassiveListener', {
+          'role': user?.isDoctor == true ? 'doctor' : 'patient',
+        });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Đã bật đồng bộ thụ động (Passive)')),

@@ -13,9 +13,10 @@ import androidx.work.WorkerParameters
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.FieldValue
+import com.google.firebase.Timestamp
 import kotlinx.coroutines.tasks.await
 import java.time.Instant
+import java.util.Date
 import androidx.health.connect.client.time.TimeRangeFilter
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -56,7 +57,7 @@ class PassiveDrainWorker(appContext: Context, params: WorkerParameters) : Corout
 
             val db = FirebaseFirestore.getInstance()
 
-            // Heart rate (use the latest sample time for ts; decouple doc id from ts)
+            // Heart rate (use the latest sample time for ts; auto-ID docs)
             try {
                 val hr = client.readRecords(ReadRecordsRequest(HeartRateRecord::class, timeRangeFilter = TimeRangeFilter.between(start, now))).records
                 Log.i(TAG, "doWork(): heartRate records=${hr.size}")
@@ -64,53 +65,52 @@ class PassiveDrainWorker(appContext: Context, params: WorkerParameters) : Corout
                     val sample = r.samples.maxByOrNull { it.time } ?: r.samples.lastOrNull()
                     val bpm = sample?.beatsPerMinute ?: 0.0
                     val tsMillis = sample?.time?.toEpochMilli() ?: r.endTime.toEpochMilli()
-                    val baseId = r.metadata.id ?: "hr"
-                    val docId = "${baseId}_${tsMillis}"
+                    val metaId = r.metadata.id ?: ""
                     val map = hashMapOf(
                         "bpm" to bpm,
-                        "ts" to tsMillis,
+                        "ts" to Timestamp(Date(tsMillis)),
                         "source" to (r.metadata.dataOrigin.packageName ?: "health_connect"),
-                        "createdAt" to FieldValue.serverTimestamp()
+                        "metaId" to metaId
                     )
-                    db.collection("users").document(uid).collection("heart_rate").document(docId).set(map)
+                    db.collection("users").document(uid).collection("heart_rate").add(map)
                 }
             } catch (_: Exception) {}
 
-            // SpO2 (doc id decoupled from ts to avoid id==ts)
+            // SpO2 (auto-ID docs)
             try {
                 val spo2 = client.readRecords(ReadRecordsRequest(OxygenSaturationRecord::class, timeRangeFilter = TimeRangeFilter.between(start, now))).records
                 Log.i(TAG, "doWork(): spo2 records=${spo2.size}")
                 for (r in spo2) {
                     val tsMillis = r.time.toEpochMilli()
-                    val baseId = r.metadata.id ?: "spo2"
-                    val id = "${baseId}_${tsMillis}"
+                    val metaId = r.metadata.id ?: ""
                     val map = hashMapOf(
-                        "pct" to r.percentage.value,
-                        "ts" to r.time.toEpochMilli(),
+                        "percentage" to r.percentage.value,
+                        "ts" to Timestamp(Date(tsMillis)),
                         "source" to (r.metadata.dataOrigin.packageName ?: "health_connect"),
-                        "createdAt" to FieldValue.serverTimestamp()
+                        "metaId" to metaId
                     )
-                    db.collection("users").document(uid).collection("spo2").document(id).set(map)
+                    db.collection("users").document(uid).collection("spo2").add(map)
                 }
             } catch (_: Exception) {}
 
-            // Sleep sessions
+            // Sleep sessions (auto-ID docs)
             try {
                 val sleep = client.readRecords(ReadRecordsRequest(SleepSessionRecord::class, timeRangeFilter = TimeRangeFilter.between(start, now))).records
                 Log.i(TAG, "doWork(): sleep sessions=${sleep.size}")
                 for (r in sleep) {
                     val startTs = r.startTime.toEpochMilli()
                     val endTs = r.endTime.toEpochMilli()
-                    val baseId = r.metadata.id ?: "sleep"
-                    val id = "${baseId}_${startTs}_${endTs}"
+                    val durationMinutes = ((endTs - startTs) / 60000L).toInt()
+                    val metaId = r.metadata.id ?: ""
                     val map = hashMapOf(
-                        "start" to startTs,
-                        "end" to endTs,
+                        "start" to Timestamp(Date(startTs)),
+                        "end" to Timestamp(Date(endTs)),
+                        "durationMinutes" to durationMinutes,
                         "title" to (r.title ?: ""),
                         "source" to (r.metadata.dataOrigin.packageName ?: "health_connect"),
-                        "createdAt" to FieldValue.serverTimestamp()
+                        "metaId" to metaId
                     )
-                    db.collection("users").document(uid).collection("sleep_sessions").document(id).set(map)
+                    db.collection("users").document(uid).collection("sleep_sessions").add(map)
                 }
             } catch (_: Exception) {}
 

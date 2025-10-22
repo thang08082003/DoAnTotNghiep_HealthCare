@@ -17,28 +17,17 @@ class HeartRateSample {
   final DateTime ts; // timestamp of sample
   final double bpm;
   final String? source;
-  // Passive sync adds createdAt/createAt: the upload time on server
-  final DateTime? createdAt;
 
-  HeartRateSample({
-    required this.ts,
-    required this.bpm,
-    this.source,
-    this.createdAt,
-  });
+  HeartRateSample({required this.ts, required this.bpm, this.source});
 
   factory HeartRateSample.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
   ) {
     final data = doc.data()!;
-    // Support both active and passive payloads.
-    // Passive adds createdAt (or createAt) as an extra server timestamp.
-    final dynamic createdAtRaw = data['createdAt'] ?? data['createAt'];
     return HeartRateSample(
       ts: _fromTs(data['ts']),
       bpm: (data['bpm'] as num).toDouble(),
       source: data['source'] as String?,
-      createdAt: createdAtRaw != null ? _fromTs(createdAtRaw) : null,
     );
   }
 
@@ -46,11 +35,6 @@ class HeartRateSample {
     'ts': Timestamp.fromMillisecondsSinceEpoch(_epochMsUtc(ts)),
     'bpm': bpm,
     if (source != null) 'source': source,
-    // We don't set createdAt here for active writes; server-side writes may populate it.
-    if (createdAt != null)
-      'createdAt': Timestamp.fromMillisecondsSinceEpoch(
-        _epochMsUtc(createdAt!),
-      ),
   };
 
   String docId() => _epochMsUtc(ts).toString();
@@ -61,28 +45,17 @@ class Spo2Sample {
   final DateTime ts;
   final double percentage; // 0-100
   final String? source;
-  // Passive sync adds createdAt/createAt and may use 'pct' instead of 'percentage'
-  final DateTime? createdAt;
 
-  Spo2Sample({
-    required this.ts,
-    required this.percentage,
-    this.source,
-    this.createdAt,
-  });
+  Spo2Sample({required this.ts, required this.percentage, this.source});
 
   factory Spo2Sample.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data()!;
-    // Accept both field names: 'percentage' (active) and 'pct' (passive)
-    final pctVal = data.containsKey('percentage')
-        ? data['percentage']
-        : data['pct'];
-    final dynamic createdAtRaw = data['createdAt'] ?? data['createAt'];
+    // Use unified field name 'percentage'
+    final pctVal = data['percentage'];
     return Spo2Sample(
       ts: _fromTs(data['ts']),
       percentage: (pctVal as num).toDouble(),
       source: data['source'] as String?,
-      createdAt: createdAtRaw != null ? _fromTs(createdAtRaw) : null,
     );
   }
 
@@ -90,10 +63,6 @@ class Spo2Sample {
     'ts': Timestamp.fromMillisecondsSinceEpoch(_epochMsUtc(ts)),
     'percentage': percentage,
     if (source != null) 'source': source,
-    if (createdAt != null)
-      'createdAt': Timestamp.fromMillisecondsSinceEpoch(
-        _epochMsUtc(createdAt!),
-      ),
   };
 
   String docId() => _epochMsUtc(ts).toString();
