@@ -16,9 +16,7 @@ import 'patient_orders_list_screen.dart';
 import '../call/video_call_screen.dart';
 import '../../data/services/call_service.dart';
 import '../../data/models/call_session.dart';
-// import '../call/incoming_call_sheet.dart'; // reserved for future incoming overlay
 import 'dart:async';
-import '../../providers/health_metrics_providers.dart';
 import '../../components/today_health_info_section.dart';
 
 class PatientDetailScreen extends ConsumerStatefulWidget {
@@ -188,16 +186,23 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
               _infoRow('Giới tính', gender),
               _infoRow('Tiền sử bệnh', medicalHistory),
               _infoRow('Bệnh theo dõi', diseaseFocus),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                ),
+                child: _buildReportsSection(),
+              ),
+
+              const SizedBox(height: 16),
+              _buildDoctorCreateOrderSection(),
+
+              const SizedBox(height: 16),
             ],
           ),
-          const SizedBox(height: 16),
-          // Đưa "Thông tin sức khỏe" lên ngay dưới phần thông tin bệnh nhân
-          _buildReportsSection(),
-          const SizedBox(height: 16),
-          _buildDoctorCreateOrderSection(),
-          const SizedBox(height: 16),
-          _MetricsOverviewCard(patientId: widget.patientId),
-          const SizedBox(height: 16),
         ],
       ),
     );
@@ -788,28 +793,6 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
       return texts.isEmpty ? 'Chưa cập nhật' : texts.join(', ');
     }
     return 'Chưa cập nhật';
-  }
-}
-
-class _MetricsOverviewCard extends ConsumerWidget {
-  final String patientId;
-  const _MetricsOverviewCard({required this.patientId});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final overviewAsync = ref.watch(metricsOverviewProvider(patientId));
-    return overviewAsync.when(
-      loading: () => const SizedBox.shrink(),
-      error: (e, st) => const SizedBox.shrink(),
-      data: (o) {
-        if (o.heartRateSamples == 0 &&
-            o.sleepSessions == 0 &&
-            o.hrvSamples == 0) {
-          return const SizedBox.shrink();
-        }
-        return const SizedBox.shrink();
-      },
-    );
   }
 }
 
