@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:healthcare/data/resources/gene/app_colors.dart';
-import 'package:healthcare/providers/auth_provider.dart';
+
 import 'package:healthcare/router/app_router.dart';
 import '../../components/buttons/index.dart';
+import '../../viewmodels/auth/auth_view_model.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -43,45 +44,41 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     await ref
-        .read(authProvider.notifier)
-        .register(_emailController.text, _passwordController.text);
+        .read(authViewModelProvider.notifier)
+        .login(_emailController.text, _passwordController.text);
 
     // Navigation will be handled by listening to auth state changes
   }
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider);
+    final vmState = ref.watch(authViewModelProvider);
 
     // Listen to auth state changes
-    ref.listen<AuthState>(authProvider, (previous, next) {
+    ref.listen<AuthViewState>(authViewModelProvider, (previous, next) {
       // Chỉ show khi thông báo lỗi thay đổi để tránh lặp SnackBar
       final errorChanged =
-          next.errorMessage != null &&
-          next.errorMessage!.isNotEmpty &&
-          next.errorMessage != previous?.errorMessage;
+          next.error != null &&
+          next.error!.isNotEmpty &&
+          next.error != previous?.error;
       if (errorChanged) {
-        _showSnackBar(next.errorMessage!);
-        ref.read(authProvider.notifier).clearError();
+        _showSnackBar(next.error!);
+        ref.read(authViewModelProvider.notifier).clearError();
       }
 
       // If user just got authenticated (was not authenticated before, now is)
-      if (previous != null &&
-          !previous.isAuthenticated &&
+      if ((previous?.isAuthenticated ?? false) == false &&
           next.isAuthenticated &&
           next.uid != null &&
           !next.isLoading) {
-        // Navigate directly to user setup
         _showSnackBar('Đăng ký thành công!', isError: false);
-        // Wait a bit for the message to show, then navigate
         Future.delayed(const Duration(seconds: 1), () {
-          if (context.mounted) {
-            Navigator.of(context).pushNamedAndRemoveUntil(
-              AppRouter.userSetup,
-              (route) => false,
-              arguments: {'uid': next.uid!, 'email': next.email ?? ''},
-            );
-          }
+          if (!context.mounted) return;
+          AppRouter.pushUserSetup(
+            context,
+            uid: next.uid!,
+            email: next.email ?? '',
+          );
         });
       }
     });
@@ -277,7 +274,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       PrimaryButton(
                         text: 'Đăng Ký',
                         onPressed: _register,
-                        isLoading: authState.isLoading,
+                        isLoading: vmState.isLoading,
                       ),
                       const SizedBox(height: 16),
 

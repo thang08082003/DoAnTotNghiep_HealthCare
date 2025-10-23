@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/services/doctor_orders_service.dart';
+import '../../viewmodels/orders/doctor_orders_view_model.dart';
 import '../../data/models/doctor_order.dart';
 import '../../data/resources/gene/app_colors.dart';
 
@@ -15,11 +15,11 @@ class PatientOrdersListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final service = DoctorOrdersService();
+    final ordersVm = ref.watch(doctorOrdersViewModelProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Tất cả chỉ định')),
       body: StreamBuilder<List<DoctorOrder>>(
-        stream: service.watchOrders(patientId: patientId, doctorId: doctorId),
+        stream: ordersVm.watchOrders(patientId: patientId, doctorId: doctorId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

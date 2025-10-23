@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../components/loading/loading_widget.dart';
-import '../../data/models/user_model.dart';
 import '../../data/resources/gene/app_colors.dart';
-import '../../data/services/follow_request_service.dart';
 import '../../providers/user_provider.dart';
+import '../../viewmodels/patients/patients_following_view_model.dart';
 import 'patient_detail_screen.dart';
 
 class PatientsListContent extends ConsumerStatefulWidget {
@@ -15,53 +14,7 @@ class PatientsListContent extends ConsumerStatefulWidget {
 }
 
 class PatientsListContentState extends ConsumerState<PatientsListContent> {
-  bool _loading = false;
-  String? _error;
-  List<UserModel> _patients = [];
   String _search = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    if (!mounted) return;
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final currentUser = await ref.read(currentUserProvider.future);
-      if (currentUser == null || !currentUser.isDoctor) {
-        if (!mounted) return;
-        setState(() {
-          _patients = [];
-          _loading = false;
-          _error = 'Vui lòng đăng nhập bằng tài khoản bác sĩ';
-        });
-        return;
-      }
-      final ids = await FollowRequestService.getAcceptedPatientIdsForDoctor(
-        currentUser.uid,
-      );
-      final repo = ref.read(userRepositoryProvider);
-      final futures = ids.map((id) => repo.getUserById(id)).toList();
-      final users = await Future.wait(futures);
-      if (!mounted) return;
-      setState(() {
-        _patients = users.whereType<UserModel>().toList();
-        _loading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = 'Lỗi tải danh sách bệnh nhân: $e';
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,9 +38,24 @@ class PatientsListContentState extends ConsumerState<PatientsListContent> {
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: AppColors.primaryColor),
               ),
-              suffixIcon: IconButton(
-                icon: const Icon(Icons.refresh),
-                onPressed: _load,
+              suffixIcon: Consumer(
+                builder: (context, ref, _) {
+                  final currentUser = ref.watch(currentUserProvider).value;
+                  return IconButton(
+                    icon: const Icon(Icons.refresh),
+                    onPressed: currentUser == null || !currentUser.isDoctor
+                        ? null
+                        : () {
+                            ref
+                                .read(
+                                  patientsFollowingViewModelProvider(
+                                    currentUser.uid,
+                                  ).notifier,
+                                )
+                                .loadPatientsForDoctor(currentUser.uid);
+                          },
+                  );
+                },
               ),
             ),
           ),
@@ -98,22 +66,46 @@ class PatientsListContentState extends ConsumerState<PatientsListContent> {
   }
 
   Widget _buildList() {
-    if (_loading) return const Center(child: LoadingWidget());
-    if (_error != null) {
+    final currentUserAsync = ref.watch(currentUserProvider);
+    if (currentUserAsync.isLoading) {
+      return const Center(child: LoadingWidget());
+    }
+    final currentUser = currentUserAsync.value;
+    if (currentUser == null || !currentUser.isDoctor) {
+      return const Center(
+        child: Text('Vui lòng đăng nhập bằng tài khoản bác sĩ'),
+      );
+    }
+    final state = ref.watch(
+      patientsFollowingViewModelProvider(currentUser.uid),
+    );
+    if (state.loading) return const Center(child: LoadingWidget());
+    if (state.error != null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.error, size: 64, color: AppColors.error),
             const SizedBox(height: 12),
-            Text(_error!),
+            Text(state.error!),
             const SizedBox(height: 12),
-            ElevatedButton(onPressed: _load, child: const Text('Thử lại')),
+            ElevatedButton(
+              onPressed: () {
+                ref
+                    .read(
+                      patientsFollowingViewModelProvider(
+                        currentUser.uid,
+                      ).notifier,
+                    )
+                    .loadPatientsForDoctor(currentUser.uid);
+              },
+              child: const Text('Thử lại'),
+            ),
           ],
         ),
       );
     }
-    final list = _patients.where(
+    final list = state.patients.where(
       (p) => p.name.toLowerCase().contains(_search.toLowerCase()),
     );
     final patients = list.toList();

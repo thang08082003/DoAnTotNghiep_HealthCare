@@ -42,6 +42,11 @@ class UserRepository {
     return await _userService.getUserById(uid);
   }
 
+  // Lấy raw user document (optional)
+  Future<Map<String, dynamic>?> getUserRawById(String uid) async {
+    return await _userService.getUserRawById(uid);
+  }
+
   // Cập nhật user
   Future<void> updateUser(UserModel user) async {
     await _userService.updateUser(user);

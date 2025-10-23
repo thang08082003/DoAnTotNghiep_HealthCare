@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
 import '../doctors/doctors_following_list_screen.dart';
-import '../../components/today_health_info_section.dart';
+import '../../components/info_section/today_health_info_section.dart';
 
 class PatientDashboardContent extends ConsumerWidget {
   const PatientDashboardContent({super.key});

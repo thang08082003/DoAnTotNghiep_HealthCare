@@ -130,6 +130,16 @@ class UserService {
     }
   }
 
+  // Lấy raw document data theo ID (dành cho một số UI cần field tự do)
+  Future<Map<String, dynamic>?> getUserRawById(String uid) async {
+    try {
+      final doc = await _firestore.collection(_usersCollection).doc(uid).get();
+      return doc.data();
+    } catch (e) {
+      throw Exception('Không thể lấy raw user: $e');
+    }
+  }
+
   // Cập nhật thông tin user
   Future<void> updateUser(UserModel user) async {
     try {

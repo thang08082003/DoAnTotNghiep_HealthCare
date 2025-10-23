@@ -1,23 +1,18 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../chat/image_preview_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../components/loading/loading_widget.dart';
 import '../../data/models/user_model.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
-import '../../data/services/chat_service.dart';
-import '../../data/models/chat_message.dart';
-import '../../data/services/doctor_orders_service.dart';
+import '../../viewmodels/orders/doctor_orders_view_model.dart';
 import 'patient_orders_list_screen.dart';
 import '../call/video_call_screen.dart';
-import '../../data/services/call_service.dart';
+import '../../viewmodels/call/call_view_model.dart';
 import '../../data/models/call_session.dart';
 import 'dart:async';
-import '../../components/today_health_info_section.dart';
+import '../../components/info_section/today_health_info_section.dart';
+import '../../components/chat/chat_thread_view.dart';
+import '../../components/app_bar/chat_app_bar_title.dart';
 
 class PatientDetailScreen extends ConsumerStatefulWidget {
   final String patientId;
@@ -40,8 +35,6 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
   UserModel? _patient;
   Map<String, dynamic> _raw = const {};
   late final TabController _tabController;
-  final ScrollController _chatScrollController = ScrollController();
-  final FocusNode _chatInputFocus = FocusNode();
 
   @override
   void initState() {
@@ -69,14 +62,10 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
     try {
       final repo = ref.read(userRepositoryProvider);
       final user = await repo.getUserById(widget.patientId);
-      DocumentSnapshot<Map<String, dynamic>> snap = await FirebaseFirestore
-          .instance
-          .collection('users')
-          .doc(widget.patientId)
-          .get();
+      final raw = await repo.getUserRawById(widget.patientId);
       setState(() {
         _patient = user;
-        _raw = snap.data() ?? {};
+        _raw = raw ?? {};
         _loading = false;
       });
     } catch (e) {
@@ -89,8 +78,6 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
 
   @override
   void dispose() {
-    _chatScrollController.dispose();
-    _chatInputFocus.dispose();
     _tabController.dispose();
     super.dispose();
   }
@@ -100,7 +87,7 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
     return Scaffold(
       appBar: AppBar(
         title: (_tabController.index == 1 && _patient != null)
-            ? _PatientChatAppBarTitle(
+            ? ChatAppBarTitle(
                 name: _patient!.name,
                 avatarUrl:
                     _patient!.avatarUrl ?? (_raw['avatarUrl'] as String?),
@@ -219,7 +206,7 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
             final currentUser = snap.data!;
             if (!currentUser.isDoctor) return const SizedBox.shrink();
 
-            final service = DoctorOrdersService();
+            final ordersVm = ref.read(doctorOrdersViewModelProvider);
 
             return Container(
               padding: const EdgeInsets.all(16),
@@ -318,7 +305,7 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
                                                 return;
                                               }
                                               try {
-                                                await service.createOrder(
+                                                await ordersVm.createOrder(
                                                   patientId: widget.patientId,
                                                   doctorId: currentUser.uid,
                                                   title: title,
@@ -392,358 +379,45 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
   }
 
   Widget _buildMessagesTab() {
-    return Consumer(
-      builder: (context, ref, _) {
-        return FutureBuilder(
-          future: ref.read(currentUserProvider.future),
-          builder: (context, snap) {
-            if (!snap.hasData) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final currentUser = snap.data!;
-            final otherId = widget.patientId; // chatting with patient
-            final isSelf = currentUser.uid == otherId;
-            if (isSelf) {
-              return const Center(child: Text('Không thể chat với chính mình'));
-            }
-
-            final chatService = ChatService();
-            final stream = chatService.watchMessages(
-              userA: currentUser.uid,
-              userB: otherId,
-            );
-            final controller = TextEditingController();
-
-            return Column(
-              children: [
-                // Call button
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.video_call),
-                      label: const Text('Gọi video'),
-                      onPressed: () async {
-                        final channel = _buildChannelName(
-                          currentUser.uid,
-                          otherId,
-                        );
-                        final callService = CallService();
-                        final callId = await callService.createOutgoingCall(
-                          callerId: currentUser.uid,
-                          calleeId: otherId,
-                          channelName: channel,
-                        );
-                        if (!context.mounted) return;
-                        showDialog(
-                          context: context,
-                          barrierDismissible: false,
-                          builder: (_) =>
-                              const Center(child: CircularProgressIndicator()),
-                        );
-                        late final StreamSubscription sub;
-                        sub = callService.watchCall(callId).listen((
-                          session,
-                        ) async {
-                          if (session == null) return;
-                          if (!context.mounted) return;
-                          if (session.status == CallStatus.accepted) {
-                            Navigator.of(context).pop();
-                            sub.cancel();
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => VideoCallScreen(
-                                  channelName: channel,
-                                  callId: callId,
-                                ),
-                              ),
-                            );
-                          } else if (session.status == CallStatus.declined ||
-                              session.status == CallStatus.ended) {
-                            Navigator.of(context).pop();
-                            sub.cancel();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Cuộc gọi không được kết nối'),
-                              ),
-                            );
-                          }
-                        });
-                      },
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: StreamBuilder<List<ChatMessage>>(
-                    stream: stream,
-                    builder: (context, ss) {
-                      if (!ss.hasData) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      final messages = ss.data!;
-                      // Scroll to bottom after frame
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (_chatScrollController.hasClients) {
-                          _chatScrollController.jumpTo(
-                            _chatScrollController.position.maxScrollExtent,
-                          );
-                        }
-                      });
-                      return ListView.builder(
-                        controller: _chatScrollController,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 8,
-                          horizontal: 12,
-                        ),
-                        itemCount: messages.length,
-                        itemBuilder: (context, index) {
-                          final m = messages[index];
-                          final mine = m.senderId == currentUser.uid;
-                          return Align(
-                            alignment: mine
-                                ? Alignment.centerRight
-                                : Alignment.centerLeft,
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(vertical: 4),
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: mine
-                                    ? Colors.blue[50]
-                                    : Colors.grey[200],
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: _buildMessageContent(m),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-                SafeArea(
-                  top: false,
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.attach_file),
-                          onPressed: () async {
-                            await _onAttachPressed(
-                              context: context,
-                              chatService: chatService,
-                              currentUserId: currentUser.uid,
-                              otherId: otherId,
-                            );
-                          },
-                        ),
-                        Expanded(
-                          child: TextField(
-                            controller: controller,
-                            focusNode: _chatInputFocus,
-                            decoration: const InputDecoration(
-                              hintText: 'Nhập tin nhắn...',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: const Icon(Icons.send),
-                          onPressed: () async {
-                            final text = controller.text.trim();
-                            if (text.isEmpty) return;
-                            await chatService.sendMessage(
-                              from: currentUser.uid,
-                              to: otherId,
-                              text: text,
-                            );
-                            controller.clear();
-                            _chatInputFocus.unfocus();
-                            // ensure scroll bottom after send
-                            await Future.delayed(
-                              const Duration(milliseconds: 50),
-                            );
-                            if (_chatScrollController.hasClients) {
-                              _chatScrollController.animateTo(
-                                _chatScrollController.position.maxScrollExtent,
-                                duration: const Duration(milliseconds: 200),
-                                curve: Curves.easeOut,
-                              );
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
+    return ChatThreadView(
+      otherUserId: widget.patientId,
+      onStartCall: (ctx, currentUserId, otherUserId, channelName) async {
+        final callVm = ref.read(callViewModelProvider);
+        final callId = await callVm.startOutgoingCall(
+          callerId: currentUserId,
+          calleeId: otherUserId,
+          channelName: channelName,
         );
-      },
-    );
-  }
-
-  Widget _buildMessageContent(ChatMessage m) {
-    if (m.isImage && (m.mediaUrl ?? '').isNotEmpty) {
-      final url = m.mediaUrl!;
-      return GestureDetector(
-        onTap: () async {
-          if (!mounted) return;
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => ImagePreviewScreen(imageUrl: url),
-            ),
-          );
-        },
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 220, maxHeight: 220),
-            child: Image.network(url, fit: BoxFit.cover),
-          ),
-        ),
-      );
-    }
-    if (m.isFile && (m.mediaUrl ?? '').isNotEmpty) {
-      final url = m.mediaUrl!;
-      final name = m.fileName ?? 'Tệp đính kèm';
-      return InkWell(
-        onTap: () async {
-          final mime = (m.mimeType ?? '').toLowerCase();
-          final isImageLike = mime.startsWith('image/');
-          if (isImageLike) {
-            if (!mounted) return;
-            Navigator.of(context).push(
+        if (!ctx.mounted) return;
+        showDialog(
+          context: ctx,
+          barrierDismissible: false,
+          builder: (_) => const Center(child: CircularProgressIndicator()),
+        );
+        late final StreamSubscription sub;
+        sub = callVm.watchCall(callId).listen((session) async {
+          if (session == null) return;
+          if (!ctx.mounted) return;
+          if (session.status == CallStatus.accepted) {
+            Navigator.of(ctx).pop();
+            sub.cancel();
+            Navigator.of(ctx).push(
               MaterialPageRoute(
-                builder: (_) => ImagePreviewScreen(imageUrl: url),
+                builder: (_) =>
+                    VideoCallScreen(channelName: channelName, callId: callId),
               ),
             );
-          } else {
-            final uri = Uri.tryParse(url);
-            if (uri != null) {
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            }
+          } else if (session.status == CallStatus.declined ||
+              session.status == CallStatus.ended) {
+            Navigator.of(ctx).pop();
+            sub.cancel();
+            ScaffoldMessenger.of(ctx).showSnackBar(
+              const SnackBar(content: Text('Cuộc gọi không được kết nối')),
+            );
           }
-        },
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.insert_drive_file, size: 20),
-            const SizedBox(width: 8),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 200),
-              child: Text(name, overflow: TextOverflow.ellipsis),
-            ),
-          ],
-        ),
-      );
-    }
-    return Text(m.text);
-  }
-
-  Future<void> _onAttachPressed({
-    required BuildContext context,
-    required ChatService chatService,
-    required String currentUserId,
-    required String otherId,
-  }) async {
-    await showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: const Text('Chọn ảnh từ thư viện'),
-                onTap: () async {
-                  Navigator.of(ctx).pop();
-                  final picker = ImagePicker();
-                  final x = await picker.pickImage(source: ImageSource.gallery);
-                  if (x == null) return;
-                  final bytes = await x.readAsBytes();
-                  final path = x.name.toLowerCase();
-                  String ext = 'jpeg';
-                  if (path.endsWith('.png')) ext = 'png';
-                  if (path.endsWith('.jpg') || path.endsWith('.jpeg')) {
-                    ext = 'jpeg';
-                  }
-                  await chatService.sendImageMessage(
-                    from: currentUserId,
-                    to: otherId,
-                    bytes: bytes,
-                    fileExt: ext,
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.attach_file),
-                title: const Text('Chọn tệp'),
-                onTap: () async {
-                  Navigator.of(ctx).pop();
-                  final result = await FilePicker.platform.pickFiles(
-                    withData: true,
-                    allowMultiple: false,
-                  );
-                  if (result == null || result.files.isEmpty) return;
-                  final f = result.files.first;
-                  final data = f.bytes;
-                  if (data == null) return;
-                  // Derive mime only for common image types supported for now
-                  String? mime;
-                  final ext = (f.extension ?? '').toLowerCase();
-                  switch (ext) {
-                    case 'png':
-                      mime = 'image/png';
-                      break;
-                    case 'jpg':
-                    case 'jpeg':
-                      mime = 'image/jpeg';
-                      break;
-                    case 'gif':
-                      mime = 'image/gif';
-                      break;
-                    case 'webp':
-                      mime = 'image/webp';
-                      break;
-                    default:
-                      mime = null;
-                  }
-                  try {
-                    await chatService.sendFileMessage(
-                      from: currentUserId,
-                      to: otherId,
-                      bytes: data,
-                      fileName: f.name,
-                      mimeType: mime,
-                    );
-                  } on UnsupportedError catch (e) {
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(e.message ?? e.toString())),
-                    );
-                  }
-                },
-              ),
-            ],
-          ),
-        );
+        });
       },
     );
-  }
-
-  String _buildChannelName(String a, String b) {
-    return (a.compareTo(b) <= 0) ? '${a}_$b' : '${b}_$a';
   }
 
   Widget _infoCard({required List<Widget> children}) {
@@ -796,33 +470,4 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
   }
 }
 
-class _PatientChatAppBarTitle extends StatelessWidget {
-  final String name;
-  final String? avatarUrl;
-  const _PatientChatAppBarTitle({required this.name, this.avatarUrl});
-
-  @override
-  Widget build(BuildContext context) {
-    final hasAvatar = avatarUrl != null && avatarUrl!.isNotEmpty;
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 16,
-          backgroundColor: AppColors.primaryColor.withValues(alpha: 0.1),
-          backgroundImage: hasAvatar ? NetworkImage(avatarUrl!) : null,
-          child: !hasAvatar
-              ? const Icon(
-                  Icons.person,
-                  size: 16,
-                  color: AppColors.primaryColor,
-                )
-              : null,
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
-        ),
-      ],
-    );
-  }
-}
+// removed local _PatientChatAppBarTitle in favor of shared ChatAppBarTitle

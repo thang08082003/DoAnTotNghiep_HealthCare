@@ -1,9 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../components/loading/loading_widget.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
+import '../../viewmodels/profile/patient_profile_view_model.dart';
 
 class EditPatientProfileScreen extends ConsumerStatefulWidget {
   const EditPatientProfileScreen({super.key});
@@ -43,21 +43,11 @@ class _EditPatientProfileScreenState
         });
         return;
       }
-      final snap = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      final data = snap.data() ?? {};
-      _phoneCtrl.text = (data['phone'] as String?) ?? '';
-      _ageCtrl.text = (data['age'] is int)
-          ? (data['age'] as int).toString()
-          : ((data['age'] as String?) ?? '');
-      _gender = (data['gender'] as String?)?.trim().isNotEmpty == true
-          ? data['gender'] as String
-          : 'Khác';
-      _historyCtrl.text = (data['medicalHistory'] is String)
-          ? (data['medicalHistory'] as String)
-          : '';
+      final state = ref.read(patientProfileViewModelProvider(user.uid));
+      _phoneCtrl.text = state.phone;
+      _ageCtrl.text = state.ageText;
+      _gender = state.gender;
+      _historyCtrl.text = state.medicalHistory;
       setState(() {
         _loading = false;
       });
@@ -75,26 +65,12 @@ class _EditPatientProfileScreenState
     try {
       final user = await ref.read(currentUserProvider.future);
       if (user == null) throw 'Không xác định được người dùng';
-      final updates = <String, dynamic>{
-        'phone': _phoneCtrl.text.trim(),
-        'gender': _gender.trim(),
-        'medicalHistory': _historyCtrl.text.trim(),
-      };
-      final ageText = _ageCtrl.text.trim();
-      if (ageText.isNotEmpty) {
-        final age = int.tryParse(ageText);
-        if (age != null) {
-          updates['age'] = age;
-        } else {
-          updates['age'] = ageText; // fallback string
-        }
-      } else {
-        updates['age'] = FieldValue.delete();
-      }
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .update(updates);
+      final vm = ref.read(patientProfileViewModelProvider(user.uid).notifier);
+      vm.setPhone(_phoneCtrl.text);
+      vm.setAgeText(_ageCtrl.text);
+      vm.setGender(_gender);
+      vm.setHistory(_historyCtrl.text);
+      await vm.save();
       if (mounted) {
         Navigator.of(context).pop(true);
       }

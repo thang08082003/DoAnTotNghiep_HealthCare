@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:healthcare/data/resources/gene/app_colors.dart';
 import 'package:healthcare/router/app_router.dart';
-import 'package:healthcare/providers/auth_provider.dart';
-import 'package:healthcare/providers/user_provider.dart';
+
 import 'package:healthcare/screens/home/home_page.dart';
 import 'package:healthcare/data/models/user_model.dart';
 import '../../components/buttons/index.dart';
+import '../../viewmodels/auth/auth_view_model.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -43,56 +43,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
-
     await ref
-        .read(authProvider.notifier)
+        .read(authViewModelProvider.notifier)
         .login(_emailController.text, _passwordController.text);
   }
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider);
+    final vmState = ref.watch(authViewModelProvider);
 
     // Listen to auth state changes (safe inside build)
-    ref.listen<AuthState>(authProvider, (previous, next) async {
-      // Show error only if changed
-      final errorChanged =
-          next.errorMessage != null &&
-          next.errorMessage!.isNotEmpty &&
-          next.errorMessage != previous?.errorMessage;
-      if (errorChanged) {
-        if (mounted) {
-          _showSnackBar(next.errorMessage!);
-        }
-        ref.read(authProvider.notifier).clearError();
+    ref.listen<AuthViewState>(authViewModelProvider, (previous, next) async {
+      if ((next.error ?? '').isNotEmpty && next.error != previous?.error) {
+        if (mounted) _showSnackBar(next.error!);
+        ref.read(authViewModelProvider.notifier).clearError();
       }
-
-      // Navigate only when becomes authenticated
       final becameAuthenticated =
           (previous?.isAuthenticated ?? false) == false &&
           next.isAuthenticated == true &&
           !next.isLoading &&
           next.uid != null;
       if (becameAuthenticated) {
-        final exists = await ref
-            .read(userRepositoryProvider)
-            .userExists(next.uid!);
         if (!mounted) return;
-        if (exists) {
-          final user = await ref
-              .read(userRepositoryProvider)
-              .getUserById(next.uid!);
-          if (!mounted) return;
-          final role = user?.role ?? UserRole.patient;
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => HomePage(userRole: role)),
-            (route) => false,
-          );
-        } else {
+        if (next.needsSetup) {
           AppRouter.pushUserSetup(
             context,
             uid: next.uid!,
             email: next.email ?? '',
+          );
+        } else {
+          final role = next.role ?? UserRole.patient;
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => HomePage(userRole: role)),
+            (route) => false,
           );
         }
       }
@@ -219,7 +202,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       PrimaryButton(
                         text: 'Đăng Nhập',
                         onPressed: _login,
-                        isLoading: authState.isLoading,
+                        isLoading: vmState.isLoading,
                       ),
                       const SizedBox(height: 16),
 

@@ -74,7 +74,13 @@ class ChatService {
           if (roles.patientId != null) 'patientId': roles.patientId,
         },
       );
-    } catch (_) {}
+    } catch (e, st) {
+      // Log notification failure to help diagnose missing notifications
+      // ignore: avoid_print
+      print('ChatService.sendMessage notification error: $e');
+      // ignore: avoid_print
+      print(st);
+    }
   }
 
   Future<void> sendImageMessage({
@@ -128,7 +134,12 @@ class ChatService {
           if (roles.patientId != null) 'patientId': roles.patientId,
         },
       );
-    } catch (_) {}
+    } catch (e, st) {
+      // ignore: avoid_print
+      print('ChatService.sendImageMessage notification error: $e');
+      // ignore: avoid_print
+      print(st);
+    }
   }
 
   Future<void> sendFileMessage({
@@ -189,7 +200,12 @@ class ChatService {
           if (roles.patientId != null) 'patientId': roles.patientId,
         },
       );
-    } catch (_) {}
+    } catch (e, st) {
+      // ignore: avoid_print
+      print('ChatService.sendFileMessage notification error: $e');
+      // ignore: avoid_print
+      print(st);
+    }
   }
 
   Future<void> sendVideoMessage({
@@ -242,7 +258,12 @@ class ChatService {
           if (roles.patientId != null) 'patientId': roles.patientId,
         },
       );
-    } catch (_) {}
+    } catch (e, st) {
+      // ignore: avoid_print
+      print('ChatService.sendVideoMessage notification error: $e');
+      // ignore: avoid_print
+      print(st);
+    }
   }
 
   Future<void> markAsRead({

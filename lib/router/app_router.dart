@@ -8,10 +8,10 @@ import '../screens/user_setup/user_setup_screen.dart';
 import '../screens/user_setup/disease_doctor_selection/disease_doctor_selection_screen.dart';
 import '../screens/user_setup/doctor_specialty_selection/doctor_specialty_selection_screen.dart';
 import '../screens/home/home_page.dart';
-import '../data/services/local_notifications_service.dart';
-import '../data/services/android_foreground_service.dart';
-import '../data/services/incoming_call_listener.dart';
-import '../data/services/android_passive_listener_service.dart';
+import '../viewmodels/notifications/local_notifications_view_model.dart';
+import '../viewmodels/foreground/foreground_service_view_model.dart';
+import '../viewmodels/incoming_call/incoming_call_view_model.dart';
+import '../viewmodels/passive_listener/passive_listener_view_model.dart';
 
 class AppRouter {
   // Route names
@@ -201,10 +201,10 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
     if (_currentUserId == null) return;
     if (state == AppLifecycleState.paused) {
       // App goes to background
-      AndroidForegroundService.start(_currentUserId!);
+      ref.read(foregroundServiceViewModelProvider).start(_currentUserId!);
     } else if (state == AppLifecycleState.resumed) {
       // App returns to foreground
-      AndroidForegroundService.stop();
+      ref.read(foregroundServiceViewModelProvider).stop();
     }
   }
 
@@ -247,26 +247,25 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
                     if (userSnapshot.hasData && userSnapshot.data != null) {
                       final user = userSnapshot.data!;
                       _currentUserId = user.uid;
-                      // Persist uid for native background usage and enable passive listener
-                      // Native side also schedules periodic drain as backup
-                      AndroidPassiveListenerService.enable();
+                      // Enable passive listener
+                      ref.read(passiveListenerViewModelProvider).enable();
                       // Start local notifications listening after first frame
                       WidgetsBinding.instance.addPostFrameCallback((_) {
-                        LocalNotificationsService.initialize()
-                            .then((_) async {
-                              await LocalNotificationsService.startListeningUserNotifications(
-                                user.uid,
-                              );
-                              // Handle cold start from a notification tap
-                              await LocalNotificationsService.handleInitialNotificationLaunch();
-                              // Stop foreground service if running since app is active
-                              await AndroidForegroundService.stop();
-                              // Set up native tap listener channel once
-                              AndroidForegroundService.ensureTapListener();
-                              // Start listening for incoming calls for this user
-                              IncomingCallListener.start(user.uid);
-                            })
+                        final lnsVm = ref.read(
+                          localNotificationsViewModelProvider,
+                        );
+                        lnsVm
+                            .initialize()
+                            .then((_) => lnsVm.startForUser(user.uid))
                             .catchError((_) {});
+                        // Ensure tap listener for foreground service
+                        ref
+                            .read(foregroundServiceViewModelProvider)
+                            .ensureTapListener();
+                        // Start incoming call listener
+                        ref
+                            .read(incomingCallViewModelProvider)
+                            .startForUser(user.uid);
                       });
                       return HomePage(userRole: user.role);
                     }
@@ -290,9 +289,9 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
     // Not authenticated
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Stop incoming call listener if any
-      IncomingCallListener.stop();
+      ref.read(incomingCallViewModelProvider).stop();
       // Disable passive listener when logging out
-      AndroidPassiveListenerService.disable();
+      ref.read(passiveListenerViewModelProvider).disable();
     });
     return const LoginScreen();
   }

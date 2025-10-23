@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import '../../data/config/media_upload_config.dart';
-import '../../data/services/media_upload_service.dart';
 import '../../components/buttons/logout_button.dart';
 import '../../components/loading/loading_widget.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../providers/auth_provider.dart';
+import '../../viewmodels/profile/patient_profile_view_model.dart';
+import '../../viewmodels/profile/doctor_profile_view_model.dart';
+import '../../viewmodels/profile/avatar_view_model.dart';
 import '../../providers/user_provider.dart';
 import '../../router/app_router.dart';
 import 'health_connect_screen.dart';
@@ -199,7 +198,7 @@ class ProfileContent extends ConsumerWidget {
   }
 }
 
-class _PatientInfoCard extends StatelessWidget {
+class _PatientInfoCard extends ConsumerWidget {
   final dynamic user; // UserModel
   final VoidCallback onEdit;
 
@@ -209,7 +208,7 @@ class _PatientInfoCard extends StatelessWidget {
       (v == null || v.trim().isEmpty) ? 'Chưa cập nhật' : v.trim();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final phone = user.phone as String?;
     final gender = user.gender as String?;
     final medicalHistory = user.medicalHistory as String?;
@@ -258,10 +257,9 @@ class _PatientInfoCard extends StatelessWidget {
             onSave: (val) async {
               final digits = val.replaceAll(RegExp(r'[^0-9]'), '');
               if (digits.length != 10) throw 'Số điện thoại phải có đúng 10 số';
-              await FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(user.uid)
-                  .update({'phone': digits});
+              await ref
+                  .read(patientProfileViewModelProvider(user.uid).notifier)
+                  .updatePhone(digits);
               onEdit();
             },
           ),
@@ -276,10 +274,9 @@ class _PatientInfoCard extends StatelessWidget {
               if (parsed == null || parsed < 0 || parsed > 120) {
                 throw 'Tuổi không hợp lệ (0 - 120)';
               }
-              await FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(user.uid)
-                  .update({'age': parsed});
+              await ref
+                  .read(patientProfileViewModelProvider(user.uid).notifier)
+                  .updateAge(parsed);
               onEdit();
             },
           ),
@@ -294,15 +291,13 @@ class _PatientInfoCard extends StatelessWidget {
               if (selected == null) return;
               try {
                 if (selected == _DiseaseFocusDialogResult.clear) {
-                  await FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(user.uid)
-                      .update({'diseaseFocus': FieldValue.delete()});
+                  await ref
+                      .read(patientProfileViewModelProvider(user.uid).notifier)
+                      .updateDiseaseFocus(null);
                 } else if (selected is DiseaseFocus) {
-                  await FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(user.uid)
-                      .update({'diseaseFocus': selected.value});
+                  await ref
+                      .read(patientProfileViewModelProvider(user.uid).notifier)
+                      .updateDiseaseFocus(selected.value);
                 }
                 onEdit();
               } catch (e) {
@@ -379,10 +374,9 @@ class _PatientInfoCard extends StatelessWidget {
                 }
                 return;
               }
-              await FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(user.uid)
-                  .update({'medicalHistory': trimmed});
+              await ref
+                  .read(patientProfileViewModelProvider(user.uid).notifier)
+                  .updateMedicalHistory(trimmed);
               onEdit();
             },
             child: Text(
@@ -442,14 +436,14 @@ class _PatientInfoCard extends StatelessWidget {
 
 // Dialog helpers for Disease Focus selection
 
-class _DoctorInfoCard extends StatelessWidget {
+class _DoctorInfoCard extends ConsumerWidget {
   final DoctorModel doctor;
   final VoidCallback onEdit;
 
   const _DoctorInfoCard({required this.doctor, required this.onEdit});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final specialty = doctor.specialty.vietnameseName;
     final years = doctor.yearsExperience;
 
@@ -514,10 +508,9 @@ class _DoctorInfoCard extends StatelessWidget {
               if (digits.isNotEmpty && digits.length != 10) {
                 throw 'Số điện thoại phải có đúng 10 số';
               }
-              await FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(doctor.uid)
-                  .update({'phone': digits.isEmpty ? null : digits});
+              await ref
+                  .read(doctorProfileViewModelProvider(doctor.uid).notifier)
+                  .updatePhone(digits.isEmpty ? null : digits);
               onEdit();
             },
           ),
@@ -532,10 +525,9 @@ class _DoctorInfoCard extends StatelessWidget {
               final parsed = int.tryParse(onlyNumber);
               if (parsed == null) throw 'Số năm không hợp lệ';
               if (parsed >= 45) throw 'Kinh nghiệm phải < 45 năm';
-              await FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(doctor.uid)
-                  .update({'yearsExperience': parsed});
+              await ref
+                  .read(doctorProfileViewModelProvider(doctor.uid).notifier)
+                  .updateYearsExperience(parsed);
               onEdit();
             },
           ),
@@ -561,17 +553,9 @@ class _DoctorInfoCard extends StatelessWidget {
               );
               if (result == null) return;
               final trimmed = result.trim();
-              if (trimmed.isEmpty) {
-                await FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(doctor.uid)
-                    .update({'description': FieldValue.delete()});
-              } else {
-                await FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(doctor.uid)
-                    .update({'description': trimmed});
-              }
+              await ref
+                  .read(doctorProfileViewModelProvider(doctor.uid).notifier)
+                  .updateDescription(trimmed.isEmpty ? null : trimmed);
               onEdit();
             },
             child: Text(
@@ -820,7 +804,7 @@ Widget _editableRow(
 // (Top-level gender row helper removed to avoid duplicate; using the one inside _PatientInfoCard)
 
 // ===== Avatar Picker Widget =====
-class _AvatarPicker extends StatefulWidget {
+class _AvatarPicker extends ConsumerStatefulWidget {
   final String? avatarUrl;
   final String? uid;
   final VoidCallback onUpdated;
@@ -832,10 +816,10 @@ class _AvatarPicker extends StatefulWidget {
   });
 
   @override
-  State<_AvatarPicker> createState() => _AvatarPickerState();
+  ConsumerState<_AvatarPicker> createState() => _AvatarPickerState();
 }
 
-class _AvatarPickerState extends State<_AvatarPicker> {
+class _AvatarPickerState extends ConsumerState<_AvatarPicker> {
   bool _uploading = false;
   String? _overrideUrl; // Hiển thị tạm thời avatar mới ngay lập tức
 
@@ -851,66 +835,27 @@ class _AvatarPickerState extends State<_AvatarPicker> {
       if (picked == null) return;
 
       setState(() => _uploading = true);
-
       final ext = picked.name.split('.').last.toLowerCase();
-      // Tạo file mới với timestamp để tránh cache URL cũ
-      final ts = DateTime.now().millisecondsSinceEpoch;
-      final path = 'avatars/${widget.uid}/profile_$ts.$ext';
-      final fileData = await picked.readAsBytes();
+      final bytes = await picked.readAsBytes();
 
-      String url;
-      if (MediaUploadConfig.provider == MediaUploadProvider.firebaseStorage) {
-        final ref = FirebaseStorage.instance.ref().child(path);
-        final metadata = SettableMetadata(
-          contentType: (ext == 'png'
-              ? 'image/png'
-              : (ext == 'jpg' || ext == 'jpeg')
-              ? 'image/jpeg'
-              : 'application/octet-stream'),
-          // Tránh cache lâu khiến người dùng không thấy ảnh mới
-          cacheControl: 'public, max-age=0, no-cache',
-        );
-        await ref.putData(fileData, metadata);
-        url = await ref.getDownloadURL();
-        // Thử xoá các avatar cũ (nếu có) để tránh rác dung lượng
-        try {
-          final folderRef = FirebaseStorage.instance.ref().child(
-            'avatars/${widget.uid}',
-          );
-          final listResult = await folderRef.listAll();
-          for (final item in listResult.items) {
-            if (item.fullPath != path) {
-              // Bỏ qua lỗi nếu không xoá được
-              try {
-                await item.delete();
-              } catch (_) {}
-            }
-          }
-        } catch (_) {}
-      } else {
-        url = await MediaUploadService.uploadAvatar(
-          uid: widget.uid!,
-          data: fileData,
-          fileExt: (ext == 'png' || ext == 'jpg' || ext == 'jpeg')
-              ? (ext == 'jpg' ? 'jpeg' : ext)
-              : 'jpeg',
-        );
-      }
-
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.uid)
-          .update({'avatarUrl': url});
+      final vm = ref.read(avatarViewModelProvider);
+      final url = await vm.uploadAndSetAvatar(
+        uid: widget.uid!,
+        bytes: bytes,
+        fileExt: ext,
+      );
 
       if (mounted) {
         setState(() {
           _uploading = false;
-          _overrideUrl = url; // dùng ngay ảnh mới trước khi provider rebuild
+          if (url != null) _overrideUrl = url;
         });
-        widget.onUpdated();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ảnh đại diện đã được cập nhật')),
-        );
+        if (url != null) {
+          widget.onUpdated();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Ảnh đại diện đã được cập nhật')),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {

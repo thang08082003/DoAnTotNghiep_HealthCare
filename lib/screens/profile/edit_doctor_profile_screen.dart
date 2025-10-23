@@ -1,9 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/doctor_model.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
+import '../../viewmodels/profile/doctor_profile_view_model.dart';
 
 class EditDoctorProfileScreen extends ConsumerStatefulWidget {
   const EditDoctorProfileScreen({super.key});
@@ -43,18 +43,12 @@ class _EditDoctorProfileScreenState
         });
         return;
       }
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      final data = doc.data() ?? {};
-      _nameCtrl.text = user.name;
-      _yearsCtrl.text = (data['yearsExperience']?.toString() ?? '');
-      _descCtrl.text = (data['description']?.toString() ?? '');
-      final specStr = data['specialty'] as String?;
-      _specialty = specStr != null
-          ? Specialty.fromString(specStr)
-          : (user is DoctorModel ? user.specialty : null);
+      final state = ref.read(doctorProfileViewModelProvider(user.uid));
+      _nameCtrl.text = state.name;
+      _yearsCtrl.text = state.yearsExperience?.toString() ?? '';
+      _descCtrl.text = state.description;
+      _specialty =
+          state.specialty ?? (user is DoctorModel ? user.specialty : null);
       setState(() {
         _loading = false;
       });
@@ -72,25 +66,12 @@ class _EditDoctorProfileScreenState
     try {
       final user = await ref.read(currentUserProvider.future);
       if (user == null) throw 'Không xác định được người dùng';
-      final updates = <String, dynamic>{'name': _nameCtrl.text.trim()};
-      if (_specialty != null) updates['specialty'] = _specialty!.englishName;
-      final yearsText = _yearsCtrl.text.trim();
-      if (yearsText.isNotEmpty) {
-        final y = int.tryParse(yearsText);
-        if (y != null) updates['yearsExperience'] = y;
-      } else {
-        updates['yearsExperience'] = FieldValue.delete();
-      }
-      final descText = _descCtrl.text.trim();
-      if (descText.isNotEmpty) {
-        updates['description'] = descText;
-      } else {
-        updates['description'] = FieldValue.delete();
-      }
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .update(updates);
+      final vm = ref.read(doctorProfileViewModelProvider(user.uid).notifier);
+      vm.setName(_nameCtrl.text);
+      vm.setSpecialty(_specialty);
+      vm.setYears(_yearsCtrl.text);
+      vm.setDescription(_descCtrl.text);
+      await vm.save();
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {

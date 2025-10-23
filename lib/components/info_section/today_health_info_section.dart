@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../data/resources/gene/app_colors.dart';
-import '../providers/user_provider.dart';
-import '../providers/health_metrics_providers.dart';
-import '../screens/metrics/heart_rate_detail_screen.dart';
-import '../screens/metrics/spo2_detail_screen.dart';
-import '../screens/metrics/sleep_detail_screen.dart';
-import '../screens/metrics/hrv_detail_screen.dart';
+import '../../data/resources/gene/app_colors.dart';
+import '../../providers/user_provider.dart';
+import '../../providers/health_metrics_providers.dart';
+import '../../screens/metrics/heart_rate_detail_screen.dart';
+import '../../screens/metrics/spo2_detail_screen.dart';
+import '../../screens/metrics/sleep_detail_screen.dart';
+import '../../screens/metrics/hrv_detail_screen.dart';
 
 class TodayHealthInfoSection extends ConsumerWidget {
   final String? userId;

@@ -5,11 +5,11 @@ import '../../providers/user_provider.dart';
 import '../../data/services/follow_request_service.dart';
 import '../../data/models/user_model.dart';
 import '../patients/patient_detail_screen.dart';
-import '../../data/services/doctor_reviews_service.dart';
-import '../../data/models/doctor_review.dart';
+
+import '../../components/reviews/reviews_list.dart';
+import '../../viewmodels/reviews/doctor_reviews_view_model.dart';
 import '../doctors/doctor_reviews_screen.dart';
 import '../resources/clinical_resources_screen.dart';
-import '../../data/services/user_service.dart';
 
 class DoctorDashboardContent extends ConsumerWidget {
   const DoctorDashboardContent({super.key});
@@ -132,7 +132,7 @@ class DoctorDashboardContent extends ConsumerWidget {
   }
 }
 
-class _RecentReviewsPreview extends StatelessWidget {
+class _RecentReviewsPreview extends ConsumerWidget {
   final String doctorId;
   final String doctorName;
   const _RecentReviewsPreview({
@@ -141,52 +141,34 @@ class _RecentReviewsPreview extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (doctorId.isEmpty) {
       return _shell(Container());
     }
-    final service = DoctorReviewsService();
+    final vm = ref.read(doctorReviewsViewModelProvider);
     return _shell(
-      StreamBuilder<List<DoctorReview>>(
-        stream: service.watchReviews(doctorId, limit: 3),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final reviews = snapshot.data ?? const <DoctorReview>[];
-          if (reviews.isEmpty) {
-            return const Padding(
-              padding: EdgeInsets.symmetric(vertical: 4),
-              child: Text(
-                'Chưa có nhận xét nào.',
-                style: TextStyle(color: AppColors.textSecondary),
-              ),
-            );
-          }
-          return Column(
-            children: [
-              ...reviews.map((r) => _reviewItem(context, r)),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => DoctorReviewsScreen(
-                          doctorId: doctorId,
-                          doctorName: doctorName,
-                        ),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.list),
-                  label: const Text('Xem tất cả nhận xét'),
-                ),
-              ),
-            ],
-          );
-        },
+      Column(
+        children: [
+          ReviewsList(doctorId: doctorId, reviewsVm: vm, limit: 3),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => DoctorReviewsScreen(
+                      doctorId: doctorId,
+                      doctorName: doctorName,
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.list),
+              label: const Text('Xem tất cả nhận xét'),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -209,165 +191,9 @@ class _RecentReviewsPreview extends StatelessWidget {
       child: child,
     );
   }
-
-  Widget _reviewItem(BuildContext context, DoctorReview r) {
-    final subtitle = (r.comment ?? '').trim();
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _DashboardReviewAvatar(
-            patientId: r.patientId,
-            initialUrl: r.patientAvatarUrl,
-            name: r.patientName,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        r.patientName.isEmpty ? 'Người dùng' : r.patientName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                    const Icon(Icons.star, color: Colors.amber, size: 16),
-                    const SizedBox(width: 4),
-                    Text('${r.rating}/5'),
-                  ],
-                ),
-                if (subtitle.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle.length > 140
-                        ? '${subtitle.substring(0, 137)}...'
-                        : subtitle,
-                    style: const TextStyle(color: AppColors.textSecondary),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
-class _DashboardReviewAvatar extends StatefulWidget {
-  final String patientId;
-  final String? initialUrl;
-  final String name;
-  const _DashboardReviewAvatar({
-    required this.patientId,
-    required this.initialUrl,
-    required this.name,
-  });
-
-  @override
-  State<_DashboardReviewAvatar> createState() => _DashboardReviewAvatarState();
-}
-
-class _DashboardReviewAvatarState extends State<_DashboardReviewAvatar> {
-  String? _url;
-  bool _loading = false;
-  bool _tried = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _url = widget.initialUrl;
-    if (_url == null || _url!.isEmpty) _fetch();
-  }
-
-  Future<void> _fetch() async {
-    if (_tried) return;
-    _tried = true;
-    setState(() => _loading = true);
-    try {
-      final svc = UserService();
-      final u = await svc.getUserById(widget.patientId);
-      if (!mounted) return;
-      setState(() => _url = u?.avatarUrl);
-    } catch (_) {
-      // ignore silently
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final hasUrl = _url != null && _url!.isNotEmpty;
-    final initials = _initials(widget.name);
-    if (_loading && !hasUrl) {
-      return const SizedBox(
-        width: 40,
-        height: 40,
-        child: Center(
-          child: SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-      );
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        width: 40,
-        height: 40,
-        color: Colors.grey.withValues(alpha: 0.15),
-        child: hasUrl
-            ? Image.network(
-                _url!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _fallback(initials),
-              )
-            : _fallback(initials),
-      ),
-    );
-  }
-
-  Widget _fallback(String initials) => Center(
-    child: Text(
-      initials,
-      style: const TextStyle(
-        fontWeight: FontWeight.bold,
-        color: AppColors.textSecondary,
-      ),
-    ),
-  );
-
-  String _initials(String name) {
-    final parts = name
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((e) => e.isNotEmpty)
-        .toList();
-    if (parts.isEmpty) return '?';
-    if (parts.length == 1) {
-      return parts.first.characters.take(1).toString().toUpperCase();
-    }
-    return (parts.first.characters.take(1).toString() +
-            parts.last.characters.take(1).toString())
-        .toUpperCase();
-  }
-}
+// replaced by InlineUserAvatar in shared components
 
 class _FollowedPatientsList extends ConsumerStatefulWidget {
   final String doctorId;

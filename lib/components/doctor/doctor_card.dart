@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../buttons/primary_button.dart';
 import '../../data/models/doctor_model.dart';
 import '../../data/resources/gene/app_colors.dart';
-import '../../data/services/doctor_reviews_service.dart';
+import '../reviews/reviews_summary.dart';
+import '../../viewmodels/reviews/doctor_reviews_view_model.dart';
 
 class DoctorCard extends StatelessWidget {
   final DoctorModel doctor;
@@ -140,30 +141,24 @@ class DoctorCard extends StatelessWidget {
               // Rating row (avg), optional
               if (showRating) ...[
                 const SizedBox(height: 8),
-                FutureBuilder<double>(
-                  future: DoctorReviewsService().getAverageRating(doctor.uid),
-                  builder: (context, snap) {
-                    final avg = (snap.data ?? 0).toStringAsFixed(1);
-                    return Row(
-                      children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 16),
-                        const SizedBox(width: 4),
-                        Text(
-                          '$avg/5.0',
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        const Spacer(),
-                        if (onRate != null)
-                          TextButton.icon(
-                            onPressed: onRate,
-                            icon: const Icon(Icons.rate_review, size: 16),
-                            label: const Text('Đánh giá'),
-                          ),
-                      ],
-                    );
-                  },
+                Row(
+                  children: [
+                    const Icon(Icons.star, color: Colors.amber, size: 16),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: ReviewsSummary(
+                        doctorId: doctor.uid,
+                        reviewsVm: DoctorReviewsViewModel(),
+                        compact: true,
+                      ),
+                    ),
+                    if (onRate != null)
+                      TextButton.icon(
+                        onPressed: onRate,
+                        icon: const Icon(Icons.rate_review, size: 16),
+                        label: const Text('Đánh giá'),
+                      ),
+                  ],
                 ),
               ],
 
