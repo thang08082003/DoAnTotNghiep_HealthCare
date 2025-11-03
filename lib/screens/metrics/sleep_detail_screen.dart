@@ -1,13 +1,12 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:health/health.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/resources/gene/app_colors.dart';
-import '../../data/services/health_connect_service.dart';
-import '../../providers/health_metrics_providers.dart';
-import '../../data/models/health_metric_models.dart';
+import '../../viewmodels/sleep/sleep_viewmodel.dart';
+import '../../data/domain/metrics_aggregate.dart';
+import '../../components/chart/chart_container.dart';
+import '../../components/metrics/metrics_segmented.dart';
 
 class SleepDetailScreen extends ConsumerStatefulWidget {
   final String? userId; // nếu có userId -> lấy Firestore (role bác sĩ)
@@ -21,42 +20,13 @@ enum _SleepRange { day, week, month }
 
 class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
     with WidgetsBindingObserver {
-  bool _loading = true;
-  String? _error;
-  bool _fetching = false;
+  // UI state
   _SleepRange _mode = _SleepRange.day;
-
-  // Day totals in minutes
-  int _dayLight = 0;
-  int _dayDeep = 0;
-  int _dayRem = 0;
-
-  late DateTime _weekStart; // Monday of current week
-  // Week daily totals and percentages
-  late List<_StageDaily> _weekDaily; // length 7
-
-  // Month daily totals and percentages
-  late List<_StageDaily> _monthDaily; // length = days in month
-  // Sleep habit: bedtime hour per day (0..24), null if unknown
-  late List<double?> _weekBedtimeHours; // length 7
-  late List<double?> _monthBedtimeHours; // length = days in month
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _weekStart = _startOfWeek(DateTime.now());
-    _weekDaily = List.generate(
-      7,
-      (_) => const _StageDaily(
-        totals: _StageTotals(light: 0, deep: 0, rem: 0),
-        percentages: _StagePct.zero(),
-      ),
-    );
-    _monthDaily = const [];
-    _weekBedtimeHours = List<double?>.filled(7, null);
-    _monthBedtimeHours = <double?>[];
-    _loadAll();
   }
 
   @override
@@ -68,299 +38,14 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _loadAll();
+      // trigger a refresh by invalidating viewmodel
+      ref.read(sleepViewModelProvider(widget.userId).notifier).refresh();
     }
-  }
-
-  Future<void> _loadAll() async {
-    if (_fetching) return;
-    _fetching = true;
-    if (mounted) {
-      setState(() {
-        _loading = true;
-        _error = null;
-      });
-    }
-    try {
-      final now = DateTime.now();
-      if (widget.userId != null) {
-        // Firestore source (role bác sĩ)
-        final repo = ref.read(healthMetricsRepositoryProvider);
-        // Day
-        final dayStart = DateTime(now.year, now.month, now.day);
-        final daySessions = await repo
-            .sleepStream(widget.userId!, from: dayStart)
-            .first;
-        final dayTotals = _sumSleepStagesFromFs(daySessions);
-        _dayLight = dayTotals.light;
-        _dayDeep = dayTotals.deep;
-        _dayRem = dayTotals.rem;
-
-        // Week
-        final mon = _startOfWeek(now);
-        final nextMon = mon.add(const Duration(days: 7));
-        final weekSessions = await repo
-            .sleepStream(widget.userId!, from: mon)
-            .first;
-        _weekStart = mon;
-        _weekDaily = _dailyFromFs(weekSessions, mon, nextMon);
-        _weekBedtimeHours = _bedtimeFromFs(weekSessions, mon, nextMon);
-
-        // Month
-        final first = DateTime(now.year, now.month, 1);
-        final firstNext = DateTime(now.year, now.month + 1, 1);
-        final monthSessions = await repo
-            .sleepStream(widget.userId!, from: first)
-            .first;
-        _monthDaily = _dailyFromFs(monthSessions, first, firstNext);
-        _monthBedtimeHours = _bedtimeFromFs(monthSessions, first, firstNext);
-
-        if (!mounted) return;
-        setState(() {});
-      } else {
-        // Health Connect source (role bệnh nhân)
-        final svc = GoogleFitService();
-        await svc.ensureConnected();
-
-        // Day: today 00:00 -> now
-        final dayStart = DateTime(now.year, now.month, now.day);
-        final dayStages = await _getStages(svc, dayStart, now);
-        _dayLight = dayStages.light;
-        _dayDeep = dayStages.deep;
-        _dayRem = dayStages.rem;
-
-        // Week: Mon..Sun current week
-        final mon = _startOfWeek(now);
-        final nextMon = mon.add(const Duration(days: 7));
-        final weekDaily = await _getDailyStages(svc, mon, nextMon);
-        _weekStart = mon;
-        _weekDaily = weekDaily;
-        _weekBedtimeHours = await _computeBedtimeHoursForRange(
-          svc,
-          mon,
-          nextMon,
-        );
-
-        // Month: 1st .. next month 1st
-        final first = DateTime(now.year, now.month, 1);
-        final firstNext = DateTime(now.year, now.month + 1, 1);
-        final monthDaily = await _getDailyStages(svc, first, firstNext);
-        _monthDaily = monthDaily;
-        _monthBedtimeHours = await _computeBedtimeHoursForRange(
-          svc,
-          first,
-          firstNext,
-        );
-
-        if (!mounted) return;
-        setState(() {});
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _error = e.toString());
-    } finally {
-      _fetching = false;
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  // --- Firestore helpers ---
-  _StageTotals _sumSleepStagesFromFs(List<SleepSession> sessions) {
-    // Firestore SleepSession không có stage chi tiết, phân bổ toàn bộ vào Light để hiển thị tổng
-    int light = 0, deep = 0, rem = 0;
-    for (final s in sessions) {
-      light += s.durationMinutes;
-    }
-    return _StageTotals(light: light, deep: deep, rem: rem);
-  }
-
-  List<_StageDaily> _dailyFromFs(
-    List<SleepSession> sessions,
-    DateTime start,
-    DateTime end,
-  ) {
-    final days = end.difference(start).inDays;
-    final totals = List<int>.filled(days, 0);
-    for (final s in sessions) {
-      // Clamp within range
-      DateTime from = s.start.isBefore(start) ? start : s.start;
-      DateTime to = s.end.isAfter(end) ? end : s.end;
-      if (!to.isAfter(from)) continue;
-      while (from.isBefore(to)) {
-        final dayStart = DateTime(from.year, from.month, from.day);
-        final dayEnd = dayStart.add(const Duration(days: 1));
-        final segEnd = to.isBefore(dayEnd) ? to : dayEnd;
-        final minutes = segEnd.difference(from).inMinutes;
-        final idx = from.difference(start).inDays;
-        if (idx >= 0 && idx < days && minutes > 0) {
-          totals[idx] += minutes;
-        }
-        from = segEnd;
-      }
-    }
-    final out = <_StageDaily>[];
-    for (int i = 0; i < days; i++) {
-      final t = _StageTotals(light: totals[i], deep: 0, rem: 0);
-      final total = t.totalMinutes;
-      final pct = total == 0
-          ? const _StagePct.zero()
-          : _StagePct(light: 100.0, deep: 0.0, rem: 0.0);
-      out.add(_StageDaily(totals: t, percentages: pct));
-    }
-    return out;
-  }
-
-  List<double?> _bedtimeFromFs(
-    List<SleepSession> sessions,
-    DateTime start,
-    DateTime end,
-  ) {
-    final days = end.difference(start).inDays;
-    final out = List<double?>.filled(days, null);
-    for (int i = 0; i < days; i++) {
-      final dayStart = DateTime(
-        start.year,
-        start.month,
-        start.day,
-      ).add(Duration(days: i));
-      final windowStart = dayStart.subtract(const Duration(hours: 6));
-      final windowEnd = dayStart.add(const Duration(hours: 12));
-      DateTime? earliest;
-      for (final s in sessions) {
-        final ps = s.start;
-        if (!ps.isBefore(windowEnd) || ps.isBefore(windowStart)) continue;
-        if (earliest == null || ps.isBefore(earliest)) {
-          earliest = ps;
-        }
-      }
-      if (earliest != null) {
-        out[i] = earliest.hour + earliest.minute / 60.0;
-      }
-    }
-    return out;
-  }
-
-  DateTime _startOfWeek(DateTime now) {
-    final weekday = now.weekday; // Mon=1..Sun=7
-    return DateTime(
-      now.year,
-      now.month,
-      now.day,
-    ).subtract(Duration(days: weekday - 1));
-  }
-
-  // Query SLEEP_LIGHT/DEEP/REM and compute totals (minutes)
-  Future<_StageTotals> _getStages(
-    GoogleFitService svc,
-    DateTime start,
-    DateTime end,
-  ) async {
-    // Single batched fetch for all stages, then sum locally
-    final pts = await svc.getDataFast(
-      types: const [
-        HealthDataType.SLEEP_LIGHT,
-        HealthDataType.SLEEP_DEEP,
-        HealthDataType.SLEEP_REM,
-      ],
-      start: start,
-      end: end,
-    );
-    int light = 0, deep = 0, rem = 0;
-    for (final p in pts) {
-      final from = p.dateFrom.isBefore(start) ? start : p.dateFrom;
-      final to = p.dateTo.isAfter(end) ? end : p.dateTo;
-      if (!to.isAfter(from)) continue;
-      final mins = to.difference(from).inMinutes;
-      switch (p.type) {
-        case HealthDataType.SLEEP_LIGHT:
-          light += mins;
-          break;
-        case HealthDataType.SLEEP_DEEP:
-          deep += mins;
-          break;
-        case HealthDataType.SLEEP_REM:
-          rem += mins;
-          break;
-        default:
-          break;
-      }
-    }
-    return _StageTotals(light: light, deep: deep, rem: rem);
-  }
-
-  // Returns a list for each day in [start, end): totals and percentages
-  Future<List<_StageDaily>> _getDailyStages(
-    GoogleFitService svc,
-    DateTime start,
-    DateTime end,
-  ) async {
-    final days = end.difference(start).inDays;
-    if (days <= 0) return const <_StageDaily>[];
-
-    // Fetch once for the entire range, all stages
-    final pts = await svc.getDataFast(
-      types: const [
-        HealthDataType.SLEEP_LIGHT,
-        HealthDataType.SLEEP_DEEP,
-        HealthDataType.SLEEP_REM,
-      ],
-      start: start,
-      end: end,
-    );
-
-    final light = List<int>.filled(days, 0);
-    final deep = List<int>.filled(days, 0);
-    final rem = List<int>.filled(days, 0);
-
-    for (final p in pts) {
-      // Clamp to range
-      DateTime from = p.dateFrom.isBefore(start) ? start : p.dateFrom;
-      DateTime to = p.dateTo.isAfter(end) ? end : p.dateTo;
-      if (!to.isAfter(from)) continue;
-
-      while (from.isBefore(to)) {
-        final dayStart = DateTime(from.year, from.month, from.day);
-        final dayEnd = dayStart.add(const Duration(days: 1));
-        final segEnd = to.isBefore(dayEnd) ? to : dayEnd;
-        final minutes = segEnd.difference(from).inMinutes;
-        final idx = from.difference(start).inDays;
-        if (idx >= 0 && idx < days && minutes > 0) {
-          switch (p.type) {
-            case HealthDataType.SLEEP_LIGHT:
-              light[idx] += minutes;
-              break;
-            case HealthDataType.SLEEP_DEEP:
-              deep[idx] += minutes;
-              break;
-            case HealthDataType.SLEEP_REM:
-              rem[idx] += minutes;
-              break;
-            default:
-              break;
-          }
-        }
-        from = segEnd;
-      }
-    }
-
-    final out = <_StageDaily>[];
-    for (int i = 0; i < days; i++) {
-      final t = _StageTotals(light: light[i], deep: deep[i], rem: rem[i]);
-      final total = t.totalMinutes;
-      final pct = total == 0
-          ? const _StagePct.zero()
-          : _StagePct(
-              light: t.light * 100 / total,
-              deep: t.deep * 100 / total,
-              rem: t.rem * 100 / total,
-            );
-      out.add(_StageDaily(totals: t, percentages: pct));
-    }
-    return out;
   }
 
   @override
   Widget build(BuildContext context) {
+    final asyncAgg = ref.watch(sleepViewModelProvider(widget.userId));
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chi tiết giấc ngủ'),
@@ -368,90 +53,76 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Làm mới',
-            onPressed: _loadAll,
+            onPressed: () {
+              ref
+                  .read(sleepViewModelProvider(widget.userId).notifier)
+                  .refresh();
+            },
           ),
         ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : (_error != null)
-            ? Center(
-                child: Text(_error!, style: const TextStyle(color: Colors.red)),
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildSegmented(),
-                  const SizedBox(height: 12),
-                  Expanded(child: _buildBody()),
-                ],
-              ),
+        child: asyncAgg.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, st) => Center(
+            child: Text(
+              e.toString(),
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+          data: (agg) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSegmented(),
+              const SizedBox(height: 12),
+              Expanded(child: _buildBody(agg)),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildSegmented() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final w = (constraints.maxWidth / 3).clamp(0.0, double.infinity);
-        return CupertinoSegmentedControl<_SleepRange>(
-          groupValue: _mode,
-          onValueChanged: (m) => setState(() => _mode = m),
-          children: {
-            _SleepRange.day: SizedBox(
-              width: w,
-              child: const Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 6),
-                  child: Text('D'),
-                ),
-              ),
-            ),
-            _SleepRange.week: SizedBox(
-              width: w,
-              child: const Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 6),
-                  child: Text('W'),
-                ),
-              ),
-            ),
-            _SleepRange.month: SizedBox(
-              width: w,
-              child: const Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 6),
-                  child: Text('M'),
-                ),
-              ),
-            ),
-          },
-        );
-      },
+    return MetricsSegmented(
+      value: _mode == _SleepRange.day
+          ? MetricsRange.day
+          : _mode == _SleepRange.week
+          ? MetricsRange.week
+          : MetricsRange.month,
+      onChanged: (r) => setState(() {
+        _mode = r == MetricsRange.day
+            ? _SleepRange.day
+            : r == MetricsRange.week
+            ? _SleepRange.week
+            : _SleepRange.month;
+      }),
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(SleepAggregate agg) {
     switch (_mode) {
       case _SleepRange.day:
-        return _buildDayPie();
+        return _buildDayPie(agg);
       case _SleepRange.week:
-        return _buildWeekStacked();
+        return _buildWeekStacked(agg);
       case _SleepRange.month:
-        return _buildMonthStacked();
+        return _buildMonthStacked(agg);
     }
   }
 
   // Day: pie chart of today (Light/Deep/REM) + totals and percentages
-  Widget _buildDayPie() {
-    final total = _dayLight + _dayDeep + _dayRem;
+  Widget _buildDayPie(SleepAggregate agg) {
+    final light = agg.dayTotals.light;
+    final deep = agg.dayTotals.deep;
+    final rem = agg.dayTotals.rem;
+    final total = light + deep + rem;
     final sections = <PieChartSectionData>[];
     if (total > 0) {
-      final lightPct = _dayLight * 100 / total;
-      final deepPct = _dayDeep * 100 / total;
-      final remPct = _dayRem * 100 / total;
+      final lightPct = light * 100 / total;
+      final deepPct = deep * 100 / total;
+      final remPct = rem * 100 / total;
       sections.addAll([
         PieChartSectionData(
           color: const Color(0xFF90CAF9),
@@ -490,25 +161,22 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
     }
     return Column(
       children: [
-        SizedBox(
-          height: 260,
-          child: sections.isEmpty
-              ? const Center(child: Text('Chưa có dữ liệu hôm nay'))
-              : PieChart(
-                  PieChartData(
-                    sections: sections,
-                    sectionsSpace: 2,
-                    centerSpaceRadius: 40,
+        ChartContainer(
+          child: SizedBox(
+            height: 260,
+            child: sections.isEmpty
+                ? const Center(child: Text('Chưa có dữ liệu hôm nay'))
+                : PieChart(
+                    PieChartData(
+                      sections: sections,
+                      sectionsSpace: 2,
+                      centerSpaceRadius: 40,
+                    ),
                   ),
-                ),
+          ),
         ),
         const SizedBox(height: 12),
-        _legend(
-          totalMinutes: total,
-          light: _dayLight,
-          deep: _dayDeep,
-          rem: _dayRem,
-        ),
+        _legend(totalMinutes: total, light: light, deep: deep, rem: rem),
         const SizedBox(height: 12),
         Container(
           decoration: BoxDecoration(
@@ -522,30 +190,23 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
               ),
             ],
           ),
-          child: const ExpansionTile(
-            tilePadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            title: Text('Tìm hiểu giấc ngủ'),
-            childrenPadding: EdgeInsets.fromLTRB(16, 0, 16, 16),
-            children: [
-              Text(
-                '• Mục tiêu 7–9 giờ mỗi đêm cho người trưởng thành.\n'
-                '• Cố gắng đi ngủ vào cùng một khung giờ mỗi ngày.\n'
-                '• Tránh caffeine/điện thoại trước khi ngủ 2–3 giờ.\n'
-                '• Ưu tiên môi trường ngủ yên tĩnh, mát mẻ, ít ánh sáng.',
-              ),
-            ],
-          ),
         ),
       ],
     );
   }
 
   // Week: two charts — duration (hours) and sleep score (%)
-  Widget _buildWeekStacked() {
+  Widget _buildWeekStacked(SleepAggregate agg) {
     final groupsDur = <BarChartGroupData>[];
     final groupsScore = <BarChartGroupData>[];
+    final now = DateTime.now();
+    final weekStart = DateTime(now.year, now.month, now.day).subtract(
+      Duration(days: DateTime(now.year, now.month, now.day).weekday - 1),
+    );
     for (int i = 0; i < 7; i++) {
-      final totalMin = _weekDaily.length > i ? _weekDaily[i].totalMinutes : 0;
+      final totalMin = agg.weekDaily.length > i
+          ? agg.weekDaily[i].totalMinutes
+          : 0;
       final hours = totalMin / 60.0;
       final score = _scoreFromMinutes(totalMin);
       groupsDur.add(
@@ -578,242 +239,244 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
     return SingleChildScrollView(
       child: Column(
         children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Thời lượng ngủ (giờ)',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-          const SizedBox(height: 6),
-          SizedBox(
-            height: 200,
-            child: BarChart(
-              BarChartData(
-                minY: 0,
-                maxY: 10,
-                gridData: const FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 2,
+          ChartContainer(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Thời lượng ngủ (giờ)',
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
-                barTouchData: BarTouchData(
-                  enabled: true,
-                  touchTooltipData: BarTouchTooltipData(
-                    tooltipPadding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      final mins = (_weekDaily.length > groupIndex)
-                          ? _weekDaily[groupIndex].totalMinutes
-                          : (rod.toY * 60).round();
-                      final d = _weekStart.add(Duration(days: groupIndex));
-                      return BarTooltipItem(
-                        '${_fmtDay(d)} • ${_fmtHHMMFromMinutes(mins)}',
-                        const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
+                const SizedBox(height: 6),
+                SizedBox(
+                  height: 200,
+                  child: BarChart(
+                    BarChartData(
+                      minY: 0,
+                      maxY: 10,
+                      gridData: const FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        horizontalInterval: 2,
+                      ),
+                      barTouchData: BarTouchData(
+                        enabled: true,
+                        touchTooltipData: BarTouchTooltipData(
+                          tooltipPadding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                            final mins = (agg.weekDaily.length > groupIndex)
+                                ? agg.weekDaily[groupIndex].totalMinutes
+                                : (rod.toY * 60).round();
+                            final d = weekStart.add(Duration(days: groupIndex));
+                            return BarTooltipItem(
+                              '${_fmtDay(d)} • ${_fmtHHMMFromMinutes(mins)}',
+                              const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
-                ),
-                barGroups: groupsDur,
-                titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 2,
-                      reservedSize: 28,
-                      getTitlesWidget: (v, m) {
-                        final iv = v.round();
-                        if (iv % 2 == 0 && iv >= 0 && iv <= 10) {
-                          return Text('$iv');
-                        }
-                        return const SizedBox.shrink();
-                      },
+                      ),
+                      barGroups: groupsDur,
+                      titlesData: FlTitlesData(
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            interval: 2,
+                            reservedSize: 28,
+                            getTitlesWidget: (v, m) {
+                              final iv = v.round();
+                              if (iv % 2 == 0 && iv >= 0 && iv <= 10)
+                                return Text('$iv');
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ),
+                        rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            interval: 1,
+                            reservedSize: 20,
+                            getTitlesWidget: (v, m) {
+                              final i = v.round();
+                              if (i < 0 || i > 6)
+                                return const SizedBox.shrink();
+                              final d = weekStart.add(Duration(days: i));
+                              return Text(
+                                '${d.day}',
+                                style: const TextStyle(fontSize: 10),
+                              );
+                            },
+                          ),
+                        ),
+                        topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                      ),
                     ),
                   ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 1,
-                      reservedSize: 20,
-                      getTitlesWidget: (v, m) {
-                        final i = v.round();
-                        if (i < 0 || i > 6) return const SizedBox.shrink();
-                        final d = _weekStart.add(Duration(days: i));
-                        return Text(
-                          '${d.day}',
-                          style: const TextStyle(fontSize: 10),
-                        );
-                      },
-                    ),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
                 ),
-              ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Điểm giấc ngủ',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-          const SizedBox(height: 6),
-          SizedBox(
-            height: 200,
-            child: BarChart(
-              BarChartData(
-                minY: 0,
-                maxY: 100,
-                gridData: const FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 20,
+          ChartContainer(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Điểm giấc ngủ',
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
-                barGroups: groupsScore,
-                titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 20,
-                      reservedSize: 28,
-                      getTitlesWidget: (v, m) {
-                        final iv = v.round();
-                        if (iv % 20 == 0) return Text('$iv');
-                        return const SizedBox.shrink();
-                      },
+                const SizedBox(height: 6),
+                SizedBox(
+                  height: 200,
+                  child: BarChart(
+                    BarChartData(
+                      minY: 0,
+                      maxY: 100,
+                      gridData: const FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        horizontalInterval: 20,
+                      ),
+                      barGroups: groupsScore,
+                      titlesData: FlTitlesData(
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            interval: 20,
+                            reservedSize: 28,
+                            getTitlesWidget: (v, m) {
+                              final iv = v.round();
+                              if (iv % 20 == 0) return Text('$iv');
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ),
+                        rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            interval: 1,
+                            reservedSize: 20,
+                            getTitlesWidget: (v, m) {
+                              final i = v.round();
+                              if (i < 0 || i > 6)
+                                return const SizedBox.shrink();
+                              final d = weekStart.add(Duration(days: i));
+                              return Text(
+                                '${d.day}',
+                                style: const TextStyle(fontSize: 10),
+                              );
+                            },
+                          ),
+                        ),
+                        topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                      ),
                     ),
                   ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 1,
-                      reservedSize: 20,
-                      getTitlesWidget: (v, m) {
-                        final i = v.round();
-                        if (i < 0 || i > 6) return const SizedBox.shrink();
-                        final d = _weekStart.add(Duration(days: i));
-                        return Text(
-                          '${d.day}',
-                          style: const TextStyle(fontSize: 10),
-                        );
-                      },
-                    ),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
                 ),
-              ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Thói quen giờ đi ngủ',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-          const SizedBox(height: 6),
-          SizedBox(
-            height: 200,
-            child: LineChart(
-              LineChartData(
-                minX: -0.5,
-                maxX: 6.5,
-                minY: 0,
-                maxY: 24,
-                gridData: const FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 6,
-                ),
-                lineTouchData: LineTouchData(
-                  enabled: true,
-                  touchTooltipData: LineTouchTooltipData(
-                    tooltipPadding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    getTooltipItems: (spots) => spots.map((s) {
-                      final idx = s.x.round().clamp(0, 6);
-                      final d = _weekStart.add(Duration(days: idx));
-                      return LineTooltipItem(
-                        '${_fmtDay(d)} • ${_fmtHHMMFromHourDouble(s.y)}',
-                        const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      );
-                    }).toList(),
+          ChartContainer(
+            child: SizedBox(
+              height: 200,
+              child: LineChart(
+                LineChartData(
+                  minX: -0.5,
+                  maxX: 6.5,
+                  minY: 0,
+                  maxY: 24,
+                  gridData: const FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval: 6,
                   ),
-                ),
-                titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 6,
-                      reservedSize: 28,
-                      getTitlesWidget: (v, m) {
-                        final iv = v.round();
-                        if (iv % 6 == 0 && iv >= 0 && iv <= 24) {
-                          return Text('$iv');
-                        }
-                        return const SizedBox.shrink();
-                      },
-                    ),
-                  ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 1,
-                      reservedSize: 20,
-                      getTitlesWidget: (v, m) {
-                        final i = v.round();
-                        if (i < 0 || i > 6) return const SizedBox.shrink();
-                        final d = _weekStart.add(Duration(days: i));
-                        return Text(
-                          '${d.day}',
-                          style: const TextStyle(fontSize: 10),
+                  lineTouchData: LineTouchData(
+                    enabled: true,
+                    touchTooltipData: LineTouchTooltipData(
+                      tooltipPadding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      getTooltipItems: (spots) => spots.map((s) {
+                        final idx = s.x.round().clamp(0, 6);
+                        final d = weekStart.add(Duration(days: idx));
+                        return LineTooltipItem(
+                          '${_fmtDay(d)} • ${_fmtHHMMFromHourDouble(s.y)}',
+                          const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
                         );
-                      },
+                      }).toList(),
                     ),
                   ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
+                  titlesData: FlTitlesData(
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        interval: 6,
+                        reservedSize: 28,
+                        getTitlesWidget: (v, m) {
+                          final iv = v.round();
+                          if (iv % 6 == 0 && iv >= 0 && iv <= 24)
+                            return Text('$iv');
+                          return const SizedBox.shrink();
+                        },
+                      ),
+                    ),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        interval: 1,
+                        reservedSize: 20,
+                        getTitlesWidget: (v, m) {
+                          final i = v.round();
+                          if (i < 0 || i > 6) return const SizedBox.shrink();
+                          final d = weekStart.add(Duration(days: i));
+                          return Text(
+                            '${d.day}',
+                            style: const TextStyle(fontSize: 10),
+                          );
+                        },
+                      ),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                   ),
+                  lineBarsData: [
+                    LineChartBarData(
+                      isCurved: false,
+                      color: AppColors.primaryColor,
+                      dotData: const FlDotData(show: true),
+                      spots: [
+                        for (int i = 0; i < 7; i++)
+                          if (agg.weekBedtimeHours.length > i &&
+                              agg.weekBedtimeHours[i] != null)
+                            FlSpot(i.toDouble(), agg.weekBedtimeHours[i]!),
+                      ],
+                    ),
+                  ],
                 ),
-                lineBarsData: [
-                  LineChartBarData(
-                    isCurved: false,
-                    color: AppColors.primaryColor,
-                    dotData: const FlDotData(show: true),
-                    spots: [
-                      for (int i = 0; i < 7; i++)
-                        if (_weekBedtimeHours.length > i &&
-                            _weekBedtimeHours[i] != null)
-                          FlSpot(i.toDouble(), _weekBedtimeHours[i]!),
-                    ],
-                  ),
-                ],
               ),
             ),
           ),
@@ -823,13 +486,13 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
   }
 
   // Month: two charts — duration (hours) and sleep score (%)
-  Widget _buildMonthStacked() {
+  Widget _buildMonthStacked(SleepAggregate agg) {
     final groupsDur = <BarChartGroupData>[];
     final groupsScore = <BarChartGroupData>[];
     final now = DateTime.now();
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
-    for (int i = 0; i < _monthDaily.length; i++) {
-      final totalMin = _monthDaily[i].totalMinutes;
+    for (int i = 0; i < agg.monthDaily.length; i++) {
+      final totalMin = agg.monthDaily[i].totalMinutes;
       final hours = totalMin / 60.0;
       final score = _scoreFromMinutes(totalMin);
       groupsDur.add(
@@ -863,237 +526,237 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
     return SingleChildScrollView(
       child: Column(
         children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Thời lượng ngủ (giờ)',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-          const SizedBox(height: 6),
-          SizedBox(
-            height: 200,
-            child: BarChart(
-              BarChartData(
-                minY: 0,
-                maxY: 10,
-                gridData: const FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 2,
+          ChartContainer(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Thời lượng ngủ (giờ)',
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
-                barTouchData: BarTouchData(
-                  enabled: true,
-                  touchTooltipData: BarTouchTooltipData(
-                    tooltipPadding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      final mins = (_monthDaily.length > groupIndex)
-                          ? _monthDaily[groupIndex].totalMinutes
-                          : (rod.toY * 60).round();
-                      final now = DateTime.now();
-                      final d = DateTime(now.year, now.month, groupIndex + 1);
-                      return BarTooltipItem(
-                        '${_fmtDay(d)} • ${_fmtHHMMFromMinutes(mins)}',
-                        const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
+                const SizedBox(height: 6),
+                SizedBox(
+                  height: 200,
+                  child: BarChart(
+                    BarChartData(
+                      minY: 0,
+                      maxY: 10,
+                      gridData: const FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        horizontalInterval: 2,
+                      ),
+                      barTouchData: BarTouchData(
+                        enabled: true,
+                        touchTooltipData: BarTouchTooltipData(
+                          tooltipPadding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                            final mins = (agg.monthDaily.length > groupIndex)
+                                ? agg.monthDaily[groupIndex].totalMinutes
+                                : (rod.toY * 60).round();
+                            final d = DateTime(
+                              now.year,
+                              now.month,
+                              groupIndex + 1,
+                            );
+                            return BarTooltipItem(
+                              '${_fmtDay(d)} • ${_fmtHHMMFromMinutes(mins)}',
+                              const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
-                ),
-                barGroups: groupsDur,
-                titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 2,
-                      reservedSize: 28,
-                      getTitlesWidget: (v, m) {
-                        final iv = v.round();
-                        if (iv % 2 == 0 && iv >= 0 && iv <= 10) {
-                          return Text('$iv');
-                        }
-                        return const SizedBox.shrink();
-                      },
+                      ),
+                      barGroups: groupsDur,
+                      titlesData: FlTitlesData(
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            interval: 2,
+                            reservedSize: 28,
+                            getTitlesWidget: (v, m) {
+                              final iv = v.round();
+                              if (iv % 2 == 0 && iv >= 0 && iv <= 10)
+                                return Text('$iv');
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ),
+                        rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            interval: 1,
+                            getTitlesWidget: (v, m) {
+                              final d = v.round();
+                              if (ticks.contains(d))
+                                return Text(
+                                  '$d',
+                                  style: const TextStyle(fontSize: 10),
+                                );
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ),
+                        topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                      ),
                     ),
                   ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 1,
-                      getTitlesWidget: (v, m) {
-                        final d = v.round();
-                        if (ticks.contains(d)) {
-                          return Text(
-                            '$d',
-                            style: const TextStyle(fontSize: 10),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                    ),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
                 ),
-              ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Điểm giấc ngủ',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-          const SizedBox(height: 6),
-          SizedBox(
-            height: 200,
-            child: BarChart(
-              BarChartData(
-                minY: 0,
-                maxY: 100,
-                gridData: const FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 20,
+          ChartContainer(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Điểm giấc ngủ',
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
-                barGroups: groupsScore,
-                titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 20,
-                      reservedSize: 28,
-                      getTitlesWidget: (v, m) {
-                        final iv = v.round();
-                        if (iv % 20 == 0) return Text('$iv');
-                        return const SizedBox.shrink();
-                      },
+                const SizedBox(height: 6),
+                SizedBox(
+                  height: 200,
+                  child: BarChart(
+                    BarChartData(
+                      minY: 0,
+                      maxY: 100,
+                      gridData: const FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        horizontalInterval: 20,
+                      ),
+                      barGroups: groupsScore,
+                      titlesData: FlTitlesData(
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            interval: 20,
+                            reservedSize: 28,
+                            getTitlesWidget: (v, m) {
+                              final iv = v.round();
+                              if (iv % 20 == 0) return Text('$iv');
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ),
+                        rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            interval: 1,
+                            getTitlesWidget: (v, m) {
+                              final d = v.round();
+                              if (ticks.contains(d)) return Text('$d');
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ),
+                        topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                      ),
                     ),
                   ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 1,
-                      getTitlesWidget: (v, m) {
-                        final d = v.round();
-                        if (ticks.contains(d)) {
-                          return Text(
-                            '$d',
-                            style: const TextStyle(fontSize: 10),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                    ),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
                 ),
-              ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Thói quen giờ đi ngủ',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-          const SizedBox(height: 6),
-          SizedBox(
-            height: 200,
-            child: LineChart(
-              LineChartData(
-                minX: -0.5,
-                maxX: daysInMonth.toDouble() + 0.5,
-                minY: 0,
-                maxY: 24,
-                gridData: const FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 6,
-                ),
-                lineTouchData: LineTouchData(
-                  enabled: true,
-                  touchTooltipData: LineTouchTooltipData(
-                    tooltipPadding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    getTooltipItems: (spots) => spots.map((s) {
-                      final day = s.x.round().clamp(1, daysInMonth);
-                      return LineTooltipItem(
-                        '$day • ${_fmtHHMMFromHourDouble(s.y)}',
-                        const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      );
-                    }).toList(),
+          ChartContainer(
+            child: SizedBox(
+              height: 200,
+              child: LineChart(
+                LineChartData(
+                  minX: -0.5,
+                  maxX: daysInMonth.toDouble() + 0.5,
+                  minY: 0,
+                  maxY: 24,
+                  gridData: const FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval: 6,
                   ),
-                ),
-                titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 6,
-                      reservedSize: 28,
-                      getTitlesWidget: (v, m) {
-                        final iv = v.round();
-                        if (iv % 6 == 0 && iv >= 0 && iv <= 24) {
-                          return Text('$iv');
-                        }
-                        return const SizedBox.shrink();
-                      },
+                  lineTouchData: LineTouchData(
+                    enabled: true,
+                    touchTooltipData: LineTouchTooltipData(
+                      tooltipPadding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      getTooltipItems: (spots) => spots.map((s) {
+                        final day = s.x.round().clamp(1, daysInMonth);
+                        return LineTooltipItem(
+                          '$day • ${_fmtHHMMFromHourDouble(s.y)}',
+                          const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        );
+                      }).toList(),
                     ),
                   ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 1,
-                      reservedSize: 20,
-                      getTitlesWidget: (v, m) {
-                        final d = v.round();
-                        if ({1, 7, 14, 21, 28}.contains(d)) return Text('$d');
-                        return const SizedBox.shrink();
-                      },
+                  titlesData: FlTitlesData(
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        interval: 6,
+                        reservedSize: 28,
+                        getTitlesWidget: (v, m) {
+                          final iv = v.round();
+                          if (iv % 6 == 0 && iv >= 0 && iv <= 24)
+                            return Text('$iv');
+                          return const SizedBox.shrink();
+                        },
+                      ),
+                    ),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        interval: 1,
+                        reservedSize: 20,
+                        getTitlesWidget: (v, m) {
+                          final d = v.round();
+                          if ({1, 7, 14, 21, 28}.contains(d)) return Text('$d');
+                          return const SizedBox.shrink();
+                        },
+                      ),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
                     ),
                   ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
+                  lineBarsData: [
+                    LineChartBarData(
+                      isCurved: false,
+                      color: AppColors.primaryColor,
+                      dotData: const FlDotData(show: true),
+                      spots: [
+                        for (int i = 0; i < agg.monthBedtimeHours.length; i++)
+                          if (agg.monthBedtimeHours[i] != null)
+                            FlSpot(
+                              (i + 1).toDouble(),
+                              agg.monthBedtimeHours[i]!,
+                            ),
+                      ],
+                    ),
+                  ],
                 ),
-                lineBarsData: [
-                  LineChartBarData(
-                    isCurved: false,
-                    color: AppColors.primaryColor,
-                    dotData: const FlDotData(show: true),
-                    spots: [
-                      for (int i = 0; i < _monthBedtimeHours.length; i++)
-                        if (_monthBedtimeHours[i] != null)
-                          FlSpot((i + 1).toDouble(), _monthBedtimeHours[i]!),
-                    ],
-                  ),
-                ],
               ),
             ),
           ),
@@ -1217,90 +880,4 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
       ),
     );
   }
-
-  // Compute bedtime hour (0..24) per day in [start, end)
-  // Window per day: previous day 18:00 -> current day 12:00
-  Future<List<double?>> _computeBedtimeHoursForRange(
-    GoogleFitService svc,
-    DateTime start,
-    DateTime end,
-  ) async {
-    final days = end.difference(start).inDays;
-    if (days <= 0) return const <double?>[];
-    final out = List<double?>.filled(days, null);
-
-    // Extend fetch window to include previous evening and potential late mornings
-    final fetchStart = start.subtract(const Duration(days: 1));
-    final fetchEnd = end.add(const Duration(days: 1));
-
-    final pts = await svc.getDataFast(
-      types: const [
-        HealthDataType.SLEEP_LIGHT,
-        HealthDataType.SLEEP_DEEP,
-        HealthDataType.SLEEP_REM,
-        HealthDataType.SLEEP_ASLEEP,
-        HealthDataType.SLEEP_SESSION,
-      ],
-      start: fetchStart,
-      end: fetchEnd,
-    );
-
-    // Group all candidate points by day index
-    for (int i = 0; i < days; i++) {
-      final dayStart = DateTime(
-        start.year,
-        start.month,
-        start.day,
-      ).add(Duration(days: i));
-      final windowStart = dayStart.subtract(
-        const Duration(hours: 6),
-      ); // 18:00 previous day
-      final windowEnd = dayStart.add(
-        const Duration(hours: 12),
-      ); // 12:00 current day
-
-      DateTime? earliest;
-      for (final p in pts) {
-        // Candidate if any overlap with window and start inside window
-        final ps = p.dateFrom;
-        if (!ps.isBefore(windowEnd) || ps.isBefore(windowStart)) continue;
-        // Not before windowEnd and not before windowStart => inside windowStart..windowEnd
-        if (earliest == null || ps.isBefore(earliest)) {
-          earliest = ps;
-        }
-      }
-      if (earliest != null) {
-        out[i] = earliest.hour + earliest.minute / 60.0;
-      }
-    }
-
-    return out;
-  }
-}
-
-class _StageTotals {
-  final int light;
-  final int deep;
-  final int rem;
-  const _StageTotals({
-    required this.light,
-    required this.deep,
-    required this.rem,
-  });
-  int get totalMinutes => light + deep + rem;
-}
-
-class _StagePct {
-  final double light;
-  final double deep;
-  final double rem;
-  const _StagePct({required this.light, required this.deep, required this.rem});
-  const _StagePct.zero() : light = 0, deep = 0, rem = 0;
-}
-
-class _StageDaily {
-  final _StageTotals totals;
-  final _StagePct percentages;
-  const _StageDaily({required this.totals, required this.percentages});
-  int get totalMinutes => totals.totalMinutes;
 }

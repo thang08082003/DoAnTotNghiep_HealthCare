@@ -3,10 +3,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../data/resources/gene/app_colors.dart';
-import '../../data/services/health_connect_service.dart';
-import 'package:health/health.dart';
-import '../../providers/health_metrics_providers.dart';
-import '../../data/models/health_metric_models.dart';
+import '../../components/chart/chart_container.dart';
+import '../../components/chart/chart_with_summary.dart';
+import '../../components/metrics/metrics_segmented.dart';
+import '../../viewmodels/heart_rate/heart_rate_viewmodel.dart';
 
 class HeartRateDetailScreen extends ConsumerStatefulWidget {
   final String?
@@ -21,314 +21,10 @@ class HeartRateDetailScreen extends ConsumerStatefulWidget {
 enum _RangeMode { day, week, month }
 
 class _HeartRateDetailScreenState extends ConsumerState<HeartRateDetailScreen> {
-  bool _loading = true;
-  String? _error;
-  bool _fetching = false;
-
-  // UI mode
+  // UI mode only
   _RangeMode _mode = _RangeMode.day;
 
-  // Chart data by mode
-  List<FlSpot> _daySpots = const [];
-  List<FlSpot> _weekSpots = const [];
-  List<FlSpot> _monthSpots = const [];
-  // Day hourly averages for bar chart (24 values)
-  List<double?> _dayHourlyAvg = const [];
-
-  // Summaries
-  double? _dayMin;
-  double? _dayMax;
-  double? _dayAvg;
-
-  double? _weekMin;
-  double? _weekMax;
-  double? _weekAvg;
-
-  double? _monthMin;
-  double? _monthMax;
-  double? _monthAvg;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadAll();
-  }
-
-  Future<void> _loadAll() async {
-    if (_fetching) return;
-    _fetching = true;
-    if (mounted) {
-      setState(() {
-        _loading = true;
-        _error = null;
-      });
-    }
-    try {
-      // Phân nhánh nguồn dữ liệu: nếu có userId -> Firestore; ngược lại -> Health Connect
-      final now = DateTime.now();
-      if (widget.userId != null) {
-        final repo = ref.read(healthMetricsRepositoryProvider);
-
-        // Day range anchored to today's 00:00 -> now
-        final dayStart = DateTime(now.year, now.month, now.day);
-        final daySamples = await repo
-            .heartRateStream(widget.userId!, from: dayStart)
-            .first;
-        final daySpots = _mapFsToDaySpots(daySamples, dayStart);
-        final dayStats = _calcFsStats(daySamples);
-        final dayHourly = _hourlyAveragesFromSpots(daySpots);
-
-        // Week range (Mon..Sun)
-        final monday = _startOfWeek(now);
-        final weekSamples = await repo
-            .heartRateStream(widget.userId!, from: monday)
-            .first;
-        final weekDailyAverages = _dailyAveragesFromFs(weekSamples, monday, 7);
-        final weekSpots = List<FlSpot>.generate(7, (i) {
-          final v = weekDailyAverages[i];
-          return FlSpot(i.toDouble(), (v ?? 0));
-        });
-        final weekStats = _calcFsStats(weekSamples);
-
-        // Month range (first..last day)
-        final firstDay = DateTime(now.year, now.month, 1);
-        final firstNextMonth = DateTime(now.year, now.month + 1, 1);
-        final lastDay = firstNextMonth.subtract(const Duration(days: 1)).day;
-        final monthSamples = await repo
-            .heartRateStream(widget.userId!, from: firstDay)
-            .first;
-        final monthDailyAverages = _dailyAveragesFromFs(
-          monthSamples,
-          firstDay,
-          lastDay,
-        );
-        final monthSpots = List<FlSpot>.generate(lastDay, (i) {
-          final dayIndex = i + 1; // 1..lastDay
-          final v = monthDailyAverages[i];
-          return FlSpot(dayIndex.toDouble(), (v ?? 0));
-        });
-        final monthStats = _calcFsStats(monthSamples);
-
-        if (!mounted) return;
-        setState(() {
-          _daySpots = daySpots;
-          _dayMin = dayStats.min;
-          _dayMax = dayStats.max;
-          _dayAvg = dayStats.avg;
-          _dayHourlyAvg = dayHourly;
-
-          _weekSpots = weekSpots;
-          _weekMin = weekStats.min;
-          _weekMax = weekStats.max;
-          _weekAvg = weekStats.avg;
-
-          _monthSpots = monthSpots;
-          _monthMin = monthStats.min;
-          _monthMax = monthStats.max;
-          _monthAvg = monthStats.avg;
-        });
-      } else {
-        final svc = GoogleFitService();
-
-        // Day range anchored to today's 00:00 -> now
-        final dayStart = DateTime(now.year, now.month, now.day);
-        final dayData = await _fetchRawHr(svc, dayStart, now);
-        final daySpots = _mapToDaySpots(dayData, dayStart);
-        final dayStats = _calcStats(dayData);
-        final dayHourly = _hourlyAveragesFromSpots(daySpots);
-
-        // Week range (Mon..Sun of current week)
-        final monday = _startOfWeek(now);
-        final sunday = monday.add(const Duration(days: 7));
-        final weekData = await _fetchRawHr(svc, monday, sunday);
-        final weekDailyAverages = _dailyAverages(weekData, monday, 7);
-        final weekSpots = List<FlSpot>.generate(7, (i) {
-          final v = weekDailyAverages[i];
-          return FlSpot(i.toDouble(), (v ?? 0));
-        });
-        final weekStats = _calcStats(weekData);
-
-        // Month range (first..last day of current month)
-        final firstDay = DateTime(now.year, now.month, 1);
-        final firstNextMonth = DateTime(now.year, now.month + 1, 1);
-        final monthData = await _fetchRawHr(svc, firstDay, firstNextMonth);
-        final lastDay = firstNextMonth.subtract(const Duration(days: 1)).day;
-        final monthDailyAverages = _dailyAverages(monthData, firstDay, lastDay);
-        final monthSpots = List<FlSpot>.generate(lastDay, (i) {
-          final dayIndex = i + 1; // 1..lastDay
-          final v = monthDailyAverages[i];
-          return FlSpot(dayIndex.toDouble(), (v ?? 0));
-        });
-        final monthStats = _calcStats(monthData);
-
-        if (!mounted) return;
-        setState(() {
-          _daySpots = daySpots;
-          _dayMin = dayStats.min;
-          _dayMax = dayStats.max;
-          _dayAvg = dayStats.avg;
-          _dayHourlyAvg = dayHourly;
-
-          _weekSpots = weekSpots;
-          _weekMin = weekStats.min;
-          _weekMax = weekStats.max;
-          _weekAvg = weekStats.avg;
-
-          _monthSpots = monthSpots;
-          _monthMin = monthStats.min;
-          _monthMax = monthStats.max;
-          _monthAvg = monthStats.avg;
-        });
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _error = e.toString());
-    } finally {
-      _fetching = false;
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  // --- Firestore mapping helpers ---
-  List<FlSpot> _mapFsToDaySpots(List<HeartRateSample> samples, DateTime start) {
-    final List<FlSpot> pts = [];
-    for (final s in samples) {
-      final hours = s.ts.difference(start).inMinutes / 60.0;
-      if (hours >= 0 && hours <= 24 && s.bpm > 0) {
-        pts.add(FlSpot(hours, s.bpm));
-      }
-    }
-    pts.sort((a, b) => a.x.compareTo(b.x));
-    return pts;
-  }
-
-  List<double?> _dailyAveragesFromFs(
-    List<HeartRateSample> samples,
-    DateTime startDay,
-    int count,
-  ) {
-    final buckets = List<List<double>>.generate(count, (_) => []);
-    for (final s in samples) {
-      if (s.bpm <= 0) continue;
-      final dayIndex = s.ts.difference(startDay).inDays;
-      if (dayIndex >= 0 && dayIndex < count) {
-        buckets[dayIndex].add(s.bpm);
-      }
-    }
-    return buckets
-        .map(
-          (list) => list.isEmpty
-              ? null
-              : (list.reduce((a, b) => a + b) / list.length),
-        )
-        .toList();
-  }
-
-  _Stats _calcFsStats(List<HeartRateSample> samples) {
-    final values = samples.map((e) => e.bpm).where((v) => v > 0).toList();
-    if (values.isEmpty) return const _Stats(null, null, null);
-    final min = values.reduce((a, b) => a < b ? a : b);
-    final max = values.reduce((a, b) => a > b ? a : b);
-    final avg = values.reduce((a, b) => a + b) / values.length;
-    return _Stats(min, max, avg);
-  }
-
-  // Build 24 hourly averages from scattered spots in range [0,24)
-  List<double?> _hourlyAveragesFromSpots(List<FlSpot> spots) {
-    final buckets = List<List<double>>.generate(24, (_) => []);
-    for (final s in spots) {
-      final i = s.x.floor();
-      if (i >= 0 && i < 24) buckets[i].add(s.y);
-    }
-    return buckets
-        .map((b) => b.isEmpty ? null : b.reduce((a, b) => a + b) / b.length)
-        .toList();
-  }
-
-  Future<List<HealthDataPoint>> _fetchRawHr(
-    GoogleFitService svc,
-    DateTime start,
-    DateTime end,
-  ) async {
-    final data = await svc.getData(
-      start: start,
-      end: end,
-      types: const [HealthDataType.HEART_RATE],
-    );
-    return data;
-  }
-
-  List<FlSpot> _mapToDaySpots(List<HealthDataPoint> data, DateTime start) {
-    final List<FlSpot> pts = [];
-    for (final d in data) {
-      final t = d.dateFrom;
-      final val = d.value;
-      if (val is NumericHealthValue) {
-        final num nv = val.numericValue;
-        final hr = nv.toDouble();
-        final hours = t.difference(start).inMinutes / 60.0;
-        if (hours >= 0 && hours <= 24 && hr > 0) {
-          pts.add(FlSpot(hours, hr));
-        }
-      }
-    }
-    pts.sort((a, b) => a.x.compareTo(b.x));
-    return pts;
-  }
-
-  DateTime _startOfWeek(DateTime now) {
-    final weekday = now.weekday; // Mon=1..Sun=7
-    return DateTime(
-      now.year,
-      now.month,
-      now.day,
-    ).subtract(Duration(days: weekday - 1));
-  }
-
-  // Returns list of length count, each entry is the average HR for that day index
-  List<double?> _dailyAverages(
-    List<HealthDataPoint> raw,
-    DateTime startDay,
-    int count,
-  ) {
-    final buckets = List<List<double>>.generate(count, (_) => []);
-    for (final d in raw) {
-      final val = d.value;
-      if (val is NumericHealthValue) {
-        final num nv = val.numericValue;
-        final hr = nv.toDouble();
-        if (hr <= 0) continue;
-        final dayIndex = d.dateFrom.difference(startDay).inDays;
-        if (dayIndex >= 0 && dayIndex < count) {
-          buckets[dayIndex].add(hr);
-        }
-      }
-    }
-    return buckets
-        .map(
-          (list) => list.isEmpty
-              ? null
-              : (list.reduce((a, b) => a + b) / list.length),
-        )
-        .toList();
-  }
-
-  _Stats _calcStats(List<HealthDataPoint> raw) {
-    final values = <double>[];
-    for (final d in raw) {
-      final v = d.value;
-      if (v is NumericHealthValue) {
-        final num nv = v.numericValue;
-        final hr = nv.toDouble();
-        if (hr > 0) values.add(hr);
-      }
-    }
-    if (values.isEmpty) return const _Stats(null, null, null);
-    final min = values.reduce((a, b) => a < b ? a : b);
-    final max = values.reduce((a, b) => a > b ? a : b);
-    final avg = values.reduce((a, b) => a + b) / values.length;
-    return _Stats(min, max, avg);
-  }
+  // no data-processing methods here; ViewModel/Usecase handle all logic
 
   @override
   Widget build(BuildContext context) {
@@ -339,107 +35,93 @@ class _HeartRateDetailScreenState extends ConsumerState<HeartRateDetailScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Làm mới',
-            onPressed: _loadAll,
+            onPressed: () => ref
+                .read(heartRateViewModelProvider(widget.userId).notifier)
+                .refresh(),
           ),
         ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : (_error != null)
-            ? Center(
-                child: Text(_error!, style: const TextStyle(color: Colors.red)),
-              )
-            : Column(
+        child: Consumer(
+          builder: (context, ref, _) {
+            final state = ref.watch(heartRateViewModelProvider(widget.userId));
+            return state.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, st) => Center(
+                child: Text(
+                  e.toString(),
+                  style: const TextStyle(color: Colors.red),
+                ),
+              ),
+              data: (agg) => Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildSegmented(),
                   const SizedBox(height: 12),
-                  Expanded(child: _buildChartAndSummary()),
+                  Expanded(child: _buildChartAndSummary(agg)),
                 ],
               ),
+            );
+          },
+        ),
       ),
     );
   }
 
   Widget _buildSegmented() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final segWidth = (constraints.maxWidth / 3).clamp(0.0, double.infinity);
-        return SizedBox(
-          width: double.infinity,
-          child: CupertinoSegmentedControl<_RangeMode>(
-            groupValue: _mode,
-            onValueChanged: (m) => setState(() => _mode = m),
-            children: {
-              _RangeMode.day: SizedBox(
-                width: segWidth,
-                child: const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 6),
-                    child: Text('D'),
-                  ),
-                ),
-              ),
-              _RangeMode.week: SizedBox(
-                width: segWidth,
-                child: const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 6),
-                    child: Text('W'),
-                  ),
-                ),
-              ),
-              _RangeMode.month: SizedBox(
-                width: segWidth,
-                child: const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 6),
-                    child: Text('M'),
-                  ),
-                ),
-              ),
-            },
-          ),
-        );
-      },
+    return MetricsSegmented(
+      value: _mode == _RangeMode.day
+          ? MetricsRange.day
+          : _mode == _RangeMode.week
+          ? MetricsRange.week
+          : MetricsRange.month,
+      onChanged: (r) => setState(() {
+        _mode = r == MetricsRange.day
+            ? _RangeMode.day
+            : r == MetricsRange.week
+            ? _RangeMode.week
+            : _RangeMode.month;
+      }),
     );
   }
 
-  Widget _buildChartAndSummary() {
+  Widget _buildChartAndSummary(dynamic agg) {
     switch (_mode) {
       case _RangeMode.day:
-        return _ChartWithSummary(
+        return ChartWithSummary(
           title: 'Tổng kết hàng ngày',
-          chart: _buildDayChart(),
-          min: _dayMin,
-          max: _dayMax,
-          avg: _dayAvg,
+          chart: _buildDayChart(agg.dayHourlyAvg),
+          min: agg.day.min,
+          max: agg.day.max,
+          avg: agg.day.avg,
+          unit: 'bpm',
         );
       case _RangeMode.week:
-        return _ChartWithSummary(
+        return ChartWithSummary(
           title: 'Tổng kết hàng tuần',
-          chart: _buildWeekChart(),
-          min: _weekMin,
-          max: _weekMax,
-          avg: _weekAvg,
+          chart: _buildWeekChart(agg.weekSpots),
+          min: agg.week.min,
+          max: agg.week.max,
+          avg: agg.week.avg,
+          unit: 'bpm',
         );
       case _RangeMode.month:
-        return _ChartWithSummary(
+        return ChartWithSummary(
           title: 'Tổng kết hàng tháng',
-          chart: _buildMonthChart(),
-          min: _monthMin,
-          max: _monthMax,
-          avg: _monthAvg,
+          chart: _buildMonthChart(agg.monthSpots),
+          min: agg.month.min,
+          max: agg.month.max,
+          avg: agg.month.avg,
+          unit: 'bpm',
         );
     }
   }
 
-  Widget _buildDayChart() {
+  Widget _buildDayChart(List<double?> dayHourlyAvg) {
     final groups = <BarChartGroupData>[];
     for (int i = 0; i < 24; i++) {
-      final y = _dayHourlyAvg.isNotEmpty ? (_dayHourlyAvg[i] ?? 0.0) : 0.0;
+      final y = dayHourlyAvg.isNotEmpty ? (dayHourlyAvg[i] ?? 0.0) : 0.0;
       groups.add(
         BarChartGroupData(
           x: i,
@@ -454,8 +136,8 @@ class _HeartRateDetailScreenState extends ConsumerState<HeartRateDetailScreen> {
         ),
       );
     }
-    return _ChartContainer(
-      child: _daySpots.isEmpty
+    return ChartContainer(
+      child: dayHourlyAvg.every((e) => (e ?? 0) == 0)
           ? const Center(child: Text('Chưa có dữ liệu'))
           : BarChart(
               BarChartData(
@@ -534,10 +216,10 @@ class _HeartRateDetailScreenState extends ConsumerState<HeartRateDetailScreen> {
     );
   }
 
-  Widget _buildWeekChart() {
+  Widget _buildWeekChart(List<FlSpot> weekSpots) {
     const dayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
     final values = List<double>.generate(7, (i) {
-      final spot = _weekSpots.length > i ? _weekSpots[i] : null;
+      final spot = weekSpots.length > i ? weekSpots[i] : null;
       return spot?.y ?? 0.0;
     });
     final groups = [
@@ -554,8 +236,8 @@ class _HeartRateDetailScreenState extends ConsumerState<HeartRateDetailScreen> {
           ],
         ),
     ];
-    return _ChartContainer(
-      child: _weekSpots.isEmpty
+    return ChartContainer(
+      child: weekSpots.isEmpty
           ? const Center(child: Text('Chưa có dữ liệu'))
           : BarChart(
               BarChartData(
@@ -642,10 +324,10 @@ class _HeartRateDetailScreenState extends ConsumerState<HeartRateDetailScreen> {
     );
   }
 
-  Widget _buildMonthChart() {
+  Widget _buildMonthChart(List<FlSpot> monthSpots) {
     // Show ticks at 1, 7, 14, 21, 28
     final dayTicks = {1, 7, 14, 21, 28};
-    final groups = _monthSpots
+    final groups = monthSpots
         .map(
           (s) => BarChartGroupData(
             x: s.x.round(),
@@ -660,8 +342,8 @@ class _HeartRateDetailScreenState extends ConsumerState<HeartRateDetailScreen> {
           ),
         )
         .toList();
-    return _ChartContainer(
-      child: _monthSpots.isEmpty
+    return ChartContainer(
+      child: monthSpots.isEmpty
           ? const Center(child: Text('Chưa có dữ liệu'))
           : BarChart(
               BarChartData(
@@ -736,105 +418,4 @@ class _HeartRateDetailScreenState extends ConsumerState<HeartRateDetailScreen> {
             ),
     );
   }
-}
-
-class _ChartContainer extends StatelessWidget {
-  final Widget child;
-  const _ChartContainer({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(12),
-      child: child,
-    );
-  }
-}
-
-class _ChartWithSummary extends StatelessWidget {
-  final String title;
-  final Widget chart;
-  final double? min;
-  final double? max;
-  final double? avg;
-  const _ChartWithSummary({
-    required this.title,
-    required this.chart,
-    required this.min,
-    required this.max,
-    required this.avg,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(height: 240, child: chart),
-        const SizedBox(height: 12),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _summaryItem('Tối đa', max),
-              _summaryItem('Tối thiểu', min),
-              _summaryItem('Trung bình', avg),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _summaryItem(String label, double? value) {
-    final text = value == null ? '-' : '${value.toStringAsFixed(0)} bpm';
-    return Column(
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: Colors.black54),
-        ),
-        const SizedBox(height: 4),
-        Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
-      ],
-    );
-  }
-}
-
-class _Stats {
-  final double? min;
-  final double? max;
-  final double? avg;
-  const _Stats(this.min, this.max, this.avg);
 }
