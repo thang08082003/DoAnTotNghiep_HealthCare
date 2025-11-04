@@ -13,6 +13,7 @@ import '../../router/app_router.dart';
 import 'health_connect_screen.dart';
 import '../../data/models/doctor_model.dart';
 import '../../data/models/user_model.dart';
+import '../help/help_screen.dart';
 
 class ProfileContent extends ConsumerWidget {
   const ProfileContent({super.key});
@@ -146,7 +147,11 @@ class ProfileContent extends ConsumerWidget {
                     ),
                     title: const Text('Trợ giúp'),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () {},
+                    onTap: () async {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const HelpScreen()),
+                      );
+                    },
                   ),
                 ],
               ),
