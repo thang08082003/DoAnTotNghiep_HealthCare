@@ -133,6 +133,35 @@ class AuthService {
     }
   }
 
+  // Re-authenticate with current password (required by Firebase to change sensitive info)
+  Future<void> reauthenticateWithPassword({
+    required String email,
+    required String currentPassword,
+  }) async {
+    try {
+      final cred = EmailAuthProvider.credential(
+        email: email.trim(),
+        password: currentPassword,
+      );
+      await _auth.currentUser?.reauthenticateWithCredential(cred);
+    } on FirebaseAuthException catch (e) {
+      throw _getAuthErrorMessage(e.code);
+    } catch (e) {
+      throw 'Không thể xác thực lại, vui lòng thử lại';
+    }
+  }
+
+  // Update password to new one (requires recent re-auth)
+  Future<void> updatePassword(String newPassword) async {
+    try {
+      await _auth.currentUser?.updatePassword(newPassword);
+    } on FirebaseAuthException catch (e) {
+      throw _getAuthErrorMessage(e.code);
+    } catch (e) {
+      throw 'Không thể đổi mật khẩu, vui lòng thử lại';
+    }
+  }
+
   // Xử lý thông báo lỗi
   String _getAuthErrorMessage(String errorCode) {
     switch (errorCode) {

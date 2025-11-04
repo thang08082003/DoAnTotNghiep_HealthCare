@@ -61,40 +61,62 @@ class AuthViewModel extends StateNotifier<AuthViewState> {
   Future<void> login(String email, String password) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      await _ref.read(authProvider.notifier).login(email, password);
-      final auth = _ref.read(authProvider);
-      if (auth.errorMessage != null && auth.errorMessage!.isNotEmpty) {
-        state = state.copyWith(isLoading: false, error: auth.errorMessage);
-        _ref.read(authProvider.notifier).clearError();
+      // Call repository directly to avoid race with auth stream when re-login
+      final repo = _ref.read(authRepositoryProvider);
+      final cred = await repo.signInWithEmailAndPassword(email, password);
+      final user = cred?.user;
+      if (user == null) {
+        state = state.copyWith(isLoading: false, error: 'Đăng nhập thất bại');
         return;
       }
-      if (auth.isAuthenticated && auth.uid != null) {
-        final uid = auth.uid!;
-        final exists = await _ref.read(userRepositoryProvider).userExists(uid);
-        if (!exists) {
-          state = state.copyWith(
-            isLoading: false,
-            isAuthenticated: true,
-            needsSetup: true,
-            uid: uid,
-            email: auth.email,
-          );
-          return;
-        }
-        final user = await _ref.read(userRepositoryProvider).getUserById(uid);
-        final role = user?.role ?? UserRole.patient;
+
+      final uid = user.uid;
+      final exists = await _ref.read(userRepositoryProvider).userExists(uid);
+      if (!exists) {
         state = state.copyWith(
           isLoading: false,
           isAuthenticated: true,
-          needsSetup: false,
-          role: role,
+          needsSetup: true,
           uid: uid,
-          email: auth.email,
+          email: user.email,
         );
         return;
       }
-      // Fallback: not authenticated
-      state = state.copyWith(isLoading: false);
+
+      final profile = await _ref.read(userRepositoryProvider).getUserById(uid);
+      final role = profile?.role ?? UserRole.patient;
+      state = state.copyWith(
+        isLoading: false,
+        isAuthenticated: true,
+        needsSetup: false,
+        role: role,
+        uid: uid,
+        email: user.email,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  Future<void> register(String email, String password) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      // Register via repository to get immediate credential without relying on auth stream timing
+      final repo = _ref.read(authRepositoryProvider);
+      final cred = await repo.registerWithEmailAndPassword(email, password);
+      final user = cred?.user;
+      if (user == null) {
+        state = state.copyWith(isLoading: false, error: 'Đăng ký thất bại');
+        return;
+      }
+      // Newly registered users won't have a profile yet -> needsSetup = true
+      state = state.copyWith(
+        isLoading: false,
+        isAuthenticated: true,
+        needsSetup: true,
+        uid: user.uid,
+        email: user.email,
+      );
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }

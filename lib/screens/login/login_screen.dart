@@ -21,6 +21,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
+  bool _navigated = false; // tránh điều hướng lặp lại trong một phiên đăng nhập
 
   // Note: Do not use ref.listen in initState (Riverpod restriction). We'll listen in build.
 
@@ -58,13 +59,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if (mounted) _showSnackBar(next.error!);
         ref.read(authViewModelProvider.notifier).clearError();
       }
-      final becameAuthenticated =
-          (previous?.isAuthenticated ?? false) == false &&
-          next.isAuthenticated == true &&
-          !next.isLoading &&
-          next.uid != null;
-      if (becameAuthenticated) {
+      final readyToNavigate =
+          next.isAuthenticated == true && !next.isLoading && next.uid != null;
+      if (!_navigated && readyToNavigate) {
         if (!mounted) return;
+        _navigated = true;
         if (next.needsSetup) {
           AppRouter.pushUserSetup(
             context,

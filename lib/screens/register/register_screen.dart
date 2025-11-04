@@ -45,7 +45,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     await ref
         .read(authViewModelProvider.notifier)
-        .login(_emailController.text, _passwordController.text);
+        .register(_emailController.text, _passwordController.text);
 
     // Navigation will be handled by listening to auth state changes
   }

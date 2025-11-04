@@ -9,19 +9,20 @@ class AuthRepository {
 
   // Lấy user hiện tại
   User? get currentUser => _authService.currentUser;
+  String? get currentEmail => _authService.currentUser?.email;
 
   // Đăng ký với email và password
   Future<UserCredential?> registerWithEmailAndPassword(
-    String email, 
-    String password
+    String email,
+    String password,
   ) async {
     return await _authService.registerWithEmailAndPassword(email, password);
   }
 
   // Đăng nhập với email và password
   Future<UserCredential?> signInWithEmailAndPassword(
-    String email, 
-    String password
+    String email,
+    String password,
   ) async {
     return await _authService.signInWithEmailAndPassword(email, password);
   }
@@ -47,5 +48,21 @@ class AuthRepository {
   // Reload user data
   Future<void> reloadUser() async {
     await _authService.reloadUser();
+  }
+
+  // Re-authenticate before sensitive operations
+  Future<void> reauthenticateWithPassword(
+    String email,
+    String currentPassword,
+  ) async {
+    await _authService.reauthenticateWithPassword(
+      email: email,
+      currentPassword: currentPassword,
+    );
+  }
+
+  // Update password
+  Future<void> updatePassword(String newPassword) async {
+    await _authService.updatePassword(newPassword);
   }
 }
