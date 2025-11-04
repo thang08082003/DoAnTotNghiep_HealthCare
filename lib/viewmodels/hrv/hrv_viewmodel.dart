@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/domain/metrics_aggregate.dart';
-import '../../data/domain/metrics_usecase.dart';
+import '../../providers/metrics_di_providers.dart';
 import '../../providers/user_provider.dart';
 
 typedef UserId = String?;

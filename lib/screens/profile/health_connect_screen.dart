@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/resources/gene/app_colors.dart';
-import '../../data/services/health_connect_service.dart';
-import 'package:health/health.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/services.dart';
-import '../../providers/health_metrics_providers.dart';
 import '../../providers/user_provider.dart';
+import '../../viewmodels/profile/health_connect_viewmodel.dart';
 
 class GoogleFitConnectScreen extends ConsumerStatefulWidget {
   const GoogleFitConnectScreen({super.key});
@@ -97,96 +95,13 @@ class _GoogleFitConnectScreenState
       _error = null;
     });
     try {
-      final svc = GoogleFitService();
-      // Ensure permissions
-      await svc.ensureConnected();
-
-      final now = DateTime.now();
-      final dayAgo = now.subtract(const Duration(days: 1));
-
-      // Latest Heart Rate in last 24h
-      try {
-        final hr = await svc.getData(
-          types: [HealthDataType.HEART_RATE],
-          start: dayAgo,
-          end: now,
-        );
-        if (hr.isNotEmpty) {
-          hr.sort((a, b) {
-            final aa = a.dateTo.isAfter(a.dateFrom) ? a.dateTo : a.dateFrom;
-            final bb = b.dateTo.isAfter(b.dateFrom) ? b.dateTo : b.dateFrom;
-            return aa.compareTo(bb);
-          });
-          for (final p in hr.reversed) {
-            final v = p.value;
-            if (v is NumericHealthValue) {
-              final bpm = v.numericValue.toDouble();
-              if (bpm > 0) {
-                _latestHr = bpm;
-                _latestHrTime = p.dateTo.isAfter(p.dateFrom)
-                    ? p.dateTo
-                    : p.dateFrom;
-                break;
-              }
-            }
-          }
-        }
-      } catch (_) {}
-
-      // Latest SpO2 in last 24h
-      try {
-        final spo2 = await svc.getData(
-          types: [HealthDataType.BLOOD_OXYGEN],
-          start: dayAgo,
-          end: now,
-        );
-        if (spo2.isNotEmpty) {
-          spo2.sort((a, b) {
-            final aa = a.dateTo.isAfter(a.dateFrom) ? a.dateTo : a.dateFrom;
-            final bb = b.dateTo.isAfter(b.dateFrom) ? b.dateTo : b.dateFrom;
-            return aa.compareTo(bb);
-          });
-          for (final p in spo2.reversed) {
-            final v = p.value;
-            if (v is NumericHealthValue) {
-              final pct = v.numericValue.toDouble();
-              if (pct > 0) {
-                _latestSpo2 = pct;
-                _latestSpo2Time = p.dateTo.isAfter(p.dateFrom)
-                    ? p.dateTo
-                    : p.dateFrom;
-                break;
-              }
-            }
-          }
-        }
-      } catch (_) {}
-
-      // Last night sleep duration
-      try {
-        final today = DateTime(now.year, now.month, now.day);
-        final yesterday = today.subtract(const Duration(days: 1));
-        Duration total = Duration.zero;
-        var sleep = await svc.getData(
-          types: [HealthDataType.SLEEP_SESSION],
-          start: yesterday,
-          end: today,
-        );
-        if (sleep.isEmpty) {
-          sleep = await svc.getData(
-            types: [HealthDataType.SLEEP_ASLEEP],
-            start: yesterday,
-            end: today,
-          );
-        }
-        for (final s in sleep) {
-          final dt = s.dateTo.difference(s.dateFrom);
-          if (!dt.isNegative) total += dt;
-        }
-        if (total > Duration.zero) {
-          _lastNightSleep = total;
-        }
-      } catch (_) {}
+      final vm = ref.read(healthConnectViewModelProvider.notifier);
+      final snap = await vm.fetchLatestMetrics();
+      _latestHr = snap.hr;
+      _latestHrTime = snap.hrTime;
+      _latestSpo2 = snap.spo2;
+      _latestSpo2Time = snap.spo2Time;
+      _lastNightSleep = snap.lastNightSleep;
 
       if (!mounted) return;
       setState(() {});
@@ -286,23 +201,9 @@ class _GoogleFitConnectScreenState
                       : () async {
                           setState(() => _loading = true);
                           try {
-                            final user = await ref.read(
-                              currentUserProvider.future,
-                            );
-                            if (user == null) {
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Chưa đăng nhập'),
-                                  ),
-                                );
-                              }
-                              return;
-                            }
-                            final repo = ref.read(
-                              healthMetricsRepositoryProvider,
-                            );
-                            final res = await repo.syncLast24h(user.uid);
+                            final res = await ref
+                                .read(healthConnectViewModelProvider.notifier)
+                                .syncLast24hAndRefresh();
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
@@ -314,13 +215,6 @@ class _GoogleFitConnectScreenState
                                 ),
                               );
                             }
-                            // invalidate providers so any dashboard rebuild after pop sees new data
-                            ref.invalidate(heartRateStreamProvider(user.uid));
-                            ref.invalidate(spo2StreamProvider(user.uid));
-                            ref.invalidate(hrvStreamProvider(user.uid));
-                            ref.invalidate(
-                              sleepSessionsStreamProvider(user.uid),
-                            );
                           } catch (e) {
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -399,61 +293,8 @@ class _GoogleFitConnectScreenState
   }
 
   Future<void> _dumpHealthLog({int days = 7}) async {
-    final svc = GoogleFitService();
-    try {
-      await svc.ensureConnected();
-    } catch (_) {}
-    final now = DateTime.now();
-    final start = now.subtract(Duration(days: days));
-    // Header
-    // ignore: avoid_print
-    print(
-      '===== Health Connect dump ${start.toIso8601String()} -> ${now.toIso8601String()} =====',
-    );
-    final types = <HealthDataType>[
-      HealthDataType.HEART_RATE,
-      HealthDataType.BLOOD_OXYGEN,
-      HealthDataType.SLEEP_SESSION,
-      HealthDataType.SLEEP_ASLEEP,
-      HealthDataType.SLEEP_AWAKE,
-      HealthDataType.SLEEP_LIGHT,
-      HealthDataType.SLEEP_DEEP,
-      HealthDataType.SLEEP_REM,
-    ];
-    for (final t in types) {
-      try {
-        final data = await svc.getData(types: [t], start: start, end: now);
-        data.sort((a, b) => a.dateFrom.compareTo(b.dateFrom));
-        // Summary
-        // ignore: avoid_print
-        print('-- ${t.name}: count=${data.length}');
-        if (data.isEmpty) continue;
-        final first = data.first.dateFrom.toIso8601String();
-        final last =
-            (data.last.dateTo.isAfter(data.last.dateFrom)
-                    ? data.last.dateTo
-                    : data.last.dateFrom)
-                .toIso8601String();
-        // ignore: avoid_print
-        print('   range: first=$first last=$last');
-        for (final p in data) {
-          final from = p.dateFrom.toIso8601String();
-          final to = p.dateTo.toIso8601String();
-          final v = p.value;
-          String valStr;
-          if (v is NumericHealthValue) {
-            valStr = v.numericValue.toString();
-          } else {
-            valStr = v.toString();
-          }
-          // ignore: avoid_print
-          print('   [${t.name}] $from -> $to | value=$valStr');
-        }
-      } catch (e) {
-        // ignore: avoid_print
-        print('-- ${t.name}: error $e');
-      }
-    }
+    final vm = ref.read(healthConnectViewModelProvider.notifier);
+    await vm.dumpHealthLog(days: days);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Đã in log dữ liệu ra console')),

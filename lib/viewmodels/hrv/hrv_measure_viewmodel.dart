@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/domain/hrv_stats.dart';
+import '../../data/models/hrv_stats.dart';
 import '../../providers/user_provider.dart';
-import '../../data/domain/measure_and_save_hrv_usecase.dart';
+import '../../providers/metrics_di_providers.dart';
 
 class HrvMeasureState {
   final bool initializing;

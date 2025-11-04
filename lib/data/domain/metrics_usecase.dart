@@ -1,21 +1,14 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:health/health.dart';
 
 import '../../utilities/constant/utilities.dart' as mu;
-import '../../providers/health_metrics_providers.dart';
 import '../models/health_metric_models.dart';
 import '../services/health_connect_service.dart';
+import '../repositories/health_metrics_repository.dart';
 import 'metrics_aggregate.dart';
 
-final metricsUsecaseProvider = Provider<MetricsUsecase>((ref) {
-  final repo = ref.watch(healthMetricsRepositoryProvider);
-  final gfit = GoogleFitService();
-  return MetricsUsecase(repo: repo, gfit: gfit);
-});
-
 class MetricsUsecase {
-  final dynamic repo; // HealthMetricsRepository
+  final HealthMetricsRepository repo;
   final GoogleFitService gfit;
   MetricsUsecase({required this.repo, required this.gfit});
 
@@ -41,16 +34,16 @@ class MetricsUsecase {
 
     if (userId != null) {
       // Firestore source
-      final daySamples =
-          await repo.heartRateStream(userId, from: dayStart).first
-              as List<HeartRateSample>;
+      final daySamples = await repo
+          .heartRateStream(userId, from: dayStart)
+          .first;
       daySpots = _mapFsToDaySpots(daySamples, dayStart, (s) => s.bpm);
       dayStats = mu.calcStats(daySamples.map((e) => e.bpm));
       dayHourly = mu.hourlyAveragesFromSpots(daySpots);
 
-      final weekSamples =
-          await repo.heartRateStream(userId, from: monday).first
-              as List<HeartRateSample>;
+      final weekSamples = await repo
+          .heartRateStream(userId, from: monday)
+          .first;
       final weekDaily = mu.dailyAveragesFromFirestore<HeartRateSample>(
         weekSamples,
         monday,
@@ -64,9 +57,9 @@ class MetricsUsecase {
       );
       weekStats = mu.calcStats(weekSamples.map((e) => e.bpm));
 
-      final monthSamples =
-          await repo.heartRateStream(userId, from: firstDay).first
-              as List<HeartRateSample>;
+      final monthSamples = await repo
+          .heartRateStream(userId, from: firstDay)
+          .first;
       final monthDaily = mu.dailyAveragesFromFirestore<HeartRateSample>(
         monthSamples,
         firstDay,
@@ -167,15 +160,12 @@ class MetricsUsecase {
     late final mu.Stats monthStats;
 
     if (userId != null) {
-      final daySamples =
-          await repo.spo2Stream(userId, from: dayStart).first
-              as List<Spo2Sample>;
+      final daySamples = await repo.spo2Stream(userId, from: dayStart).first;
       daySpots = _mapFsToDaySpots(daySamples, dayStart, (s) => s.percentage);
       dayStats = mu.calcStats(daySamples.map((e) => e.percentage));
       dayHourly = mu.hourlyAveragesFromSpots(daySpots);
 
-      final weekSamples =
-          await repo.spo2Stream(userId, from: monday).first as List<Spo2Sample>;
+      final weekSamples = await repo.spo2Stream(userId, from: monday).first;
       final weekDaily = mu.dailyAveragesFromFirestore<Spo2Sample>(
         weekSamples,
         monday,
@@ -189,9 +179,7 @@ class MetricsUsecase {
       );
       weekStats = mu.calcStats(weekSamples.map((e) => e.percentage));
 
-      final monthSamples =
-          await repo.spo2Stream(userId, from: firstDay).first
-              as List<Spo2Sample>;
+      final monthSamples = await repo.spo2Stream(userId, from: firstDay).first;
       final monthDaily = mu.dailyAveragesFromFirestore<Spo2Sample>(
         monthSamples,
         firstDay,
@@ -323,20 +311,16 @@ class MetricsUsecase {
 
     if (userId != null) {
       // Firestore path
-      final daySessions =
-          await repo.sleepStream(userId, from: dayStart).first
-              as List<SleepSession>;
+      final daySessions = await repo.sleepStream(userId, from: dayStart).first;
       dayTotals = _sumSleepStagesFromFs(daySessions, dayStart, tsNow);
 
-      final weekSessions =
-          await repo.sleepStream(userId, from: monday).first
-              as List<SleepSession>;
+      final weekSessions = await repo.sleepStream(userId, from: monday).first;
       weekDaily = _dailyFromFs(weekSessions, monday, sunday);
       weekBedtime = _bedtimeFromFs(weekSessions, monday, sunday);
 
-      final monthSessions =
-          await repo.sleepStream(userId, from: firstDay).first
-              as List<SleepSession>;
+      final monthSessions = await repo
+          .sleepStream(userId, from: firstDay)
+          .first;
       monthDaily = _dailyFromFs(monthSessions, firstDay, firstNextMonth);
       monthBedtime = _bedtimeFromFs(monthSessions, firstDay, firstNextMonth);
     } else {
@@ -370,8 +354,7 @@ class MetricsUsecase {
     final monthEnd = DateTime(tsNow.year, tsNow.month + 1, 1);
 
     // Day: hourly score averages and RMSSD stats + day pNN50/HR/Score stats
-    final dayDocs =
-        await repo.hrvStream(userId, from: dayStart).first as List<HrvSample>;
+    final dayDocs = await repo.hrvStream(userId, from: dayStart).first;
     final dayBuckets = List<List<double>>.generate(24, (_) => []);
     final dayRmssdVals = <double>[];
     final dayPnn50Vals = <double>[];
@@ -403,8 +386,7 @@ class MetricsUsecase {
     final dayScore = mu.calcStats(dayScoreVals);
 
     // Week: daily avg score and metric collections
-    final weekDocs =
-        await repo.hrvStream(userId, from: weekStart).first as List<HrvSample>;
+    final weekDocs = await repo.hrvStream(userId, from: weekStart).first;
     final wDays = 7;
     final wSum = List<double>.filled(wDays, 0);
     final wCnt = List<int>.filled(wDays, 0);
@@ -429,8 +411,7 @@ class MetricsUsecase {
     ];
 
     // Month: daily avg score and metric collections
-    final monthDocs =
-        await repo.hrvStream(userId, from: monthStart).first as List<HrvSample>;
+    final monthDocs = await repo.hrvStream(userId, from: monthStart).first;
     final mDays = monthEnd.difference(monthStart).inDays;
     final mSum = List<double>.filled(mDays, 0);
     final mCnt = List<int>.filled(mDays, 0);
@@ -678,8 +659,9 @@ class MetricsUsecase {
       DateTime? earliest;
       for (final s in sessions) {
         if (s.start.isAfter(windowStart) && s.start.isBefore(windowEnd)) {
-          if (earliest == null || s.start.isBefore(earliest))
+          if (earliest == null || s.start.isBefore(earliest)) {
             earliest = s.start;
+          }
         }
       }
       if (earliest != null) out[i] = earliest.hour + earliest.minute / 60.0;

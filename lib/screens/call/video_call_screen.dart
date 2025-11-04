@@ -6,9 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/user_provider.dart';
 import '../../data/config/agora_config.dart';
+import '../../providers/call_session_providers.dart';
 
 class VideoCallScreen extends ConsumerStatefulWidget {
   final String channelName; // deterministic channel name
@@ -25,7 +25,7 @@ class _VideoCallScreenState extends ConsumerState<VideoCallScreen> {
   String? _error;
   bool _micMuted = false;
   bool _ended = false;
-  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _callSub;
+  StreamSubscription<String?>? _callSub;
 
   @override
   void initState() {
@@ -105,18 +105,12 @@ class _VideoCallScreenState extends ConsumerState<VideoCallScreen> {
 
       // Watch call session for remote end/decline
       if (widget.callId != null) {
-        _callSub = FirebaseFirestore.instance
-            .collection('call_sessions')
-            .doc(widget.callId)
-            .snapshots()
-            .listen((d) {
-              final data = d.data();
-              if (data == null) return;
-              final status = data['status'] as String?;
-              if ((status == 'ended' || status == 'declined') && !_ended) {
-                _endCall();
-              }
-            });
+        final repo = ref.read(callSessionsRepositoryProvider);
+        _callSub = repo.watchStatus(widget.callId!).listen((status) {
+          if ((status == 'ended' || status == 'declined') && !_ended) {
+            _endCall();
+          }
+        });
       }
     } catch (e) {
       setState(() => _error = 'Khởi tạo cuộc gọi thất bại: $e');
@@ -147,12 +141,9 @@ class _VideoCallScreenState extends ConsumerState<VideoCallScreen> {
     try {
       await _callSub?.cancel();
       if (widget.callId != null) {
-        // Best effort update status
-        final FirebaseFirestore db = FirebaseFirestore.instance;
-        await db.collection('call_sessions').doc(widget.callId).update({
-          'status': 'ended',
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
+        // Best effort update status via repository
+        final repo = ref.read(callSessionsRepositoryProvider);
+        await repo.markEnded(widget.callId!);
       }
     } catch (_) {}
     await _engine?.leaveChannel();

@@ -1,5 +1,5 @@
 import 'dart:math' as math;
-import 'hrv_stats.dart';
+import '../models/hrv_stats.dart';
 
 /// Pure analyzer for HRV stats from raw brightness signal and timestamps (seconds)
 class HrvAnalyzer {

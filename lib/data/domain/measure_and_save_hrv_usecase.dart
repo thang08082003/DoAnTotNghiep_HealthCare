@@ -1,8 +1,6 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/hrv_analyzer.dart';
-import '../domain/hrv_stats.dart';
+import '../models/hrv_stats.dart';
 import '../repositories/health_metrics_repository.dart';
-import '../../providers/health_metrics_providers.dart';
 
 /// Usecase to compute HRV stats from raw signal and persist them via repository
 class MeasureAndSaveHrvUseCase {
@@ -30,14 +28,3 @@ class MeasureAndSaveHrvUseCase {
     return stats;
   }
 }
-
-// Provider wiring
-final hrvAnalyzerProvider = Provider<HrvAnalyzer>((ref) => const HrvAnalyzer());
-
-final measureAndSaveHrvUseCaseProvider = Provider<MeasureAndSaveHrvUseCase>((
-  ref,
-) {
-  final analyzer = ref.watch(hrvAnalyzerProvider);
-  final repo = ref.watch(healthMetricsRepositoryProvider);
-  return MeasureAndSaveHrvUseCase(analyzer: analyzer, repository: repo);
-});

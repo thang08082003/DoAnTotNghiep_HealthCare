@@ -551,6 +551,3 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
   }
 }
 
-// moved inline review avatar to components/reviews/inline_user_avatar.dart
-
-// removed local _ChatAppBarTitle in favor of shared ChatAppBarTitle
