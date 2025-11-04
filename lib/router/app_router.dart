@@ -292,6 +292,8 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
       ref.read(incomingCallViewModelProvider).stop();
       // Disable passive listener when logging out
       ref.read(passiveListenerViewModelProvider).disable();
+      // Stop local notifications and foreground service when logging out
+      ref.read(localNotificationsViewModelProvider).stopAll();
     });
     return const LoginScreen();
   }

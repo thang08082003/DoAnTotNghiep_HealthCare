@@ -20,6 +20,7 @@ class LocalNotificationsViewModel {
   Future<void> stopAll() async {
     IncomingCallListener.stop();
     await AndroidForegroundService.stop();
+    await LocalNotificationsService.stop();
   }
 }
 
