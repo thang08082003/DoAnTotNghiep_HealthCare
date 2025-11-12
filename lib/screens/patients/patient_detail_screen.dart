@@ -6,10 +6,8 @@ import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
 import '../../viewmodels/orders/doctor_orders_view_model.dart';
 import 'patient_orders_list_screen.dart';
-import '../call/video_call_screen.dart';
+import '../call/call_waiting_screen.dart';
 import '../../viewmodels/call/call_view_model.dart';
-import '../../data/models/call_session.dart';
-import 'dart:async';
 import '../../components/info_section/today_health_info_section.dart';
 import '../../components/chat/chat_thread_view.dart';
 import '../../components/app_bar/chat_app_bar_title.dart';
@@ -389,33 +387,12 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
           channelName: channelName,
         );
         if (!ctx.mounted) return;
-        showDialog(
-          context: ctx,
-          barrierDismissible: false,
-          builder: (_) => const Center(child: CircularProgressIndicator()),
+        Navigator.of(ctx).push(
+          MaterialPageRoute(
+            builder: (_) =>
+                CallWaitingScreen(callId: callId, channelName: channelName),
+          ),
         );
-        late final StreamSubscription sub;
-        sub = callVm.watchCall(callId).listen((session) async {
-          if (session == null) return;
-          if (!ctx.mounted) return;
-          if (session.status == CallStatus.accepted) {
-            Navigator.of(ctx).pop();
-            sub.cancel();
-            Navigator.of(ctx).push(
-              MaterialPageRoute(
-                builder: (_) =>
-                    VideoCallScreen(channelName: channelName, callId: callId),
-              ),
-            );
-          } else if (session.status == CallStatus.declined ||
-              session.status == CallStatus.ended) {
-            Navigator.of(ctx).pop();
-            sub.cancel();
-            ScaffoldMessenger.of(ctx).showSnackBar(
-              const SnackBar(content: Text('Cuộc gọi không được kết nối')),
-            );
-          }
-        });
       },
     );
   }
@@ -469,5 +446,3 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
     return 'Chưa cập nhật';
   }
 }
-
-// removed local _PatientChatAppBarTitle in favor of shared ChatAppBarTitle
