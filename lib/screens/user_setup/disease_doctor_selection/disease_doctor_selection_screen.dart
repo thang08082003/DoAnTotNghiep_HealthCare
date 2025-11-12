@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../components/buttons/primary_button.dart';
 import '../../../data/resources/gene/app_colors.dart';
 import '../../../providers/disease_doctor_selection_provider.dart';
-import '../../home/home_page.dart';
+import '../../../providers/user_provider.dart';
 import '../../../data/models/user_model.dart';
 
 class DiseaseDoctorSelectionScreen extends ConsumerStatefulWidget {
@@ -245,14 +245,16 @@ class _DiseaseDoctorSelectionScreenState
     if (mounted) {
       if (result.success) {
         _showSnackBar(result.message!, isError: false);
+
+        // CRITICAL: Invalidate currentUserProvider to force refresh from Firestore
+        // This ensures the app loads the newly created user data with correct role
+        ref.invalidate(currentUserProvider);
+
         await Future.delayed(const Duration(seconds: 1));
         if (mounted && context.mounted) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(
-              builder: (_) => const HomePage(userRole: UserRole.patient),
-            ),
-            (route) => false,
-          );
+          // Navigate to root and let AuthWrapper handle navigation
+          // It will check userExists, load fresh user data, and navigate to HomePage
+          Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
         }
       } else {
         _showSnackBar(result.message!);

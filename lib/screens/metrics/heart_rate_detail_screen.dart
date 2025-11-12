@@ -137,82 +137,77 @@ class _HeartRateDetailScreenState extends ConsumerState<HeartRateDetailScreen> {
       );
     }
     return ChartContainer(
-      child: dayHourlyAvg.every((e) => (e ?? 0) == 0)
-          ? const Center(child: Text('Chưa có dữ liệu'))
-          : BarChart(
-              BarChartData(
-                minY: 0,
-                maxY: 190,
-                gridData: const FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 50,
-                ),
-                barTouchData: BarTouchData(
-                  enabled: true,
-                  touchTooltipData: BarTouchTooltipData(
-                    tooltipPadding: const EdgeInsets.all(8),
-                    tooltipRoundedRadius: 8,
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      final hour = group.x;
-                      final v = rod.toY;
-                      return BarTooltipItem(
-                        '${v.toStringAsFixed(2)} bpm\n${hour}h',
-                        const TextStyle(color: Colors.white, fontSize: 12),
-                      );
-                    },
-                  ),
-                ),
-                titlesData: FlTitlesData(
-                  leftTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 24,
-                      getTitlesWidget: (v, meta) {
-                        final tick = v.round();
-                        if (tick == 0 ||
-                            tick == 6 ||
-                            tick == 12 ||
-                            tick == 18 ||
-                            tick == 24) {
-                          return Text(
-                            '${tick}h',
-                            style: const TextStyle(fontSize: 10),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                    ),
-                  ),
-                  rightTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 52,
-                      interval: 50,
-                      getTitlesWidget: (v, m) {
-                        const ticks = {0, 50, 100, 150, 190};
-                        const eps = 1e-6;
-                        final iv = v.round();
-                        if ((v - iv).abs() < eps && ticks.contains(iv)) {
-                          return Padding(
-                            padding: const EdgeInsets.only(left: 12),
-                            child: Text(iv.toString()),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                    ),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                ),
-                barGroups: groups,
+      child: BarChart(
+        BarChartData(
+          minY: 0,
+          maxY: 190,
+          gridData: const FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: 50,
+          ),
+          barTouchData: BarTouchData(
+            enabled: true,
+            touchTooltipData: BarTouchTooltipData(
+              tooltipPadding: const EdgeInsets.all(8),
+              tooltipRoundedRadius: 8,
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                final hour = group.x;
+                final v = rod.toY;
+                return BarTooltipItem(
+                  '${v.toStringAsFixed(2)} bpm\n${hour}h',
+                  const TextStyle(color: Colors.white, fontSize: 12),
+                );
+              },
+            ),
+          ),
+          titlesData: FlTitlesData(
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 40,
+                interval: 50,
+                getTitlesWidget: (v, m) {
+                  const ticks = {0, 50, 100, 150, 190};
+                  const eps = 1e-6;
+                  final iv = v.round();
+                  if ((v - iv).abs() < eps && ticks.contains(iv)) {
+                    return Text(iv.toString());
+                  }
+                  return const SizedBox.shrink();
+                },
               ),
             ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 24,
+                getTitlesWidget: (v, meta) {
+                  final tick = v.round();
+                  if (tick == 0 ||
+                      tick == 6 ||
+                      tick == 12 ||
+                      tick == 18 ||
+                      tick == 24) {
+                    return Text(
+                      '${tick}h',
+                      style: const TextStyle(fontSize: 10),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+          ),
+          barGroups: groups,
+        ),
+      ),
     );
   }
 
@@ -237,90 +232,77 @@ class _HeartRateDetailScreenState extends ConsumerState<HeartRateDetailScreen> {
         ),
     ];
     return ChartContainer(
-      child: weekSpots.isEmpty
-          ? const Center(child: Text('Chưa có dữ liệu'))
-          : BarChart(
-              BarChartData(
-                minY: 0,
-                maxY: 190,
-                gridData: const FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 50,
-                ),
-                barTouchData: BarTouchData(
-                  enabled: true,
-                  touchTooltipData: BarTouchTooltipData(
-                    tooltipPadding: const EdgeInsets.all(8),
-                    tooltipRoundedRadius: 8,
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      const dayLabels = [
-                        'T2',
-                        'T3',
-                        'T4',
-                        'T5',
-                        'T6',
-                        'T7',
-                        'CN',
-                      ];
-                      final idx = group.x.clamp(0, 6);
-                      final label = dayLabels[idx];
-                      final v = rod.toY;
-                      return BarTooltipItem(
-                        '${v.toStringAsFixed(2)} bpm\n$label',
-                        const TextStyle(color: Colors.white, fontSize: 12),
-                      );
-                    },
-                  ),
-                ),
-                titlesData: FlTitlesData(
-                  leftTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 26,
-                      interval: 1,
-                      getTitlesWidget: (v, meta) {
-                        const eps = 1e-6;
-                        final isInt = (v - v.roundToDouble()).abs() < eps;
-                        if (!isInt) return const SizedBox.shrink();
-                        final idx = v.toInt();
-                        if (idx < 0 || idx > 6) return const SizedBox.shrink();
-                        return Text(
-                          dayLabels[idx],
-                          style: const TextStyle(fontSize: 10),
-                        );
-                      },
-                    ),
-                  ),
-                  rightTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 52,
-                      interval: 50,
-                      getTitlesWidget: (v, m) {
-                        const ticks = {0, 50, 100, 150, 190};
-                        const eps = 1e-6;
-                        final iv = v.round();
-                        if ((v - iv).abs() < eps && ticks.contains(iv)) {
-                          return Padding(
-                            padding: const EdgeInsets.only(left: 12),
-                            child: Text(iv.toString()),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                    ),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                ),
-                barGroups: groups,
+      child: BarChart(
+        BarChartData(
+          minY: 0,
+          maxY: 190,
+          gridData: const FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: 50,
+          ),
+          barTouchData: BarTouchData(
+            enabled: true,
+            touchTooltipData: BarTouchTooltipData(
+              tooltipPadding: const EdgeInsets.all(8),
+              tooltipRoundedRadius: 8,
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                const dayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+                final idx = group.x.clamp(0, 6);
+                final label = dayLabels[idx];
+                final v = rod.toY;
+                return BarTooltipItem(
+                  '${v.toStringAsFixed(2)} bpm\n$label',
+                  const TextStyle(color: Colors.white, fontSize: 12),
+                );
+              },
+            ),
+          ),
+          titlesData: FlTitlesData(
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 40,
+                interval: 50,
+                getTitlesWidget: (v, m) {
+                  const ticks = {0, 50, 100, 150, 190};
+                  const eps = 1e-6;
+                  final iv = v.round();
+                  if ((v - iv).abs() < eps && ticks.contains(iv)) {
+                    return Text(iv.toString());
+                  }
+                  return const SizedBox.shrink();
+                },
               ),
             ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 26,
+                interval: 1,
+                getTitlesWidget: (v, meta) {
+                  const eps = 1e-6;
+                  final isInt = (v - v.roundToDouble()).abs() < eps;
+                  if (!isInt) return const SizedBox.shrink();
+                  final idx = v.toInt();
+                  if (idx < 0 || idx > 6) return const SizedBox.shrink();
+                  return Text(
+                    dayLabels[idx],
+                    style: const TextStyle(fontSize: 10),
+                  );
+                },
+              ),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+          ),
+          barGroups: groups,
+        ),
+      ),
     );
   }
 
@@ -343,79 +325,71 @@ class _HeartRateDetailScreenState extends ConsumerState<HeartRateDetailScreen> {
         )
         .toList();
     return ChartContainer(
-      child: monthSpots.isEmpty
-          ? const Center(child: Text('Chưa có dữ liệu'))
-          : BarChart(
-              BarChartData(
-                minY: 0,
-                maxY: 190,
-                gridData: const FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 50,
-                ),
-                barTouchData: BarTouchData(
-                  enabled: true,
-                  touchTooltipData: BarTouchTooltipData(
-                    tooltipPadding: const EdgeInsets.all(8),
-                    tooltipRoundedRadius: 8,
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      final day = group.x;
-                      final v = rod.toY;
-                      return BarTooltipItem(
-                        '${v.toStringAsFixed(2)} bpm\nNgày $day',
-                        const TextStyle(color: Colors.white, fontSize: 12),
-                      );
-                    },
-                  ),
-                ),
-                titlesData: FlTitlesData(
-                  leftTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 24,
-                      interval: 1,
-                      getTitlesWidget: (v, meta) {
-                        final d = v.round();
-                        if (dayTicks.contains(d)) {
-                          return Text(
-                            '$d',
-                            style: const TextStyle(fontSize: 10),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                    ),
-                  ),
-                  rightTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 52,
-                      interval: 50,
-                      getTitlesWidget: (v, m) {
-                        const ticks = {0, 50, 100, 150, 190};
-                        const eps = 1e-6;
-                        final iv = v.round();
-                        if ((v - iv).abs() < eps && ticks.contains(iv)) {
-                          return Padding(
-                            padding: const EdgeInsets.only(left: 12),
-                            child: Text(iv.toString()),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                    ),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                ),
-                barGroups: groups,
+      child: BarChart(
+        BarChartData(
+          minY: 0,
+          maxY: 190,
+          gridData: const FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: 50,
+          ),
+          barTouchData: BarTouchData(
+            enabled: true,
+            touchTooltipData: BarTouchTooltipData(
+              tooltipPadding: const EdgeInsets.all(8),
+              tooltipRoundedRadius: 8,
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                final day = group.x;
+                final v = rod.toY;
+                return BarTooltipItem(
+                  '${v.toStringAsFixed(2)} bpm\nNgày $day',
+                  const TextStyle(color: Colors.white, fontSize: 12),
+                );
+              },
+            ),
+          ),
+          titlesData: FlTitlesData(
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 40,
+                interval: 50,
+                getTitlesWidget: (v, m) {
+                  const ticks = {0, 50, 100, 150, 190};
+                  const eps = 1e-6;
+                  final iv = v.round();
+                  if ((v - iv).abs() < eps && ticks.contains(iv)) {
+                    return Text(iv.toString());
+                  }
+                  return const SizedBox.shrink();
+                },
               ),
             ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 24,
+                interval: 1,
+                getTitlesWidget: (v, meta) {
+                  final d = v.round();
+                  if (dayTicks.contains(d)) {
+                    return Text('$d', style: const TextStyle(fontSize: 10));
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+          ),
+          barGroups: groups,
+        ),
+      ),
     );
   }
 }

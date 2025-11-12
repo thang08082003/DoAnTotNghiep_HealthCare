@@ -164,15 +164,23 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
         ChartContainer(
           child: SizedBox(
             height: 260,
-            child: sections.isEmpty
-                ? const Center(child: Text('Chưa có dữ liệu hôm nay'))
-                : PieChart(
-                    PieChartData(
-                      sections: sections,
-                      sectionsSpace: 2,
-                      centerSpaceRadius: 40,
-                    ),
-                  ),
+            child: PieChart(
+              PieChartData(
+                sections: sections.isEmpty
+                    ? [
+                        PieChartSectionData(
+                          color: Colors.grey.shade300,
+                          value: 1,
+                          title: '',
+                          radius: 50,
+                          titleStyle: const TextStyle(fontSize: 0),
+                        ),
+                      ]
+                    : sections,
+                sectionsSpace: 2,
+                centerSpaceRadius: 40,
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 12),

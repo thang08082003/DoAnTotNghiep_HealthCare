@@ -167,8 +167,19 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
                     horizontalInterval: 20,
                   ),
                   titlesData: FlTitlesData(
-                    leftTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 35,
+                        interval: 20,
+                        getTitlesWidget: (v, m) {
+                          final iv = v.round();
+                          if (iv % 20 == 0 && iv >= 0 && iv <= 100) {
+                            return Text(iv.toString());
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      ),
                     ),
                     rightTitles: const AxisTitles(
                       sideTitles: SideTitles(showTitles: false),
@@ -269,8 +280,19 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
                     horizontalInterval: 20,
                   ),
                   titlesData: FlTitlesData(
-                    leftTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 35,
+                        interval: 20,
+                        getTitlesWidget: (v, m) {
+                          final iv = v.round();
+                          if (iv % 20 == 0 && iv >= 0 && iv <= 100) {
+                            return Text(iv.toString());
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      ),
                     ),
                     rightTitles: const AxisTitles(
                       sideTitles: SideTitles(showTitles: false),
@@ -351,8 +373,19 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
                     horizontalInterval: 20,
                   ),
                   titlesData: FlTitlesData(
-                    leftTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 35,
+                        interval: 20,
+                        getTitlesWidget: (v, m) {
+                          final iv = v.round();
+                          if (iv % 20 == 0 && iv >= 0 && iv <= 100) {
+                            return Text(iv.toString());
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      ),
                     ),
                     rightTitles: const AxisTitles(
                       sideTitles: SideTitles(showTitles: false),
