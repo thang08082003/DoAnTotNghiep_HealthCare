@@ -228,14 +228,16 @@ class _EmailVerifyCard extends StatelessWidget {
                       : AppColors.warning,
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  state.isEmailVerified
-                      ? 'Email đã được xác thực'
-                      : 'Email chưa xác thực. Vui lòng xác thực để đổi mật khẩu.',
-                  style: TextStyle(
-                    color: state.isEmailVerified
-                        ? Colors.green
-                        : AppColors.warning,
+                Expanded(
+                  child: Text(
+                    state.isEmailVerified
+                        ? 'Email đã được xác thực'
+                        : 'Email chưa xác thực. Vui lòng xác thực để đổi mật khẩu.',
+                    style: TextStyle(
+                      color: state.isEmailVerified
+                          ? Colors.green
+                          : AppColors.warning,
+                    ),
                   ),
                 ),
               ],
@@ -244,14 +246,18 @@ class _EmailVerifyCard extends StatelessWidget {
             if (!state.isEmailVerified) ...[
               Row(
                 children: [
-                  ElevatedButton(
-                    onPressed: state.isLoading ? null : onSend,
-                    child: const Text('Gửi email xác thực'),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: state.isLoading ? null : onSend,
+                      child: const Text('Gửi email xác thực'),
+                    ),
                   ),
                   const SizedBox(width: 12),
-                  OutlinedButton(
-                    onPressed: state.isLoading ? null : onRefresh,
-                    child: const Text('Kiểm tra trạng thái'),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: state.isLoading ? null : onRefresh,
+                      child: const Text('Kiểm tra trạng thái'),
+                    ),
                   ),
                 ],
               ),
