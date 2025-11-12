@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
+import '../providers/health_metrics_providers.dart';
 import '../screens/login/login_screen.dart';
 import '../screens/register/register_screen.dart';
 import '../screens/user_setup/user_setup_screen.dart';
@@ -9,6 +10,7 @@ import '../screens/user_setup/disease_doctor_selection/disease_doctor_selection_
 import '../screens/user_setup/doctor_specialty_selection/doctor_specialty_selection_screen.dart';
 import '../screens/home/home_page.dart';
 import '../viewmodels/notifications/local_notifications_view_model.dart';
+import '../viewmodels/notifications/notifications_view_model.dart';
 import '../viewmodels/foreground/foreground_service_view_model.dart';
 import '../viewmodels/incoming_call/incoming_call_view_model.dart';
 import '../viewmodels/passive_listener/passive_listener_view_model.dart';
@@ -246,6 +248,21 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
 
                     if (userSnapshot.hasData && userSnapshot.data != null) {
                       final user = userSnapshot.data!;
+
+                      // CRITICAL: Check if user changed, invalidate old cached providers
+                      final bool userChanged =
+                          _currentUserId != null && _currentUserId != user.uid;
+                      if (userChanged) {
+                        // User switched accounts - invalidate all family providers with old userId
+                        try {
+                          ref.invalidate(notificationsViewModelProvider);
+                          ref.invalidate(heartRateStreamProvider);
+                          ref.invalidate(spo2StreamProvider);
+                          ref.invalidate(hrvStreamProvider);
+                          ref.invalidate(sleepSessionsStreamProvider);
+                        } catch (_) {}
+                      }
+
                       _currentUserId = user.uid;
                       // Enable passive listener
                       ref.read(passiveListenerViewModelProvider).enable();
@@ -286,14 +303,47 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
       );
     }
 
-    // Not authenticated
+    // Not authenticated - CLEANUP ALL LISTENERS AND PROVIDERS
+    // Reset current user id
+    _currentUserId = null;
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Stop incoming call listener if any
-      ref.read(incomingCallViewModelProvider).stop();
-      // Disable passive listener when logging out
-      ref.read(passiveListenerViewModelProvider).disable();
-      // Stop local notifications and foreground service when logging out
-      ref.read(localNotificationsViewModelProvider).stopAll();
+      // CRITICAL: Stop all listeners and services to prevent leaking user data
+      try {
+        // Stop incoming call listener
+        ref.read(incomingCallViewModelProvider).stop();
+      } catch (_) {}
+
+      try {
+        // Disable passive listener
+        ref.read(passiveListenerViewModelProvider).disable();
+      } catch (_) {}
+
+      try {
+        // Stop local notifications and foreground service
+        ref.read(localNotificationsViewModelProvider).stopAll();
+      } catch (_) {}
+
+      // IMPORTANT: Invalidate all family providers that may cache old user data
+      try {
+        ref.invalidate(notificationsViewModelProvider);
+      } catch (_) {}
+
+      try {
+        ref.invalidate(heartRateStreamProvider);
+      } catch (_) {}
+
+      try {
+        ref.invalidate(spo2StreamProvider);
+      } catch (_) {}
+
+      try {
+        ref.invalidate(hrvStreamProvider);
+      } catch (_) {}
+
+      try {
+        ref.invalidate(sleepSessionsStreamProvider);
+      } catch (_) {}
     });
     return const LoginScreen();
   }

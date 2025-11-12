@@ -55,6 +55,12 @@ class NotificationsViewModel extends StateNotifier<NotificationsState> {
         );
   }
 
+  void stop() {
+    _sub?.cancel();
+    _sub = null;
+    state = const NotificationsState.initial();
+  }
+
   Future<void> markAsRead(String id) => _repo.markAsRead(id);
   Future<void> delete(String id) => _repo.deleteNotification(id);
 

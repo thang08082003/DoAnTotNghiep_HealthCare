@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/repositories/auth_repository.dart';
+import '../utilities/cleanup_service.dart';
 
 // Auth Repository Provider
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
@@ -77,43 +78,46 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> login(String email, String password) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
-    
+
     try {
       await _authRepository.signInWithEmailAndPassword(email, password);
       // State will be updated through the stream listener
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 
   Future<void> register(String email, String password) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
-    
+
     try {
       await _authRepository.registerWithEmailAndPassword(email, password);
       // State will be updated through the stream listener
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 
   Future<void> logout() async {
     state = state.copyWith(isLoading: true);
-    
+
     try {
+      // CRITICAL: Stop all listeners BEFORE signing out to prevent permission errors
+      await CleanupService.stopAllListeners();
+
+      // Sign out from Firebase
       await _authRepository.signOut();
-      // State will be updated through the stream listener
-    } catch (e) {
-      state = state.copyWith(
+
+      // IMPORTANT: Clear all state to prevent old user data leaking
+      state = const AuthState(
         isLoading: false,
-        errorMessage: e.toString(),
+        isAuthenticated: false,
+        uid: null,
+        email: null,
+        errorMessage: null,
       );
+    } catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 

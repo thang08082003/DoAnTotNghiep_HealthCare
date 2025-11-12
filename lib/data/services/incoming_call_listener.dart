@@ -11,9 +11,29 @@ import 'user_service.dart';
 class IncomingCallListener {
   static StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _sub;
   static final Set<String> _notified = <String>{};
+  static String? _currentUserId; // Track current user to detect changes
 
   static void start(String currentUserId) {
+    // CRITICAL: If user changed, stop old listener to prevent wrong user receiving calls
+    if (_currentUserId != null && _currentUserId != currentUserId) {
+      debugPrint(
+        '[IncomingCallListener] User changed from $_currentUserId to $currentUserId, stopping old listener',
+      );
+      stop();
+    }
+
+    if (_currentUserId == currentUserId && _sub != null) {
+      debugPrint(
+        '[IncomingCallListener] Already listening for user: $currentUserId',
+      );
+      return;
+    }
+
     stop();
+    _currentUserId = currentUserId;
+    debugPrint(
+      '[IncomingCallListener] Start listening for user: $currentUserId',
+    );
     final db = FirebaseFirestore.instance;
     _sub = db
         .collection('call_sessions')
@@ -71,8 +91,12 @@ class IncomingCallListener {
   }
 
   static void stop() {
+    debugPrint(
+      '[IncomingCallListener] Stopping listener for user: $_currentUserId',
+    );
     _sub?.cancel();
     _sub = null;
+    _currentUserId = null;
     _notified.clear();
   }
 }

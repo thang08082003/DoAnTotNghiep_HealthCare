@@ -86,6 +86,13 @@ class LocalNotificationsService {
   /// show a local notification whenever a new document appears.
   static Future<void> startListeningUserNotifications(String userId) async {
     await initialize();
+    // CRITICAL: Stop old listener if userId changed to prevent listening to wrong user
+    if (_listeningUserId != null && _listeningUserId != userId) {
+      debugPrint(
+        '[LocalNotifications] User changed from $_listeningUserId to $userId, stopping old listener',
+      );
+      await stop();
+    }
     if (_listeningUserId == userId && _sub != null) return;
     await stop();
     _listeningUserId = userId;
@@ -126,6 +133,9 @@ class LocalNotificationsService {
   }
 
   static Future<void> stop() async {
+    debugPrint(
+      '[LocalNotifications] Stopping listener for user: $_listeningUserId',
+    );
     await _sub?.cancel();
     _sub = null;
     _listeningUserId = null;
