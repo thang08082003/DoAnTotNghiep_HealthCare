@@ -7,29 +7,51 @@ import android.hardware.camera2.CameraAccessException
 import android.hardware.camera2.CameraManager
 import android.content.Context
 import android.view.WindowManager
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugins.GeneratedPluginRegistrant
 
-class MainActivity : FlutterFragmentActivity() {
+class MainActivity : FlutterFragmentActivity(), DefaultLifecycleObserver {
 	private val FOREGROUND_CHANNEL = "com.example.healthcare/foreground"
 	private val PASSIVE_CHANNEL = "com.example.healthcare/passive"
 	private var methodChannel: MethodChannel? = null
 	private var passiveChannel: MethodChannel? = null
 
+	companion object {
+		@Volatile
+		var isAppInForeground = false
+	}
+
 	override fun onCreate(savedInstanceState: Bundle?) {
-		super.onCreate(savedInstanceState)
+		super<FlutterFragmentActivity>.onCreate(savedInstanceState)
+		// Register lifecycle observer
+		ProcessLifecycleOwner.get().lifecycle.addObserver(this)
+		
 		// Turn screen on and show over lock screen for incoming calls
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
 			setShowWhenLocked(true)
 			setTurnScreenOn(true)
 		} else {
+			@Suppress("DEPRECATION")
 			window.addFlags(
 				WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
 				WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
 			)
 		}
+	}
+
+	override fun onStart(owner: LifecycleOwner) {
+		super<DefaultLifecycleObserver>.onStart(owner)
+		isAppInForeground = true
+	}
+
+	override fun onStop(owner: LifecycleOwner) {
+		super<DefaultLifecycleObserver>.onStop(owner)
+		isAppInForeground = false
 	}
 
 	override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -56,6 +78,18 @@ class MainActivity : FlutterFragmentActivity() {
 					"stopForegroundService" -> {
 						val intent = Intent(this, ForegroundNotificationService::class.java)
 						stopService(intent)
+						result.success(true)
+					}
+					"cancelIncomingCallNotification" -> {
+						val callId = call.argument<String>("callId")
+						if (callId.isNullOrEmpty()) {
+							result.error("ARG", "callId is required", null)
+							return@setMethodCallHandler
+						}
+						// Cancel notification using the same ID calculation as ForegroundNotificationService
+						val notifId = (callId.hashCode() and 0x7fffffff) % 100000000
+						val nm = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+						nm.cancel(notifId)
 						result.success(true)
 					}
 					else -> result.notImplemented()

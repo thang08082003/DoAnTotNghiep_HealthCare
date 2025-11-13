@@ -20,6 +20,15 @@ class AndroidForegroundService {
     } catch (_) {}
   }
 
+  static Future<void> cancelIncomingCallNotification(String callId) async {
+    if (!Platform.isAndroid) return;
+    try {
+      await _channel.invokeMethod('cancelIncomingCallNotification', {
+        'callId': callId,
+      });
+    } catch (_) {}
+  }
+
   static void ensureTapListener() {
     if (_listening) return;
     _channel.setMethodCallHandler((call) async {

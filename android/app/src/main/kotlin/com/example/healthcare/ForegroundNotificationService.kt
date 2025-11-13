@@ -196,6 +196,12 @@ class ForegroundNotificationService : Service() {
     }
 
     private fun showIncomingCall(callId: String, callerId: String, callerName: String, channelName: String) {
+        // IMPORTANT: Only show notification if app is in background
+        // When app is in foreground, Flutter IncomingCallListener will handle it
+        if (MainActivity.isAppInForeground) {
+            return
+        }
+        
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val notifId = (callId.hashCode() and 0x7fffffff) % 100000000
         callNotifIds[callId] = notifId
@@ -208,43 +214,15 @@ class ForegroundNotificationService : Service() {
         payloadObj.put("callerName", callerName)
         payloadObj.put("origin", "native")
 
-        // Full-screen intent for showing incoming call screen when locked
-        val fullIntent = Intent(this, MainActivity::class.java).apply {
+        // Intent to open app when tapping notification
+        val tapIntent = Intent(this, MainActivity::class.java).apply {
             putExtra("payload", payloadObj.toString())
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
-        val fullPending = PendingIntent.getActivity(
+        val tapPending = PendingIntent.getActivity(
             this,
             notifId,
-            fullIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
-        )
-
-        // Accept action
-        val acceptIntent = Intent(this, IncomingCallActionReceiver::class.java).apply {
-            action = "ACTION_ACCEPT_CALL"
-            putExtra("callId", callId)
-            putExtra("channelName", channelName)
-            putExtra("notificationId", notifId)
-            putExtra("payload", payloadObj.toString())
-        }
-        val acceptPending = PendingIntent.getBroadcast(
-            this,
-            notifId + 1,
-            acceptIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
-        )
-
-        // Decline action
-        val declineIntent = Intent(this, IncomingCallActionReceiver::class.java).apply {
-            action = "ACTION_DECLINE_CALL"
-            putExtra("callId", callId)
-            putExtra("notificationId", notifId)
-        }
-        val declinePending = PendingIntent.getBroadcast(
-            this,
-            notifId + 2,
-            declineIntent,
+            tapIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
         )
 
@@ -254,14 +232,12 @@ class ForegroundNotificationService : Service() {
             .setContentText("Từ $callerName")
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setOngoing(true)
-            .setAutoCancel(false)
-            .setFullScreenIntent(fullPending, true)
-            .setContentIntent(fullPending)
+            .setOngoing(false)
+            .setAutoCancel(true)
+            .setFullScreenIntent(tapPending, true)
+            .setContentIntent(tapPending)
             .setVibrate(longArrayOf(0, 1000, 500, 1000, 500, 1000))
             .setSound(android.provider.Settings.System.DEFAULT_RINGTONE_URI)
-            .addAction(R.drawable.ic_stat_notify, "Từ chối", declinePending)
-            .addAction(R.drawable.ic_stat_notify, "Chấp nhận", acceptPending)
             .setTimeoutAfter(60000) // Auto-dismiss after 60 seconds
 
         manager.notify(notifId, builder.build())

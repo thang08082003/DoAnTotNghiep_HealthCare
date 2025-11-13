@@ -5,7 +5,6 @@ import '../../data/models/call_session.dart';
 import '../../data/services/local_notifications_service.dart';
 import '../../data/services/notification_service.dart' as app_notif;
 import 'video_call_screen.dart';
-import '../../router/navigation_service.dart';
 
 class VideoCallIncomingScreen extends StatefulWidget {
   final String callId;
@@ -33,35 +32,36 @@ class _VideoCallIncomingScreenState extends State<VideoCallIncomingScreen> {
   void initState() {
     super.initState();
     _sub = _service.watchCall(widget.callId).listen((session) async {
-      if (!mounted || _handled) return;
+      if (!mounted || _sub == null) return; // Don't process if stream cancelled
       if (session == null) {
-        // Call doc removed or not found; close screen via root navigator
-        NavigationService.navigator?.pop();
+        // Call doc removed or not found; close screen
+        if (!_handled) _handled = true;
+        if (mounted) Navigator.of(context).pop();
         return;
       }
       switch (session.status) {
         case CallStatus.accepted:
-          _handled = true;
-          await LocalNotificationsService.cancelIncomingCallNotification(
-            widget.callId,
-          ).catchError((_) {});
-          if (!mounted) return;
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (_) => VideoCallScreen(
-                channelName: widget.channelName,
-                callId: widget.callId,
-              ),
-            ),
-          );
-          break;
+          // Don't navigate from stream listener if user already handled it via button
+          if (_handled) return;
+          // Stream-triggered accept (e.g., accepted from another device)
+          // Just let it be, don't auto-navigate
+          return;
         case CallStatus.declined:
         case CallStatus.ended:
-          if (!mounted) return;
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Cuộc gọi đã kết thúc')));
-          NavigationService.navigator?.pop();
+          // Call ended - close this screen
+          if (_handled) {
+            // If already handled (user accepted then call ended), just close
+            if (mounted) Navigator.of(context).pop();
+          } else {
+            // User declined or caller ended before answer
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Cuộc gọi đã kết thúc')),
+              );
+              Navigator.of(context).pop();
+            }
+          }
+          _handled = true;
           break;
         case CallStatus.ringing:
           // keep waiting
@@ -79,6 +79,11 @@ class _VideoCallIncomingScreenState extends State<VideoCallIncomingScreen> {
   Future<void> _accept() async {
     if (_handled) return;
     _handled = true;
+
+    // Cancel stream to prevent further updates while in call
+    await _sub?.cancel();
+    _sub = null;
+
     await LocalNotificationsService.cancelIncomingCallNotification(
       widget.callId,
     ).catchError((_) {});
@@ -88,7 +93,9 @@ class _VideoCallIncomingScreenState extends State<VideoCallIncomingScreen> {
       widget.callId,
     ).catchError((_) {});
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
+
+    // Use push instead of pushReplacement
+    await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => VideoCallScreen(
           channelName: widget.channelName,
@@ -96,6 +103,13 @@ class _VideoCallIncomingScreenState extends State<VideoCallIncomingScreen> {
         ),
       ),
     );
+
+    // When returning from VideoCallScreen, close this screen too
+    print('DEBUG _accept: Returned from VideoCallScreen, mounted=$mounted');
+    if (mounted) {
+      print('DEBUG _accept: Popping VideoCallIncomingScreen');
+      Navigator.of(context).pop();
+    }
   }
 
   Future<void> _decline() async {
@@ -109,7 +123,7 @@ class _VideoCallIncomingScreenState extends State<VideoCallIncomingScreen> {
     app_notif.NotificationService.deleteIncomingCallNotificationsByCallId(
       widget.callId,
     ).catchError((_) {});
-    NavigationService.navigator?.pop();
+    if (mounted) Navigator.of(context).pop();
   }
 
   @override

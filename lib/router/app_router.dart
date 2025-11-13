@@ -12,8 +12,8 @@ import '../screens/home/home_page.dart';
 import '../viewmodels/notifications/local_notifications_view_model.dart';
 import '../viewmodels/notifications/notifications_view_model.dart';
 import '../viewmodels/foreground/foreground_service_view_model.dart';
-import '../viewmodels/incoming_call/incoming_call_view_model.dart';
 import '../viewmodels/passive_listener/passive_listener_view_model.dart';
+import '../components/incoming_call_listener.dart';
 
 class AppRouter {
   // Route names
@@ -254,23 +254,18 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
                       ref.read(passiveListenerViewModelProvider).enable();
                       // Start local notifications listening after first frame
                       WidgetsBinding.instance.addPostFrameCallback((_) {
-                        final lnsVm = ref.read(
-                          localNotificationsViewModelProvider,
-                        );
-                        lnsVm
-                            .initialize()
-                            .then((_) => lnsVm.startForUser(user.uid))
-                            .catchError((_) {});
+                        // Start background notification service only
+                        ref
+                            .read(localNotificationsViewModelProvider)
+                            .startForUser(user.uid);
                         // Ensure tap listener for foreground service
                         ref
                             .read(foregroundServiceViewModelProvider)
                             .ensureTapListener();
-                        // Start incoming call listener
-                        ref
-                            .read(incomingCallViewModelProvider)
-                            .startForUser(user.uid);
                       });
-                      return HomePage(userRole: user.role);
+                      return IncomingCallListener(
+                        child: HomePage(userRole: user.role),
+                      );
                     }
 
                     return const LoginScreen();
@@ -295,10 +290,7 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // CRITICAL: Stop all listeners and services to prevent leaking user data
-      try {
-        // Stop incoming call listener
-        ref.read(incomingCallViewModelProvider).stop();
-      } catch (_) {}
+      // Incoming call listener removed - using background service only
 
       try {
         // Disable passive listener

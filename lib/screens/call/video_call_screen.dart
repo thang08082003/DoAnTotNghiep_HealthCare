@@ -13,6 +13,7 @@ import '../../providers/call_session_providers.dart';
 class VideoCallScreen extends ConsumerStatefulWidget {
   final String channelName; // deterministic channel name
   final String? callId; // Firestore call session id
+
   const VideoCallScreen({super.key, required this.channelName, this.callId});
 
   @override
@@ -148,6 +149,8 @@ class _VideoCallScreenState extends ConsumerState<VideoCallScreen> {
     } catch (_) {}
     await _engine?.leaveChannel();
     await _engine?.release();
+
+    // Just pop once - VideoCallIncomingScreen will handle closing itself
     if (mounted) Navigator.of(context).pop();
   }
 

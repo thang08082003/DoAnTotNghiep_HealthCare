@@ -77,9 +77,15 @@ class IncomingCallActionReceiver : BroadcastReceiver() {
                         for (d in snap.documents) batch.delete(d.reference)
                         batch.commit()
                     }
+                // Cancel the notification
                 val nm = NotificationManagerCompat.from(context)
                 val id = (callId.hashCode() and 0x7fffffff) % 100000000
                 nm.cancel(id)
+                
+                // Open app but do NOT join the call
+                val launch = Intent(context, MainActivity::class.java)
+                launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                context.startActivity(launch)
             }
         }
     }
