@@ -56,8 +56,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     // Listen to auth state changes (safe inside build)
     ref.listen<AuthViewState>(authViewModelProvider, (previous, next) async {
       if ((next.error ?? '').isNotEmpty && next.error != previous?.error) {
+        // Reset navigation flag when there's an error
+        _navigated = false;
         if (mounted) _showSnackBar(next.error!);
         ref.read(authViewModelProvider.notifier).clearError();
+        return; // Don't proceed with navigation
       }
       final readyToNavigate =
           next.isAuthenticated == true && !next.isLoading && next.uid != null;

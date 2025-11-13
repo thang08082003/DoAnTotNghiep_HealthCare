@@ -45,10 +45,14 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
   @override
   void initState() {
     super.initState();
+    // Debug log
+    print(
+      'DoctorDetailScreen: infoOnly = ${widget.infoOnly}, doctorId = ${widget.doctorId}',
+    );
     _tabController = TabController(
-      length: 2,
+      length: widget.infoOnly ? 1 : 2, // Only 1 tab if infoOnly
       vsync: this,
-      initialIndex: widget.initialTab.clamp(0, 1),
+      initialIndex: widget.infoOnly ? 0 : widget.initialTab.clamp(0, 1),
     );
     _tabController.addListener(() {
       if (mounted) setState(() {});
@@ -81,19 +85,22 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    final tabsList = widget.infoOnly
+        ? const [Tab(text: 'Thông tin bác sĩ')]
+        : const [Tab(text: 'Thông tin bác sĩ'), Tab(text: 'Tin nhắn')];
+    print(
+      'DoctorDetailScreen.build: infoOnly=${widget.infoOnly}, _tabController.length=${_tabController.length}, tabsList.length=${tabsList.length}',
+    );
     return Scaffold(
       appBar: AppBar(
-        title: (_tabController.index == 1 && _user != null)
+        title: (_tabController.index == 1 && _user != null && !widget.infoOnly)
             ? ChatAppBarTitle(name: _user!.name, avatarUrl: _user!.avatarUrl)
             : const Text('Thông tin bác sĩ'),
         centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
           labelColor: Colors.white,
-          tabs: const [
-            Tab(text: 'Thông tin bác sĩ'),
-            Tab(text: 'Tin nhắn'),
-          ],
+          tabs: tabsList,
         ),
       ),
       body: _loading
@@ -116,7 +123,9 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
             )
           : TabBarView(
               controller: _tabController,
-              children: [_buildInfoTab(), _buildMessagesTab()],
+              children: widget.infoOnly
+                  ? [_buildInfoTab()]
+                  : [_buildInfoTab(), _buildMessagesTab()],
             ),
     );
   }

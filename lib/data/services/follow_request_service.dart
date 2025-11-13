@@ -1,20 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/notification_model.dart';
+import '../models/follow_request.dart';
 import 'notification_service.dart';
 
-/// Service to manage follow requests between patients and doctors.
-/// A follow request lets a patient request a doctor to follow/monitor them.
-///
-/// Firestore collection: follow_requests
-/// Document ID convention: `patientId_doctorId`
-/// Document schema:
-/// {
-///   patientId: string,
-///   doctorId: string,
-///   status: 'pending' | 'accepted' | 'rejected' | 'cancelled',
-///   createdAt: Timestamp,
-///   updatedAt: Timestamp
-/// }
 class FollowRequestService {
   static final _firestore = FirebaseFirestore.instance;
   static const _collection = 'follow_requests';
@@ -244,5 +232,48 @@ class FollowRequestService {
         },
       );
     } catch (_) {}
+  }
+
+  /// Get list of pending follow requests for a doctor
+  static Future<List<FollowRequest>> getPendingRequestsForDoctor(
+    String doctorId,
+  ) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection(_collection)
+          .where('doctorId', isEqualTo: doctorId)
+          .where('status', isEqualTo: 'pending')
+          .get(); // Removed orderBy to avoid index requirement
+
+      final List<FollowRequest> requests = [];
+
+      for (final doc in querySnapshot.docs) {
+        final data = doc.data();
+        final patientId = data['patientId'] as String;
+
+        // Fetch patient info
+        final patientDoc = await _firestore
+            .collection(_usersCollection)
+            .doc(patientId)
+            .get();
+
+        if (patientDoc.exists) {
+          final patientData = patientDoc.data() ?? {};
+          requests.add(FollowRequest.fromFirestore(doc, patientData));
+        }
+      }
+
+      // Sort by createdAt on client side (newest first)
+      requests.sort((a, b) {
+        if (a.createdAt == null && b.createdAt == null) return 0;
+        if (a.createdAt == null) return 1;
+        if (b.createdAt == null) return -1;
+        return b.createdAt!.compareTo(a.createdAt!);
+      });
+
+      return requests;
+    } catch (e) {
+      throw Exception('Failed to get pending requests: $e');
+    }
   }
 }

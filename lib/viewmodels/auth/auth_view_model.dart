@@ -66,7 +66,11 @@ class AuthViewModel extends StateNotifier<AuthViewState> {
       final cred = await repo.signInWithEmailAndPassword(email, password);
       final user = cred?.user;
       if (user == null) {
-        state = state.copyWith(isLoading: false, error: 'Đăng nhập thất bại');
+        state = state.copyWith(
+          isLoading: false,
+          isAuthenticated: false,
+          error: 'Đăng nhập thất bại',
+        );
         return;
       }
 
@@ -94,7 +98,11 @@ class AuthViewModel extends StateNotifier<AuthViewState> {
         email: user.email,
       );
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.copyWith(
+        isLoading: false,
+        isAuthenticated: false,
+        error: e.toString(),
+      );
     }
   }
 
@@ -106,7 +114,11 @@ class AuthViewModel extends StateNotifier<AuthViewState> {
       final cred = await repo.registerWithEmailAndPassword(email, password);
       final user = cred?.user;
       if (user == null) {
-        state = state.copyWith(isLoading: false, error: 'Đăng ký thất bại');
+        state = state.copyWith(
+          isLoading: false,
+          isAuthenticated: false,
+          error: 'Đăng ký thất bại',
+        );
         return;
       }
       // Newly registered users won't have a profile yet -> needsSetup = true
@@ -118,7 +130,11 @@ class AuthViewModel extends StateNotifier<AuthViewState> {
         email: user.email,
       );
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.copyWith(
+        isLoading: false,
+        isAuthenticated: false,
+        error: e.toString(),
+      );
     }
   }
 

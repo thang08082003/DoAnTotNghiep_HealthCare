@@ -15,10 +15,13 @@ import '../../components/app_bar/chat_app_bar_title.dart';
 class PatientDetailScreen extends ConsumerStatefulWidget {
   final String patientId;
   final int initialTab; // 0: Thông tin, 1: Tin nhắn
+  final bool isPending; // true = pending request, hide health info
+
   const PatientDetailScreen({
     super.key,
     required this.patientId,
     this.initialTab = 0,
+    this.isPending = false,
   });
 
   @override
@@ -173,15 +176,47 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
               _infoRow('Tiền sử bệnh', medicalHistory),
               _infoRow('Bệnh theo dõi', diseaseFocus),
               const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+
+              // Hide health info for pending requests
+              if (!widget.isPending) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.grey.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: _buildReportsSection(),
                 ),
-                child: _buildReportsSection(),
-              ),
+                const SizedBox(height: 16),
+              ],
+
+              // Show pending message if this is a pending request
+              if (widget.isPending)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.orange.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.orange),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Thông tin sức khỏe sẽ hiển thị sau khi bạn chấp nhận yêu cầu theo dõi.',
+                          style: TextStyle(color: Colors.orange),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
               const SizedBox(height: 16),
               _buildDoctorCreateOrderSection(),
@@ -196,6 +231,9 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
 
   Widget _buildDoctorCreateOrderSection() {
     // Only doctors see this section
+    // Hide for pending requests - doctor must accept first
+    if (widget.isPending) return const SizedBox.shrink();
+
     return Consumer(
       builder: (context, ref, _) {
         return FutureBuilder(

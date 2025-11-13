@@ -116,6 +116,11 @@ class DoctorsListContentState extends ConsumerState<DoctorsListContent> {
                   decoration: InputDecoration(
                     hintText: 'Tìm kiếm bác sĩ...',
                     prefixIcon: const Icon(Icons.search),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.refresh),
+                      onPressed: _loadDoctors,
+                      tooltip: 'Tải lại danh sách',
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
@@ -240,7 +245,9 @@ class DoctorsListContentState extends ConsumerState<DoctorsListContent> {
                   builder: (_) => DoctorDetailScreen(
                     doctorId: doctor.uid,
                     initialTab: 0,
-                    infoOnly: true,
+                    // Only hide chat tab for requestable doctors (not yet requested)
+                    // Show chat for both pending and accepted
+                    infoOnly: category == _DoctorCategory.requestable,
                   ),
                 ),
               );

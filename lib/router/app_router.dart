@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/health_metrics_providers.dart';
@@ -9,6 +10,7 @@ import '../screens/user_setup/user_setup_screen.dart';
 import '../screens/user_setup/disease_doctor_selection/disease_doctor_selection_screen.dart';
 import '../screens/user_setup/doctor_specialty_selection/doctor_specialty_selection_screen.dart';
 import '../screens/home/home_page.dart';
+import '../screens/permissions/permissions_request_screen.dart';
 import '../viewmodels/notifications/local_notifications_view_model.dart';
 import '../viewmodels/notifications/notifications_view_model.dart';
 import '../viewmodels/foreground/foreground_service_view_model.dart';
@@ -170,11 +172,34 @@ class AuthWrapper extends ConsumerStatefulWidget {
 class _AuthWrapperState extends ConsumerState<AuthWrapper>
     with WidgetsBindingObserver {
   String? _currentUserId;
+  bool?
+  _permissionsRequested; // null = checking, true = granted/skipped, false = need to request
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _checkPermissionsStatus();
+  }
+
+  Future<void> _checkPermissionsStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final requested = prefs.getBool('permissions_requested') ?? false;
+    if (mounted) {
+      setState(() {
+        _permissionsRequested = requested;
+      });
+    }
+  }
+
+  Future<void> _markPermissionsRequested() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('permissions_requested', true);
+    if (mounted) {
+      setState(() {
+        _permissionsRequested = true;
+      });
+    }
   }
 
   @override
@@ -200,6 +225,18 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
   Widget build(BuildContext context) {
     final ref = this.ref;
     final authState = ref.watch(authProvider);
+
+    // Check if still loading permissions status
+    if (_permissionsRequested == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    // Show permissions request screen if not requested yet
+    if (_permissionsRequested == false) {
+      return PermissionsRequestScreen(
+        onPermissionsGranted: _markPermissionsRequested,
+      );
+    }
 
     if (authState.isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
