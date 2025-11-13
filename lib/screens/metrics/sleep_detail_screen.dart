@@ -7,9 +7,11 @@ import '../../viewmodels/sleep/sleep_viewmodel.dart';
 import '../../data/domain/metrics_aggregate.dart';
 import '../../components/chart/chart_container.dart';
 import '../../components/metrics/metrics_segmented.dart';
+import '../../providers/user_provider.dart';
 
 class SleepDetailScreen extends ConsumerStatefulWidget {
-  final String? userId; // nếu có userId -> lấy Firestore (role bác sĩ)
+  final String?
+  userId; // nếu có userId -> bác sĩ xem bệnh nhân; nếu null -> bệnh nhân tự xem
   const SleepDetailScreen({super.key, this.userId});
 
   @override
@@ -39,13 +41,32 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       // trigger a refresh by invalidating viewmodel
-      ref.read(sleepViewModelProvider(widget.userId).notifier).refresh();
+      final effectiveUserId =
+          widget.userId ?? ref.read(currentUserProvider).value?.uid;
+      if (effectiveUserId != null) {
+        ref.read(sleepViewModelProvider(effectiveUserId).notifier).refresh();
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final asyncAgg = ref.watch(sleepViewModelProvider(widget.userId));
+    // If userId is not provided, fallback to current user's ID
+    final effectiveUserId =
+        widget.userId ?? ref.watch(currentUserProvider).value?.uid;
+
+    // If we still don't have a user ID, show error
+    if (effectiveUserId == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Chi tiết giấc ngủ'),
+          centerTitle: true,
+        ),
+        body: const Center(child: Text('Không xác định được người dùng')),
+      );
+    }
+
+    final asyncAgg = ref.watch(sleepViewModelProvider(effectiveUserId));
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chi tiết giấc ngủ'),
@@ -56,7 +77,7 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
             tooltip: 'Làm mới',
             onPressed: () {
               ref
-                  .read(sleepViewModelProvider(widget.userId).notifier)
+                  .read(sleepViewModelProvider(effectiveUserId).notifier)
                   .refresh();
             },
           ),

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/domain/metrics_usecase.dart';
 import '../data/domain/hrv_analyzer.dart';
 import '../data/domain/measure_and_save_hrv_usecase.dart';
-import '../data/services/health_connect_service.dart';
 import 'health_metrics_providers.dart';
 
 /// Centralized DI wiring for metrics-related use cases and analyzers.
@@ -22,8 +21,8 @@ final measureAndSaveHrvUseCaseProvider = Provider<MeasureAndSaveHrvUseCase>((
 });
 
 // Metrics aggregate use case (HR, SpO2, Sleep, HRV)
+// Now reads all data from Firestore only; PassiveDrainWorker handles Health Connect sync
 final metricsUsecaseProvider = Provider<MetricsUsecase>((ref) {
   final repo = ref.watch(healthMetricsRepositoryProvider);
-  final gfit = GoogleFitService();
-  return MetricsUsecase(repo: repo, gfit: gfit);
+  return MetricsUsecase(repo: repo);
 });

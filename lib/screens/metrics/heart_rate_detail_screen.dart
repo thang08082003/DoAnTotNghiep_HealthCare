@@ -6,10 +6,11 @@ import '../../components/chart/chart_container.dart';
 import '../../components/chart/chart_with_summary.dart';
 import '../../components/metrics/metrics_segmented.dart';
 import '../../viewmodels/heart_rate/heart_rate_viewmodel.dart';
+import '../../providers/user_provider.dart';
 
 class HeartRateDetailScreen extends ConsumerStatefulWidget {
   final String?
-  userId; // nếu có userId -> lấy từ Firestore (bác sĩ theo dõi bệnh nhân)
+  userId; // nếu có userId -> bác sĩ xem bệnh nhân; nếu null -> bệnh nhân tự xem
   const HeartRateDetailScreen({super.key, this.userId});
 
   @override
@@ -27,6 +28,18 @@ class _HeartRateDetailScreenState extends ConsumerState<HeartRateDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // If userId is not provided, fallback to current user's ID
+    final effectiveUserId =
+        widget.userId ?? ref.watch(currentUserProvider).value?.uid;
+
+    // If we still don't have a user ID, show error
+    if (effectiveUserId == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Nhịp tim'), centerTitle: true),
+        body: const Center(child: Text('Không xác định được người dùng')),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Nhịp tim'),
@@ -36,7 +49,7 @@ class _HeartRateDetailScreenState extends ConsumerState<HeartRateDetailScreen> {
             icon: const Icon(Icons.refresh),
             tooltip: 'Làm mới',
             onPressed: () => ref
-                .read(heartRateViewModelProvider(widget.userId).notifier)
+                .read(heartRateViewModelProvider(effectiveUserId).notifier)
                 .refresh(),
           ),
         ],
@@ -45,7 +58,9 @@ class _HeartRateDetailScreenState extends ConsumerState<HeartRateDetailScreen> {
         padding: const EdgeInsets.all(16),
         child: Consumer(
           builder: (context, ref, _) {
-            final state = ref.watch(heartRateViewModelProvider(widget.userId));
+            final state = ref.watch(
+              heartRateViewModelProvider(effectiveUserId),
+            );
             return state.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, st) => Center(

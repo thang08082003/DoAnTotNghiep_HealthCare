@@ -2,7 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/domain/metrics_aggregate.dart';
 import '../../providers/metrics_di_providers.dart';
 
-typedef UserId = String?;
+// userId is now required (non-nullable) - all data comes from Firestore
+typedef UserId = String;
 
 final sleepViewModelProvider =
     AutoDisposeAsyncNotifierProviderFamily<
@@ -14,17 +15,17 @@ final sleepViewModelProvider =
 class SleepViewModel
     extends AutoDisposeFamilyAsyncNotifier<SleepAggregate, UserId> {
   @override
-  Future<SleepAggregate> build(UserId arg) async {
+  Future<SleepAggregate> build(UserId userId) async {
     final usecase = ref.read(metricsUsecaseProvider);
-    return usecase.sleep(userId: arg);
+    return usecase.sleep(userId: userId);
   }
 
   Future<void> refresh() async {
-    final arg = this.arg;
+    final userId = arg;
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final usecase = ref.read(metricsUsecaseProvider);
-      return usecase.sleep(userId: arg);
+      return usecase.sleep(userId: userId);
     });
   }
 }

@@ -1,18 +1,20 @@
 import 'package:fl_chart/fl_chart.dart';
-import 'package:health/health.dart';
 
 import '../../utilities/constant/utilities.dart' as mu;
 import '../models/health_metric_models.dart';
-import '../services/health_connect_service.dart';
 import '../repositories/health_metrics_repository.dart';
 import 'metrics_aggregate.dart';
 
+/// All data read from Firestore only.
+/// PassiveDrainWorker syncs Health Connect → Firestore in background.
 class MetricsUsecase {
   final HealthMetricsRepository repo;
-  final GoogleFitService gfit;
-  MetricsUsecase({required this.repo, required this.gfit});
+  MetricsUsecase({required this.repo});
 
-  Future<MetricAggregate> heartRate({String? userId, DateTime? now}) async {
+  Future<MetricAggregate> heartRate({
+    required String userId,
+    DateTime? now,
+  }) async {
     final tsNow = now ?? DateTime.now();
     // Day
     final dayStart = DateTime(tsNow.year, tsNow.month, tsNow.day);
@@ -32,104 +34,41 @@ class MetricsUsecase {
     late final List<FlSpot> monthSpots;
     late final mu.Stats monthStats;
 
-    if (userId != null) {
-      // Firestore source
-      final daySamples = await repo
-          .heartRateStream(userId, from: dayStart)
-          .first;
-      daySpots = _mapFsToDaySpots(daySamples, dayStart, (s) => s.bpm);
-      dayStats = mu.calcStats(daySamples.map((e) => e.bpm));
-      dayHourly = mu.hourlyAveragesFromSpots(daySpots);
+    // Firestore source (all data)
+    final daySamples = await repo.heartRateStream(userId, from: dayStart).first;
+    daySpots = _mapFsToDaySpots(daySamples, dayStart, (s) => s.bpm);
+    dayStats = mu.calcStats(daySamples.map((e) => e.bpm));
+    dayHourly = mu.hourlyAveragesFromSpots(daySpots);
 
-      final weekSamples = await repo
-          .heartRateStream(userId, from: monday)
-          .first;
-      final weekDaily = mu.dailyAveragesFromFirestore<HeartRateSample>(
-        weekSamples,
-        monday,
-        7,
-        timeOf: (s) => s.ts,
-        valueOf: (s) => s.bpm,
-      );
-      weekSpots = List<FlSpot>.generate(
-        7,
-        (i) => FlSpot(i.toDouble(), (weekDaily[i] ?? 0)),
-      );
-      weekStats = mu.calcStats(weekSamples.map((e) => e.bpm));
+    final weekSamples = await repo.heartRateStream(userId, from: monday).first;
+    final weekDaily = mu.dailyAveragesFromFirestore<HeartRateSample>(
+      weekSamples,
+      monday,
+      7,
+      timeOf: (s) => s.ts,
+      valueOf: (s) => s.bpm,
+    );
+    weekSpots = List<FlSpot>.generate(
+      7,
+      (i) => FlSpot(i.toDouble(), (weekDaily[i] ?? 0)),
+    );
+    weekStats = mu.calcStats(weekSamples.map((e) => e.bpm));
 
-      final monthSamples = await repo
-          .heartRateStream(userId, from: firstDay)
-          .first;
-      final monthDaily = mu.dailyAveragesFromFirestore<HeartRateSample>(
-        monthSamples,
-        firstDay,
-        lastDay,
-        timeOf: (s) => s.ts,
-        valueOf: (s) => s.bpm,
-      );
-      monthSpots = List<FlSpot>.generate(
-        lastDay,
-        (i) => FlSpot((i + 1).toDouble(), (monthDaily[i] ?? 0)),
-      );
-      monthStats = mu.calcStats(monthSamples.map((e) => e.bpm));
-    } else {
-      // Health Connect source
-      final dayData = await gfit.getData(
-        types: const [HealthDataType.HEART_RATE],
-        start: dayStart,
-        end: tsNow,
-      );
-      daySpots = mu.mapHealthToDaySpots(dayData, dayStart, (d) {
-        final v = d.value;
-        if (v is NumericHealthValue) return v.numericValue.toDouble();
-        return 0;
-      });
-      dayStats = mu.calcStats(_extractNumeric(dayData));
-      dayHourly = mu.hourlyAveragesFromSpots(daySpots);
-
-      final sunday = monday.add(const Duration(days: 7));
-      final weekData = await gfit.getData(
-        types: const [HealthDataType.HEART_RATE],
-        start: monday,
-        end: sunday,
-      );
-      final weekDaily = mu.dailyAveragesFromHealth(
-        weekData,
-        monday,
-        7,
-        valueOf: (d) {
-          final v = d.value;
-          if (v is NumericHealthValue) return v.numericValue.toDouble();
-          return 0;
-        },
-      );
-      weekSpots = List<FlSpot>.generate(
-        7,
-        (i) => FlSpot(i.toDouble(), (weekDaily[i] ?? 0)),
-      );
-      weekStats = mu.calcStats(_extractNumeric(weekData));
-
-      final monthData = await gfit.getData(
-        types: const [HealthDataType.HEART_RATE],
-        start: firstDay,
-        end: firstNextMonth,
-      );
-      final monthDaily = mu.dailyAveragesFromHealth(
-        monthData,
-        firstDay,
-        lastDay,
-        valueOf: (d) {
-          final v = d.value;
-          if (v is NumericHealthValue) return v.numericValue.toDouble();
-          return 0;
-        },
-      );
-      monthSpots = List<FlSpot>.generate(
-        lastDay,
-        (i) => FlSpot((i + 1).toDouble(), (monthDaily[i] ?? 0)),
-      );
-      monthStats = mu.calcStats(_extractNumeric(monthData));
-    }
+    final monthSamples = await repo
+        .heartRateStream(userId, from: firstDay)
+        .first;
+    final monthDaily = mu.dailyAveragesFromFirestore<HeartRateSample>(
+      monthSamples,
+      firstDay,
+      lastDay,
+      timeOf: (s) => s.ts,
+      valueOf: (s) => s.bpm,
+    );
+    monthSpots = List<FlSpot>.generate(
+      lastDay,
+      (i) => FlSpot((i + 1).toDouble(), (monthDaily[i] ?? 0)),
+    );
+    monthStats = mu.calcStats(monthSamples.map((e) => e.bpm));
 
     return MetricAggregate(
       daySpots: daySpots,
@@ -142,7 +81,7 @@ class MetricsUsecase {
     );
   }
 
-  Future<MetricAggregate> spo2({String? userId, DateTime? now}) async {
+  Future<MetricAggregate> spo2({required String userId, DateTime? now}) async {
     final tsNow = now ?? DateTime.now();
     // Day
     final dayStart = DateTime(tsNow.year, tsNow.month, tsNow.day);
@@ -159,96 +98,39 @@ class MetricsUsecase {
     late final List<FlSpot> monthSpots;
     late final mu.Stats monthStats;
 
-    if (userId != null) {
-      final daySamples = await repo.spo2Stream(userId, from: dayStart).first;
-      daySpots = _mapFsToDaySpots(daySamples, dayStart, (s) => s.percentage);
-      dayStats = mu.calcStats(daySamples.map((e) => e.percentage));
-      dayHourly = mu.hourlyAveragesFromSpots(daySpots);
+    // Firestore source (all data)
+    final daySamples = await repo.spo2Stream(userId, from: dayStart).first;
+    daySpots = _mapFsToDaySpots(daySamples, dayStart, (s) => s.percentage);
+    dayStats = mu.calcStats(daySamples.map((e) => e.percentage));
+    dayHourly = mu.hourlyAveragesFromSpots(daySpots);
 
-      final weekSamples = await repo.spo2Stream(userId, from: monday).first;
-      final weekDaily = mu.dailyAveragesFromFirestore<Spo2Sample>(
-        weekSamples,
-        monday,
-        7,
-        timeOf: (s) => s.ts,
-        valueOf: (s) => s.percentage,
-      );
-      weekSpots = List<FlSpot>.generate(
-        7,
-        (i) => FlSpot(i.toDouble(), (weekDaily[i] ?? 0)),
-      );
-      weekStats = mu.calcStats(weekSamples.map((e) => e.percentage));
+    final weekSamples = await repo.spo2Stream(userId, from: monday).first;
+    final weekDaily = mu.dailyAveragesFromFirestore<Spo2Sample>(
+      weekSamples,
+      monday,
+      7,
+      timeOf: (s) => s.ts,
+      valueOf: (s) => s.percentage,
+    );
+    weekSpots = List<FlSpot>.generate(
+      7,
+      (i) => FlSpot(i.toDouble(), (weekDaily[i] ?? 0)),
+    );
+    weekStats = mu.calcStats(weekSamples.map((e) => e.percentage));
 
-      final monthSamples = await repo.spo2Stream(userId, from: firstDay).first;
-      final monthDaily = mu.dailyAveragesFromFirestore<Spo2Sample>(
-        monthSamples,
-        firstDay,
-        lastDay,
-        timeOf: (s) => s.ts,
-        valueOf: (s) => s.percentage,
-      );
-      monthSpots = List<FlSpot>.generate(
-        lastDay,
-        (i) => FlSpot((i + 1).toDouble(), (monthDaily[i] ?? 0)),
-      );
-      monthStats = mu.calcStats(monthSamples.map((e) => e.percentage));
-    } else {
-      final dayData = await gfit.getData(
-        types: const [HealthDataType.BLOOD_OXYGEN],
-        start: dayStart,
-        end: tsNow,
-      );
-      daySpots = mu.mapHealthToDaySpots(dayData, dayStart, (d) {
-        final v = d.value;
-        if (v is NumericHealthValue) return v.numericValue.toDouble();
-        return 0;
-      });
-      dayStats = mu.calcStats(_extractNumeric(dayData));
-      dayHourly = mu.hourlyAveragesFromSpots(daySpots);
-
-      final sunday = monday.add(const Duration(days: 7));
-      final weekData = await gfit.getData(
-        types: const [HealthDataType.BLOOD_OXYGEN],
-        start: monday,
-        end: sunday,
-      );
-      final weekDaily = mu.dailyAveragesFromHealth(
-        weekData,
-        monday,
-        7,
-        valueOf: (d) {
-          final v = d.value;
-          if (v is NumericHealthValue) return v.numericValue.toDouble();
-          return 0;
-        },
-      );
-      weekSpots = List<FlSpot>.generate(
-        7,
-        (i) => FlSpot(i.toDouble(), (weekDaily[i] ?? 0)),
-      );
-      weekStats = mu.calcStats(_extractNumeric(weekData));
-
-      final monthData = await gfit.getData(
-        types: const [HealthDataType.BLOOD_OXYGEN],
-        start: firstDay,
-        end: firstNextMonth,
-      );
-      final monthDaily = mu.dailyAveragesFromHealth(
-        monthData,
-        firstDay,
-        lastDay,
-        valueOf: (d) {
-          final v = d.value;
-          if (v is NumericHealthValue) return v.numericValue.toDouble();
-          return 0;
-        },
-      );
-      monthSpots = List<FlSpot>.generate(
-        lastDay,
-        (i) => FlSpot((i + 1).toDouble(), (monthDaily[i] ?? 0)),
-      );
-      monthStats = mu.calcStats(_extractNumeric(monthData));
-    }
+    final monthSamples = await repo.spo2Stream(userId, from: firstDay).first;
+    final monthDaily = mu.dailyAveragesFromFirestore<Spo2Sample>(
+      monthSamples,
+      firstDay,
+      lastDay,
+      timeOf: (s) => s.ts,
+      valueOf: (s) => s.percentage,
+    );
+    monthSpots = List<FlSpot>.generate(
+      lastDay,
+      (i) => FlSpot((i + 1).toDouble(), (monthDaily[i] ?? 0)),
+    );
+    monthStats = mu.calcStats(monthSamples.map((e) => e.percentage));
 
     return MetricAggregate(
       daySpots: daySpots,
@@ -262,15 +144,6 @@ class MetricsUsecase {
   }
 
   // Helpers
-  List<double> _extractNumeric(List<HealthDataPoint> pts) {
-    final out = <double>[];
-    for (final d in pts) {
-      final v = d.value;
-      if (v is NumericHealthValue) out.add(v.numericValue.toDouble());
-    }
-    return out;
-  }
-
   StatsAgg _toAgg(mu.Stats s) => StatsAgg(min: s.min, max: s.max, avg: s.avg);
 
   List<FlSpot> _mapFsToDaySpots<T>(
@@ -295,7 +168,7 @@ class MetricsUsecase {
   }
 
   // Sleep aggregate: day totals, week/month daily totals and bedtime hours
-  Future<SleepAggregate> sleep({String? userId, DateTime? now}) async {
+  Future<SleepAggregate> sleep({required String userId, DateTime? now}) async {
     final tsNow = now ?? DateTime.now();
     final dayStart = DateTime(tsNow.year, tsNow.month, tsNow.day);
     final monday = mu.startOfWeek(tsNow);
@@ -309,31 +182,17 @@ class MetricsUsecase {
     late final List<double?> weekBedtime;
     late final List<double?> monthBedtime;
 
-    if (userId != null) {
-      // Firestore path
-      final daySessions = await repo.sleepStream(userId, from: dayStart).first;
-      dayTotals = _sumSleepStagesFromFs(daySessions, dayStart, tsNow);
+    // Firestore source (all data)
+    final daySessions = await repo.sleepStream(userId, from: dayStart).first;
+    dayTotals = _sumSleepStagesFromFs(daySessions, dayStart, tsNow);
 
-      final weekSessions = await repo.sleepStream(userId, from: monday).first;
-      weekDaily = _dailyFromFs(weekSessions, monday, sunday);
-      weekBedtime = _bedtimeFromFs(weekSessions, monday, sunday);
+    final weekSessions = await repo.sleepStream(userId, from: monday).first;
+    weekDaily = _dailyFromFs(weekSessions, monday, sunday);
+    weekBedtime = _bedtimeFromFs(weekSessions, monday, sunday);
 
-      final monthSessions = await repo
-          .sleepStream(userId, from: firstDay)
-          .first;
-      monthDaily = _dailyFromFs(monthSessions, firstDay, firstNextMonth);
-      monthBedtime = _bedtimeFromFs(monthSessions, firstDay, firstNextMonth);
-    } else {
-      // Health Connect path
-      dayTotals = await _getStages(dayStart, tsNow);
-      weekDaily = await _getDailyStages(monday, sunday);
-      weekBedtime = await _computeBedtimeHoursForRange(monday, sunday);
-      monthDaily = await _getDailyStages(firstDay, firstNextMonth);
-      monthBedtime = await _computeBedtimeHoursForRange(
-        firstDay,
-        firstNextMonth,
-      );
-    }
+    final monthSessions = await repo.sleepStream(userId, from: firstDay).first;
+    monthDaily = _dailyFromFs(monthSessions, firstDay, firstNextMonth);
+    monthBedtime = _bedtimeFromFs(monthSessions, firstDay, firstNextMonth);
 
     return SleepAggregate(
       dayTotals: dayTotals,
@@ -453,138 +312,6 @@ class MetricsUsecase {
       monthScore: monthScore,
       monthSdnn: monthSdnn,
     );
-  }
-
-  // ----- Sleep helpers (Health Connect) -----
-  Future<StageTotalsAgg> _getStages(DateTime start, DateTime end) async {
-    final pts = await gfit.getDataFast(
-      types: const [
-        HealthDataType.SLEEP_LIGHT,
-        HealthDataType.SLEEP_DEEP,
-        HealthDataType.SLEEP_REM,
-      ],
-      start: start,
-      end: end,
-    );
-    int light = 0, deep = 0, rem = 0;
-    for (final p in pts) {
-      final from = p.dateFrom.isBefore(start) ? start : p.dateFrom;
-      final to = p.dateTo.isAfter(end) ? end : p.dateTo;
-      if (!to.isAfter(from)) continue;
-      final mins = to.difference(from).inMinutes;
-      switch (p.type) {
-        case HealthDataType.SLEEP_LIGHT:
-          light += mins;
-          break;
-        case HealthDataType.SLEEP_DEEP:
-          deep += mins;
-          break;
-        case HealthDataType.SLEEP_REM:
-          rem += mins;
-          break;
-        default:
-          break;
-      }
-    }
-    return StageTotalsAgg(light: light, deep: deep, rem: rem);
-  }
-
-  Future<List<StageDailyAgg>> _getDailyStages(
-    DateTime start,
-    DateTime end,
-  ) async {
-    final days = end.difference(start).inDays;
-    if (days <= 0) return const <StageDailyAgg>[];
-    final pts = await gfit.getDataFast(
-      types: const [
-        HealthDataType.SLEEP_LIGHT,
-        HealthDataType.SLEEP_DEEP,
-        HealthDataType.SLEEP_REM,
-      ],
-      start: start,
-      end: end,
-    );
-    final light = List<int>.filled(days, 0);
-    final deep = List<int>.filled(days, 0);
-    final rem = List<int>.filled(days, 0);
-    for (final p in pts) {
-      DateTime from = p.dateFrom.isBefore(start) ? start : p.dateFrom;
-      DateTime to = p.dateTo.isAfter(end) ? end : p.dateTo;
-      if (!to.isAfter(from)) continue;
-      while (from.isBefore(to)) {
-        final dayStart = DateTime(from.year, from.month, from.day);
-        final dayEnd = dayStart.add(const Duration(days: 1));
-        final segEnd = to.isBefore(dayEnd) ? to : dayEnd;
-        final mins = segEnd.difference(from).inMinutes;
-        final idx = from.difference(start).inDays;
-        if (idx >= 0 && idx < days && mins > 0) {
-          switch (p.type) {
-            case HealthDataType.SLEEP_LIGHT:
-              light[idx] += mins;
-              break;
-            case HealthDataType.SLEEP_DEEP:
-              deep[idx] += mins;
-              break;
-            case HealthDataType.SLEEP_REM:
-              rem[idx] += mins;
-              break;
-            default:
-              break;
-          }
-        }
-        from = segEnd;
-      }
-    }
-    final out = <StageDailyAgg>[];
-    for (int i = 0; i < days; i++) {
-      final t = StageTotalsAgg(light: light[i], deep: deep[i], rem: rem[i]);
-      final total = t.totalMinutes;
-      final pct = total == 0
-          ? const StagePctAgg.zero()
-          : StagePctAgg(
-              light: t.light * 100 / total,
-              deep: t.deep * 100 / total,
-              rem: t.rem * 100 / total,
-            );
-      out.add(StageDailyAgg(totals: t, percentages: pct));
-    }
-    return out;
-  }
-
-  Future<List<double?>> _computeBedtimeHoursForRange(
-    DateTime start,
-    DateTime end,
-  ) async {
-    final days = end.difference(start).inDays;
-    if (days <= 0) return const <double?>[];
-    final fetchStart = start.subtract(const Duration(days: 1));
-    final fetchEnd = end.add(const Duration(days: 1));
-    final pts = await gfit.getDataFast(
-      types: const [HealthDataType.SLEEP_SESSION],
-      start: fetchStart,
-      end: fetchEnd,
-    );
-    final out = List<double?>.filled(days, null);
-    for (int i = 0; i < days; i++) {
-      final dayStart = DateTime(
-        start.year,
-        start.month,
-        start.day,
-      ).add(Duration(days: i));
-      final windowStart = dayStart.subtract(const Duration(hours: 6));
-      final windowEnd = dayStart.add(const Duration(hours: 12));
-      DateTime? earliest;
-      for (final p in pts) {
-        final s = p.dateFrom;
-        if (s.isAfter(windowStart) && s.isBefore(windowEnd)) {
-          if (earliest == null || s.isBefore(earliest)) earliest = s;
-        }
-      }
-      if (earliest != null) {
-        out[i] = earliest.hour + earliest.minute / 60.0;
-      }
-    }
-    return out;
   }
 
   // ----- Sleep helpers (Firestore) -----

@@ -6,9 +6,11 @@ import '../../components/chart/chart_container.dart';
 import '../../components/chart/chart_with_summary.dart';
 import '../../components/metrics/metrics_segmented.dart';
 import '../../viewmodels/spo2/spo2_viewmodel.dart';
+import '../../providers/user_provider.dart';
 
 class Spo2DetailScreen extends ConsumerStatefulWidget {
-  final String? userId; // nếu có userId -> dùng Firestore (role bác sĩ)
+  final String?
+  userId; // nếu có userId -> bác sĩ xem bệnh nhân; nếu null -> bệnh nhân tự xem
   const Spo2DetailScreen({super.key, this.userId});
 
   @override
@@ -24,6 +26,18 @@ class _Spo2DetailScreenState extends ConsumerState<Spo2DetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // If userId is not provided, fallback to current user's ID
+    final effectiveUserId =
+        widget.userId ?? ref.watch(currentUserProvider).value?.uid;
+
+    // If we still don't have a user ID, show error
+    if (effectiveUserId == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('SpO₂'), centerTitle: true),
+        body: const Center(child: Text('Không xác định được người dùng')),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('SpO₂'),
@@ -34,7 +48,7 @@ class _Spo2DetailScreenState extends ConsumerState<Spo2DetailScreen> {
             icon: const Icon(Icons.refresh),
             tooltip: 'Làm mới',
             onPressed: () => ref
-                .read(spo2ViewModelProvider(widget.userId).notifier)
+                .read(spo2ViewModelProvider(effectiveUserId).notifier)
                 .refresh(),
           ),
         ],
@@ -43,7 +57,7 @@ class _Spo2DetailScreenState extends ConsumerState<Spo2DetailScreen> {
         padding: const EdgeInsets.all(16),
         child: Consumer(
           builder: (context, ref, _) {
-            final state = ref.watch(spo2ViewModelProvider(widget.userId));
+            final state = ref.watch(spo2ViewModelProvider(effectiveUserId));
             return state.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, st) => Center(

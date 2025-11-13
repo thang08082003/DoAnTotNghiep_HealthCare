@@ -6,11 +6,13 @@ import '../../viewmodels/hrv/hrv_viewmodel.dart';
 import '../../data/domain/metrics_aggregate.dart';
 import '../../components/chart/chart_container.dart';
 import '../../components/metrics/metrics_segmented.dart';
+import '../../providers/user_provider.dart';
 import 'hrv_measure_screen.dart';
 // removed repository/user imports as saving now handled within HrvMeasureScreen
 
 class HrvDetailScreen extends ConsumerStatefulWidget {
-  final String? userId; // Nếu có userId: xem dữ liệu HRV của bệnh nhân
+  final String?
+  userId; // Nếu có userId -> bác sĩ xem bệnh nhân; nếu null -> bệnh nhân tự xem
   const HrvDetailScreen({super.key, this.userId});
 
   @override
@@ -38,13 +40,29 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      ref.read(hrvViewModelProvider(widget.userId).notifier).refresh();
+      final effectiveUserId =
+          widget.userId ?? ref.read(currentUserProvider).value?.uid;
+      if (effectiveUserId != null) {
+        ref.read(hrvViewModelProvider(effectiveUserId).notifier).refresh();
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final asyncAgg = ref.watch(hrvViewModelProvider(widget.userId));
+    // If userId is not provided, fallback to current user's ID
+    final effectiveUserId =
+        widget.userId ?? ref.watch(currentUserProvider).value?.uid;
+
+    // If we still don't have a user ID, show error
+    if (effectiveUserId == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('HRV'), centerTitle: true),
+        body: const Center(child: Text('Không xác định được người dùng')),
+      );
+    }
+
+    final asyncAgg = ref.watch(hrvViewModelProvider(effectiveUserId));
     return Scaffold(
       appBar: AppBar(
         title: const Text('HRV'),
@@ -56,20 +74,20 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
             onPressed: () async {
               final saved = await Navigator.of(context).push<bool>(
                 MaterialPageRoute(
-                  builder: (_) => HrvMeasureScreen(userId: widget.userId),
+                  builder: (_) => HrvMeasureScreen(userId: effectiveUserId),
                 ),
               );
               if (!mounted) return;
               if (saved == true) {
                 ref
-                    .read(hrvViewModelProvider(widget.userId).notifier)
+                    .read(hrvViewModelProvider(effectiveUserId).notifier)
                     .refresh();
               }
             },
           ),
           IconButton(
             onPressed: () => ref
-                .read(hrvViewModelProvider(widget.userId).notifier)
+                .read(hrvViewModelProvider(effectiveUserId).notifier)
                 .refresh(),
             icon: const Icon(Icons.refresh),
           ),
