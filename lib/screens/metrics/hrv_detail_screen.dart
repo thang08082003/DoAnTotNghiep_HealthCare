@@ -48,6 +48,7 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('HRV'),
+        centerTitle: true,
         actions: [
           IconButton(
             tooltip: 'Đo HRV',

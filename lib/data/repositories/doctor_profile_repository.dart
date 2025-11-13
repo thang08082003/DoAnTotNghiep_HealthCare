@@ -25,9 +25,7 @@ class DoctorProfileRepository {
     if (specialty != null) {
       fields['specialty'] = specialty.englishName;
     }
-    fields['yearsExperience'] = yearsExperience == null
-        ? FieldValue.delete()
-        : yearsExperience;
+    fields['yearsExperience'] = yearsExperience ?? FieldValue.delete();
     fields['description'] = (description == null || description.trim().isEmpty)
         ? FieldValue.delete()
         : description.trim();

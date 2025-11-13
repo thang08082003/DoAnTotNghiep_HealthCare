@@ -49,6 +49,7 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chi tiết giấc ngủ'),
+        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -298,8 +299,9 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
                             reservedSize: 28,
                             getTitlesWidget: (v, m) {
                               final iv = v.round();
-                              if (iv % 2 == 0 && iv >= 0 && iv <= 10)
+                              if (iv % 2 == 0 && iv >= 0 && iv <= 10) {
                                 return Text('$iv');
+                              }
                               return const SizedBox.shrink();
                             },
                           ),
@@ -314,8 +316,9 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
                             reservedSize: 20,
                             getTitlesWidget: (v, m) {
                               final i = v.round();
-                              if (i < 0 || i > 6)
+                              if (i < 0 || i > 6) {
                                 return const SizedBox.shrink();
+                              }
                               final d = weekStart.add(Duration(days: i));
                               return Text(
                                 '${d.day}',
@@ -379,8 +382,9 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
                             reservedSize: 20,
                             getTitlesWidget: (v, m) {
                               final i = v.round();
-                              if (i < 0 || i > 6)
+                              if (i < 0 || i > 6) {
                                 return const SizedBox.shrink();
+                              }
                               final d = weekStart.add(Duration(days: i));
                               return Text(
                                 '${d.day}',
@@ -442,8 +446,9 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
                         reservedSize: 28,
                         getTitlesWidget: (v, m) {
                           final iv = v.round();
-                          if (iv % 6 == 0 && iv >= 0 && iv <= 24)
+                          if (iv % 6 == 0 && iv >= 0 && iv <= 24) {
                             return Text('$iv');
+                          }
                           return const SizedBox.shrink();
                         },
                       ),
@@ -589,8 +594,9 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
                             reservedSize: 28,
                             getTitlesWidget: (v, m) {
                               final iv = v.round();
-                              if (iv % 2 == 0 && iv >= 0 && iv <= 10)
+                              if (iv % 2 == 0 && iv >= 0 && iv <= 10) {
                                 return Text('$iv');
+                              }
                               return const SizedBox.shrink();
                             },
                           ),
@@ -604,11 +610,12 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
                             interval: 1,
                             getTitlesWidget: (v, m) {
                               final d = v.round();
-                              if (ticks.contains(d))
+                              if (ticks.contains(d)) {
                                 return Text(
                                   '$d',
                                   style: const TextStyle(fontSize: 10),
                                 );
+                              }
                               return const SizedBox.shrink();
                             },
                           ),
@@ -724,8 +731,9 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
                         reservedSize: 28,
                         getTitlesWidget: (v, m) {
                           final iv = v.round();
-                          if (iv % 6 == 0 && iv >= 0 && iv <= 24)
+                          if (iv % 6 == 0 && iv >= 0 && iv <= 24) {
                             return Text('$iv');
+                          }
                           return const SizedBox.shrink();
                         },
                       ),

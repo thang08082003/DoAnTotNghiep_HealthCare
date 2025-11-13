@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../data/resources/gene/app_colors.dart';
@@ -31,6 +30,7 @@ class _HeartRateDetailScreenState extends ConsumerState<HeartRateDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Nhịp tim'),
+        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../data/resources/gene/app_colors.dart';
@@ -28,6 +27,8 @@ class _Spo2DetailScreenState extends ConsumerState<Spo2DetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('SpO₂'),
+
+        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

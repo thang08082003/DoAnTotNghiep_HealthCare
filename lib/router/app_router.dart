@@ -79,12 +79,6 @@ class AppRouter {
           settings: settings,
         );
 
-      // case dashboard:
-      //   return MaterialPageRoute(
-      //     builder: (_) => const HomePage(),
-      //     settings: settings,
-      //   );
-
       default:
         return MaterialPageRoute(
           builder: (_) =>
@@ -163,17 +157,9 @@ class AppRouter {
       },
     );
   }
-
-  // static void pushDashboard(BuildContext context, {required UserRole userRole}) {
-  //   Navigator.of(context).pushNamedAndRemoveUntil(
-  //     dashboard,
-  //     (route) => false,
-  //     arguments: userRole,
-  //   );
-  // }
 }
 
-// Auth Wrapper với logic điều hướng
+// Auth Wrapper
 class AuthWrapper extends ConsumerStatefulWidget {
   const AuthWrapper({super.key});
 

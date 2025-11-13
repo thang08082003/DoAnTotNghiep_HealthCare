@@ -25,7 +25,7 @@ class PatientProfileRepository {
     if (phone != null) fields['phone'] = phone;
     if (gender != null) fields['gender'] = gender;
     if (medicalHistory != null) fields['medicalHistory'] = medicalHistory;
-    fields['age'] = age == null ? FieldValue.delete() : age;
+    fields['age'] = age ?? FieldValue.delete();
     await _userService.updateUserFields(uid, fields);
   }
 
@@ -35,7 +35,7 @@ class PatientProfileRepository {
 
   Future<void> updateAge(String uid, int? age) {
     return _userService.updateUserFields(uid, {
-      'age': age == null ? FieldValue.delete() : age,
+      'age': age ?? FieldValue.delete(),
     });
   }
 

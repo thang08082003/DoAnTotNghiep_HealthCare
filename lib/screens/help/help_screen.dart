@@ -103,7 +103,7 @@ class _SectionCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          ...section.steps.map((s) => _StepRow(text: s)).toList(),
+          ...section.steps.map((s) => _StepRow(text: s)),
         ],
       ),
     );
