@@ -20,6 +20,7 @@ class ClinicalResourcesScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Thông tin chuyên môn'),
+        centerTitle: true,
         backgroundColor: AppColors.primaryColor,
       ),
       body: ListView(

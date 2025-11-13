@@ -91,6 +91,7 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
                     _patient!.avatarUrl ?? (_raw['avatarUrl'] as String?),
               )
             : const Text('Thông tin bệnh nhân'),
+        centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
           labelColor: Colors.white,

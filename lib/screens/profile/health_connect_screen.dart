@@ -121,7 +121,10 @@ class _GoogleFitConnectScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Kết nối Health Connect')),
+      appBar: AppBar(
+        title: const Text('Kết nối Health Connect'),
+        centerTitle: true,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -135,9 +138,7 @@ class _GoogleFitConnectScreenState
             ElevatedButton.icon(
               onPressed: _loading ? null : _connectAndFetch,
               icon: const Icon(Icons.favorite),
-              label: Text(
-                _loading ? 'Đang xử lý...' : 'Kết nối và tải dữ liệu',
-              ),
+              label: Text(_loading ? 'Đang xử lý...' : 'Tải dữ liệu'),
             ),
             const SizedBox(height: 8),
             // Passive Listener toggle under settings, below connect button
@@ -187,52 +188,6 @@ class _GoogleFitConnectScreenState
                     },
               icon: const Icon(Icons.play_circle_fill),
               label: const Text('Đồng bộ ngay (chạy 1 lần)'),
-            ),
-            const SizedBox(height: 8),
-            Consumer(
-              builder: (context, ref, _) {
-                return ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryColor,
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: _loading
-                      ? null
-                      : () async {
-                          setState(() => _loading = true);
-                          try {
-                            final res = await ref
-                                .read(healthConnectViewModelProvider.notifier)
-                                .syncLast24hAndRefresh();
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    res.granted
-                                        ? 'Đã đồng bộ 24h: HR ${res.heartRate}, SpO₂ ${res.spo2}, HRV ${res.hrv}, Ngủ ${res.sleep}'
-                                        : 'Chưa cấp quyền Health Connect',
-                                  ),
-                                ),
-                              );
-                            }
-                          } catch (e) {
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Lỗi đồng bộ: $e')),
-                              );
-                            }
-                          } finally {
-                            if (mounted) setState(() => _loading = false);
-                          }
-                        },
-                  icon: const Icon(Icons.sync),
-                  label: Text(
-                    _loading
-                        ? 'Đang đồng bộ...'
-                        : 'Đồng bộ 24h lên hệ thống (Firestore)',
-                  ),
-                );
-              },
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(

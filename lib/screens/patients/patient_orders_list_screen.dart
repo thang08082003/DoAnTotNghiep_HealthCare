@@ -17,7 +17,7 @@ class PatientOrdersListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ordersVm = ref.watch(doctorOrdersViewModelProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Tất cả chỉ định')),
+      appBar: AppBar(title: const Text('Tất cả chỉ định'), centerTitle: true),
       body: StreamBuilder<List<DoctorOrder>>(
         stream: ordersVm.watchOrders(patientId: patientId, doctorId: doctorId),
         builder: (context, snapshot) {

@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.hardware.camera2.CameraAccessException
 import android.hardware.camera2.CameraManager
 import android.content.Context
+import android.view.WindowManager
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -16,6 +17,20 @@ class MainActivity : FlutterFragmentActivity() {
 	private val PASSIVE_CHANNEL = "com.example.healthcare/passive"
 	private var methodChannel: MethodChannel? = null
 	private var passiveChannel: MethodChannel? = null
+
+	override fun onCreate(savedInstanceState: Bundle?) {
+		super.onCreate(savedInstanceState)
+		// Turn screen on and show over lock screen for incoming calls
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+			setShowWhenLocked(true)
+			setTurnScreenOn(true)
+		} else {
+			window.addFlags(
+				WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+				WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+			)
+		}
+	}
 
 	override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
 		super.configureFlutterEngine(flutterEngine)

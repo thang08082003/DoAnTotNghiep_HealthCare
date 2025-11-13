@@ -21,7 +21,10 @@ class _DoctorsFollowingListScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Bác sĩ đang theo dõi')),
+      appBar: AppBar(
+        title: const Text('Bác sĩ đang theo dõi'),
+        centerTitle: true,
+      ),
       body: Consumer(
         builder: (context, ref, _) {
           return FutureBuilder(

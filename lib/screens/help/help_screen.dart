@@ -13,7 +13,7 @@ class HelpScreen extends ConsumerWidget {
     final userAsync = ref.watch(currentUserProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Trợ giúp')),
+      appBar: AppBar(title: const Text('Trợ giúp'), centerTitle: true),
       body: userAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => _Error(message: 'Lỗi tải người dùng: $e'),

@@ -86,6 +86,7 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
         title: (_tabController.index == 1 && _user != null)
             ? ChatAppBarTitle(name: _user!.name, avatarUrl: _user!.avatarUrl)
             : const Text('Thông tin bác sĩ'),
+        centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
           labelColor: Colors.white,
@@ -550,4 +551,3 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
     );
   }
 }
-

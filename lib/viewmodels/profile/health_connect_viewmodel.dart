@@ -1,8 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/repositories/health_metrics_repository.dart';
-import '../../providers/health_metrics_providers.dart';
-import '../../providers/user_provider.dart';
 import '../../data/services/health_connect_service.dart';
 import 'package:health/health.dart';
 
@@ -10,32 +7,6 @@ import 'package:health/health.dart';
 class HealthConnectViewModel extends StateNotifier<AsyncValue<void>> {
   final Ref ref;
   HealthConnectViewModel(this.ref) : super(const AsyncData(null));
-
-  /// Sync last 24h data from Health Connect to Firestore and invalidate
-  /// metrics-related providers so dependent UIs refresh.
-  Future<SyncResult> syncLast24hAndRefresh() async {
-    state = const AsyncLoading();
-    try {
-      final user = await ref.read(currentUserProvider.future);
-      if (user == null) {
-        throw Exception('Chưa đăng nhập');
-      }
-      final repo = ref.read(healthMetricsRepositoryProvider);
-      final res = await repo.syncLast24h(user.uid);
-
-      // Invalidate legacy stream providers (dashboards depending on them will refresh)
-      ref.invalidate(heartRateStreamProvider(user.uid));
-      ref.invalidate(spo2StreamProvider(user.uid));
-      ref.invalidate(hrvStreamProvider(user.uid));
-      ref.invalidate(sleepSessionsStreamProvider(user.uid));
-
-      state = const AsyncData(null);
-      return res;
-    } catch (e, st) {
-      state = AsyncError(e, st);
-      rethrow;
-    }
-  }
 
   // Lightweight DTO for latest metrics snapshot
   ({

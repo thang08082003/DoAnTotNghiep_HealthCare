@@ -29,6 +29,7 @@ class DoctorReviewsScreen extends ConsumerWidget {
           'Nhận xét ${doctorName != null && doctorName!.isNotEmpty ? '– $doctorName' : ''}'
               .trim(),
         ),
+        centerTitle: true,
       ),
       body: Column(
         children: [
