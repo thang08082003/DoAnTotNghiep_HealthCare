@@ -6,6 +6,7 @@ class PermissionService {
     final permissions = [
       Permission.camera, // Video call
       Permission.microphone, // Video call
+      Permission.phone, // Read phone state to handle incoming calls
       Permission.notification, // Push notifications
       Permission.sensors, // Body sensors for health data
       Permission.activityRecognition, // Activity recognition for health data
@@ -28,6 +29,7 @@ class PermissionService {
     final permissions = [
       Permission.camera,
       Permission.microphone,
+      Permission.phone,
       Permission.notification,
       Permission.sensors,
       Permission.activityRecognition,
@@ -54,6 +56,7 @@ class PermissionService {
     final permissions = [
       Permission.camera,
       Permission.microphone,
+      Permission.phone,
       Permission.notification,
       Permission.sensors,
       Permission.activityRecognition,

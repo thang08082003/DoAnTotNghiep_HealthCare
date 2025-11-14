@@ -35,6 +35,14 @@ class _PermissionsRequestScreenState extends State<PermissionsRequestScreen> {
       isRequired: true,
     ),
     _PermissionItem(
+      permission: Permission.phone,
+      title: 'Điện thoại',
+      description:
+          'Đọc trạng thái cuộc gọi để tạm dừng video call khi có cuộc gọi đến',
+      icon: Icons.phone,
+      isRequired: false,
+    ),
+    _PermissionItem(
       permission: Permission.notification,
       title: 'Thông báo',
       description: 'Nhận thông báo về cuộc gọi, tin nhắn và chỉ định từ bác sĩ',

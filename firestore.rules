@@ -188,5 +188,11 @@ service cloud.firestore {
       // Optional: allow delete only to participants after ended
       allow delete: if isCallParticipant() && resource.data.status == 'ended';
     }
+
+    // User sessions for single-device login enforcement
+    match /user_sessions/{userId} {
+      // Users can only read/write their own session
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
   }
 }

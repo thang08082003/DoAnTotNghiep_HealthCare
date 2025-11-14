@@ -9,6 +9,10 @@
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    
+    <!-- Phone state permission to handle incoming calls during video call -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    
     <!-- Optional sensors background access on Android 13+ if ever needed -->
     <uses-permission android:name="android.permission.BODY_SENSORS" />
     <uses-permission android:name="android.permission.BODY_SENSORS_BACKGROUND" />

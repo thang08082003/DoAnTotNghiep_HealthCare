@@ -3,6 +3,7 @@ import '../buttons/primary_button.dart';
 import '../../data/models/doctor_model.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../reviews/reviews_summary.dart';
+import '../reviews/inline_user_avatar.dart';
 import '../../viewmodels/reviews/doctor_reviews_view_model.dart';
 
 class DoctorCard extends StatelessWidget {
@@ -45,21 +46,11 @@ class DoctorCard extends StatelessWidget {
               Row(
                 children: [
                   // Doctor Avatar
-                  CircleAvatar(
+                  InlineUserAvatar(
+                    userId: doctor.uid,
+                    initialUrl: doctor.avatarUrl,
+                    displayName: doctor.name,
                     radius: 30,
-                    backgroundImage: doctor.hasAvatar
-                        ? NetworkImage(doctor.avatarUrl!)
-                        : null,
-                    backgroundColor: AppColors.primaryColor.withValues(
-                      alpha: 0.1,
-                    ),
-                    child: !doctor.hasAvatar
-                        ? Icon(
-                            Icons.person,
-                            size: 30,
-                            color: AppColors.primaryColor,
-                          )
-                        : null,
                   ),
                   SizedBox(width: 16),
 
@@ -200,15 +191,11 @@ class DoctorCompactCard extends StatelessWidget {
       margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       elevation: 1,
       child: ListTile(
-        leading: CircleAvatar(
+        leading: InlineUserAvatar(
+          userId: doctor.uid,
+          initialUrl: doctor.avatarUrl,
+          displayName: doctor.name,
           radius: 20,
-          backgroundImage: doctor.hasAvatar
-              ? NetworkImage(doctor.avatarUrl!)
-              : null,
-          backgroundColor: AppColors.primaryColor.withValues(alpha: 0.1),
-          child: !doctor.hasAvatar
-              ? Icon(Icons.person, size: 20, color: AppColors.primaryColor)
-              : null,
         ),
         title: Text(
           doctor.name,

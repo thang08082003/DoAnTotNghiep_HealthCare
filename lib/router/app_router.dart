@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/health_metrics_providers.dart';
 import '../screens/login/login_screen.dart';
 import '../screens/register/register_screen.dart';
+import '../screens/forgot_password/forgot_password_screen.dart';
 import '../screens/user_setup/user_setup_screen.dart';
 import '../screens/user_setup/disease_doctor_selection/disease_doctor_selection_screen.dart';
 import '../screens/user_setup/doctor_specialty_selection/doctor_specialty_selection_screen.dart';
@@ -16,11 +18,13 @@ import '../viewmodels/notifications/notifications_view_model.dart';
 import '../viewmodels/foreground/foreground_service_view_model.dart';
 import '../viewmodels/passive_listener/passive_listener_view_model.dart';
 import '../components/incoming_call_listener.dart';
+import '../data/services/session_service.dart';
 
 class AppRouter {
   // Route names
   static const String login = '/login';
   static const String register = '/register';
+  static const String forgotPassword = '/forgot-password';
   static const String userSetup = '/user-setup';
   static const String diseaseDoctorSelection = '/disease-doctor-selection';
   static const String doctorSpecialtySelection = '/doctor-specialty-selection';
@@ -38,6 +42,12 @@ class AppRouter {
       case register:
         return MaterialPageRoute(
           builder: (_) => const RegisterScreen(),
+          settings: settings,
+        );
+
+      case forgotPassword:
+        return MaterialPageRoute(
+          builder: (_) => const ForgotPasswordScreen(),
           settings: settings,
         );
 
@@ -174,6 +184,7 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
   String? _currentUserId;
   bool?
   _permissionsRequested; // null = checking, true = granted/skipped, false = need to request
+  StreamSubscription<bool>? _sessionSubscription;
 
   @override
   void initState() {
@@ -204,8 +215,30 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
 
   @override
   void dispose() {
+    _sessionSubscription?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _showKickedDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Đăng xuất'),
+        content: const Text('Tài khoản đã được đăng nhập từ thiết bị khác.'),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              // Sign out
+              await ref.read(authRepositoryProvider).signOut();
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -284,9 +317,43 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
                           ref.invalidate(hrvStreamProvider);
                           ref.invalidate(sleepSessionsStreamProvider);
                         } catch (_) {}
+                        // Cancel old session subscription
+                        _sessionSubscription?.cancel();
                       }
 
                       _currentUserId = user.uid;
+
+                      // Start session monitoring for single-device login enforcement
+                      _sessionSubscription
+                          ?.cancel(); // Cancel existing before creating new
+                      print(
+                        '[AuthWrapper] Starting session monitoring for user: ${user.uid}',
+                      );
+                      _sessionSubscription =
+                          SessionService.watchSessionValidity(user.uid).listen((
+                            isValid,
+                          ) {
+                            print(
+                              '[AuthWrapper] Session validity changed: $isValid',
+                            );
+                            // Only show kicked dialog if still authenticated
+                            // (to prevent showing during logout)
+                            if (!isValid && mounted) {
+                              final currentAuthState = ref.read(authProvider);
+                              if (currentAuthState.isAuthenticated) {
+                                // Session kicked by another device
+                                print(
+                                  '[AuthWrapper] Session invalid! Showing kicked dialog',
+                                );
+                                _showKickedDialog();
+                              } else {
+                                print(
+                                  '[AuthWrapper] Session invalid but user logged out, skipping dialog',
+                                );
+                              }
+                            }
+                          });
+
                       // Enable passive listener
                       ref.read(passiveListenerViewModelProvider).enable();
                       // Start local notifications listening after first frame
@@ -324,6 +391,8 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
     // Not authenticated - CLEANUP ALL LISTENERS AND PROVIDERS
     // Reset current user id
     _currentUserId = null;
+    _sessionSubscription?.cancel();
+    _sessionSubscription = null;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // CRITICAL: Stop all listeners and services to prevent leaking user data

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../components/reviews/inline_user_avatar.dart';
 import '../../data/models/doctor_model.dart';
 import '../../data/models/user_model.dart';
 import '../../data/resources/gene/app_colors.dart';
@@ -162,19 +163,11 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
-              child: CircleAvatar(
+              child: InlineUserAvatar(
+                userId: widget.doctorId,
+                initialUrl: avatarUrl,
+                displayName: name,
                 radius: 40,
-                backgroundColor: AppColors.primaryColor.withValues(alpha: 0.1),
-                backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
-                    ? NetworkImage(avatarUrl)
-                    : null,
-                child: (avatarUrl == null || avatarUrl.isEmpty)
-                    ? const Icon(
-                        Icons.person,
-                        size: 40,
-                        color: AppColors.primaryColor,
-                      )
-                    : null,
               ),
             ),
             const SizedBox(height: 12),

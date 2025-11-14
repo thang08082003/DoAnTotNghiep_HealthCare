@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../data/models/user_model.dart';
+import '../../data/services/session_service.dart';
 
 class AuthViewState {
   final bool isLoading;
@@ -89,6 +90,10 @@ class AuthViewModel extends StateNotifier<AuthViewState> {
 
       final profile = await _ref.read(userRepositoryProvider).getUserById(uid);
       final role = profile?.role ?? UserRole.patient;
+
+      // Create session for single-device login enforcement
+      await SessionService.createSession(uid);
+
       state = state.copyWith(
         isLoading: false,
         isAuthenticated: true,

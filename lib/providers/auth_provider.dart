@@ -105,6 +105,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // CRITICAL: Stop all listeners BEFORE signing out to prevent permission errors
       await CleanupService.stopAllListeners();
 
+      // Cancel session monitoring before signing out
+      // (This will be handled in AuthWrapper when not authenticated state triggers)
+
       // Sign out from Firebase
       await _authRepository.signOut();
 

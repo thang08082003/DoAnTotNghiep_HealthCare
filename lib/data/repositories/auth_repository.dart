@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
+import '../services/session_service.dart';
 
 class AuthRepository {
   final AuthService _authService = AuthService();
@@ -29,6 +30,10 @@ class AuthRepository {
 
   // Đăng xuất
   Future<void> signOut() async {
+    final uid = _authService.currentUser?.uid;
+    if (uid != null) {
+      await SessionService.clearSession(uid);
+    }
     await _authService.signOut();
   }
 

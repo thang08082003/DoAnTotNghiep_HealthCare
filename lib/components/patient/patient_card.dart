@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/models/user_model.dart';
 import '../../data/resources/gene/app_colors.dart';
+import '../reviews/inline_user_avatar.dart';
 
 class PatientCard extends StatelessWidget {
   final UserModel patient;
@@ -43,16 +44,11 @@ class PatientCard extends StatelessWidget {
           child: Row(
             children: [
               // Patient Avatar
-              CircleAvatar(
+              InlineUserAvatar(
+                userId: patient.uid,
+                initialUrl: patient.avatarUrl,
+                displayName: patient.name,
                 radius: 24,
-                backgroundColor: effectiveStatusColor.withValues(alpha: 0.1),
-                backgroundImage:
-                    (patient.avatarUrl != null && patient.avatarUrl!.isNotEmpty)
-                    ? NetworkImage(patient.avatarUrl!)
-                    : null,
-                child: (patient.avatarUrl == null || patient.avatarUrl!.isEmpty)
-                    ? Icon(Icons.person, size: 28, color: effectiveStatusColor)
-                    : null,
               ),
               const SizedBox(width: 12),
 

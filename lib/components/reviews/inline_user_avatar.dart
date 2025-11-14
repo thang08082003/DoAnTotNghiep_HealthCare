@@ -8,11 +8,13 @@ class InlineUserAvatar extends ConsumerStatefulWidget {
   final String userId;
   final String? initialUrl;
   final String displayName;
+  final double radius; // Customizable size
   const InlineUserAvatar({
     super.key,
     required this.userId,
     required this.initialUrl,
     required this.displayName,
+    this.radius = 20, // Default 40x40 (radius * 2)
   });
 
   @override
@@ -50,59 +52,30 @@ class _InlineUserAvatarState extends ConsumerState<InlineUserAvatar> {
   @override
   Widget build(BuildContext context) {
     final hasUrl = _url != null && _url!.isNotEmpty;
-    final initials = _initials(widget.displayName);
     if (_fetching && !hasUrl) {
-      return const SizedBox(
-        width: 40,
-        height: 40,
+      return SizedBox(
+        width: widget.radius * 2,
+        height: widget.radius * 2,
         child: Center(
           child: SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
+            width: widget.radius * 0.8,
+            height: widget.radius * 0.8,
+            child: const CircularProgressIndicator(strokeWidth: 2),
           ),
         ),
       );
     }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        width: 40,
-        height: 40,
-        color: Colors.grey.withValues(alpha: 0.15),
-        child: hasUrl
-            ? Image.network(
-                _url!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _fallback(initials),
-              )
-            : _fallback(initials),
-      ),
+    return CircleAvatar(
+      radius: widget.radius,
+      backgroundColor: AppColors.primaryColor.withValues(alpha: 0.1),
+      backgroundImage: hasUrl ? NetworkImage(_url!) : null,
+      child: !hasUrl
+          ? Icon(
+              Icons.person,
+              size: widget.radius * 1.2,
+              color: AppColors.primaryColor,
+            )
+          : null,
     );
-  }
-
-  Widget _fallback(String initials) => Center(
-    child: Text(
-      initials,
-      style: const TextStyle(
-        fontWeight: FontWeight.bold,
-        color: AppColors.textSecondary,
-      ),
-    ),
-  );
-
-  String _initials(String name) {
-    final parts = name
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((e) => e.isNotEmpty)
-        .toList();
-    if (parts.isEmpty) return '?';
-    if (parts.length == 1) {
-      return parts.first.characters.take(1).toString().toUpperCase();
-    }
-    return (parts.first.characters.take(1).toString() +
-            parts.last.characters.take(1).toString())
-        .toUpperCase();
   }
 }
