@@ -194,5 +194,26 @@ service cloud.firestore {
       // Users can only read/write their own session
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+
+    // Health alerts - AI-generated health warnings
+    match /health_alerts/{alertId} {
+      // Allow list queries filtered by userId
+      allow list: if request.auth != null && 
+        request.query.limit <= 100;
+      // Allow reading specific alert if user owns it OR if authenticated user is a doctor
+      allow get: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        isDoctorUser(request.auth.uid)
+      );
+      // System can create alerts (authenticated service account or user creating their own)
+      allow create: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
+      // Users can update their own alerts (e.g., mark as read)
+      allow update: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      // Optionally allow delete for cleanup
+      allow delete: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+    }
   }
 }

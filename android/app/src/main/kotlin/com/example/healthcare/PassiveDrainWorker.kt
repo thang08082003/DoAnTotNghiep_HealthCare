@@ -114,11 +114,42 @@ class PassiveDrainWorker(appContext: Context, params: WorkerParameters) : Corout
                 }
             } catch (_: Exception) {}
 
+            // After uploading data, trigger AI health monitoring if conditions met
+            try {
+                triggerHealthMonitoring(applicationContext, uid)
+            } catch (e: Exception) {
+                Log.w(TAG, "doWork(): health monitoring check failed", e)
+            }
+
             Log.i(TAG, "doWork(): success")
             return Result.success()
         } catch (e: Exception) {
             Log.e(TAG, "doWork(): error", e)
             return Result.retry()
         }
+    }
+
+    private suspend fun triggerHealthMonitoring(context: Context, userId: String) {
+        // Check if enough time passed since last monitoring (6 hours minimum)
+        val prefs = context.getSharedPreferences("health_monitoring", Context.MODE_PRIVATE)
+        val lastCheck = prefs.getLong("last_monitoring_$userId", 0)
+        val now = System.currentTimeMillis()
+        val sixHoursMs = 6 * 60 * 60 * 1000L
+        
+        if (now - lastCheck < sixHoursMs) {
+            Log.i("HC_DRAIN", "triggerHealthMonitoring: skipping, last check was ${(now - lastCheck) / 60000} minutes ago")
+            return
+        }
+        
+        // Update last check time
+        prefs.edit().putLong("last_monitoring_$userId", now).apply()
+        
+        // Call Flutter method to run monitoring
+        // This will be handled by MethodChannel in MainActivity
+        val intent = android.content.Intent("com.example.healthcare.RUN_HEALTH_MONITORING")
+        intent.putExtra("userId", userId)
+        context.sendBroadcast(intent)
+        
+        Log.i("HC_DRAIN", "triggerHealthMonitoring: broadcast sent for user $userId")
     }
 }

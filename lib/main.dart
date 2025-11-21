@@ -7,10 +7,15 @@ import 'package:healthcare/router/navigation_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io' show Platform;
 import 'package:healthcare/data/services/android_passive_listener_service.dart';
+import 'package:healthcare/data/services/health_monitoring_trigger.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+
+  // Initialize health monitoring trigger listener
+  HealthMonitoringTrigger.initialize();
+
   // Auto-reapply passive listener if previously enabled (Android only)
   try {
     if (Platform.isAndroid) {

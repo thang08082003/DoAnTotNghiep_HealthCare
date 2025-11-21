@@ -5,6 +5,7 @@ import 'dart:async';
 import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/health_metrics_providers.dart';
+import '../providers/health_monitoring_provider.dart';
 import '../screens/login/login_screen.dart';
 import '../screens/register/register_screen.dart';
 import '../screens/forgot_password/forgot_password_screen.dart';
@@ -354,8 +355,18 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
                             }
                           });
 
-                      // Enable passive listener
-                      ref.read(passiveListenerViewModelProvider).enable();
+                      // Enable passive listener and AI monitoring ONLY for patients
+                      // Doctors don't need health tracking
+                      if (user.isPatient) {
+                        // Enable passive listener (handles data collection)
+                        ref.read(passiveListenerViewModelProvider).enable();
+
+                        // Enable AI health monitoring
+                        // Reuses PassiveListener's 15-min WorkManager for data collection
+                        // AI checks run every 6 hours after data sync
+                        startHealthMonitoring(user.uid);
+                      }
+
                       // Start local notifications listening after first frame
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         // Start background notification service only

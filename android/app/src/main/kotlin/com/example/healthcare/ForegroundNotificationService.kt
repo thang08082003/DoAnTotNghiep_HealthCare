@@ -24,6 +24,8 @@ class ForegroundNotificationService : Service() {
     private val ALERT_CHANNEL_NAME = "App Alerts"
     private val CALL_CHANNEL_ID = "incoming_call_channel"
     private val CALL_CHANNEL_NAME = "Incoming Calls"
+    private val HEALTH_MONITORING_CHANNEL_ID = "health_monitoring"
+    private val HEALTH_MONITORING_CHANNEL_NAME = "Giám sát sức khỏe"
     private val ONGOING_ID = 10001
 
     private var registration: ListenerRegistration? = null
@@ -86,6 +88,15 @@ class ForegroundNotificationService : Service() {
                         .build()
                 )
                 nm.createNotificationChannel(callChannel)
+            }
+            if (nm.getNotificationChannel(HEALTH_MONITORING_CHANNEL_ID) == null) {
+                val healthChannel = NotificationChannel(
+                    HEALTH_MONITORING_CHANNEL_ID,
+                    HEALTH_MONITORING_CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_HIGH
+                )
+                healthChannel.description = "Thông báo cảnh báo sức khỏe từ AI"
+                nm.createNotificationChannel(healthChannel)
             }
         }
     }

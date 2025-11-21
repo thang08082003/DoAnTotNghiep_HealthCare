@@ -18,8 +18,11 @@ import io.flutter.plugins.GeneratedPluginRegistrant
 class MainActivity : FlutterFragmentActivity(), DefaultLifecycleObserver {
 	private val FOREGROUND_CHANNEL = "com.example.healthcare/foreground"
 	private val PASSIVE_CHANNEL = "com.example.healthcare/passive"
+	private val HEALTH_MONITORING_CHANNEL = "com.example.healthcare/health_monitoring"
 	private var methodChannel: MethodChannel? = null
 	private var passiveChannel: MethodChannel? = null
+	private var healthMonitoringChannel: MethodChannel? = null
+	private var healthMonitoringReceiver: android.content.BroadcastReceiver? = null
 
 	companion object {
 		@Volatile
@@ -41,6 +44,18 @@ class MainActivity : FlutterFragmentActivity(), DefaultLifecycleObserver {
 				WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
 				WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
 			)
+		}
+	}
+
+	override fun onDestroy() {
+		super<FlutterFragmentActivity>.onDestroy()
+		// Unregister broadcast receiver to prevent memory leaks
+		healthMonitoringReceiver?.let {
+			try {
+				unregisterReceiver(it)
+			} catch (_: IllegalArgumentException) {
+				// Receiver already unregistered
+			}
 		}
 	}
 
@@ -129,6 +144,26 @@ class MainActivity : FlutterFragmentActivity(), DefaultLifecycleObserver {
 				}
 				else -> result.notImplemented()
 			}
+		}
+
+		// Health monitoring channel
+		healthMonitoringChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, HEALTH_MONITORING_CHANNEL)
+		
+		// Register broadcast receiver for health monitoring triggers
+		val filter = android.content.IntentFilter("com.example.healthcare.RUN_HEALTH_MONITORING")
+		healthMonitoringReceiver = object : android.content.BroadcastReceiver() {
+			override fun onReceive(context: Context?, intent: Intent?) {
+				val userId = intent?.getStringExtra("userId")
+				if (userId != null) {
+					healthMonitoringChannel?.invokeMethod("checkHealthMonitoring", mapOf("userId" to userId))
+				}
+			}
+		}
+		
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+			registerReceiver(healthMonitoringReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+		} else {
+			registerReceiver(healthMonitoringReceiver, filter)
 		}
 
 	}

@@ -4,6 +4,7 @@ import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
 import '../doctors/doctors_following_list_screen.dart';
 import '../../components/info_section/today_health_info_section.dart';
+import '../../components/health/latest_health_alert_widget.dart';
 
 class PatientDashboardContent extends ConsumerWidget {
   const PatientDashboardContent({super.key});
@@ -101,14 +102,7 @@ class PatientDashboardContent extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              _buildAiAlertCard(
-                title: 'Nhịp tim tăng cao bất thường',
-                description:
-                    'AI phát hiện nhịp tim tăng cao trong 5 phút gần đây. Hãy nghỉ ngơi và theo dõi thêm.',
-                timeLabel: '5 phút trước',
-                levelColor: Colors.orange,
-                icon: Icons.warning_amber_rounded,
-              ),
+              LatestHealthAlertWidget(userId: user!.uid),
 
               const SizedBox(height: 24),
 
@@ -148,80 +142,6 @@ class PatientDashboardContent extends ConsumerWidget {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildAiAlertCard({
-    required String title,
-    required String description,
-    required String timeLabel,
-    required Color levelColor,
-    required IconData icon,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: levelColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: levelColor, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Nhịp tim tăng cao bất thường',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      timeLabel,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  description,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
