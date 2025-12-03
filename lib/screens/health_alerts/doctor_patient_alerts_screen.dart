@@ -28,7 +28,11 @@ class _DoctorPatientAlertsScreenState
     final alertsAsync = ref.watch(doctorPatientAlertsProvider(widget.doctorId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Cảnh báo bệnh nhân'), elevation: 0),
+      appBar: AppBar(
+        title: const Text('Cảnh báo bệnh nhân'),
+        centerTitle: true,
+        elevation: 0,
+      ),
       body: alertsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => Center(

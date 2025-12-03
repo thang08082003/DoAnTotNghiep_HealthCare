@@ -73,7 +73,7 @@ class _HealthAlertsScreenState extends ConsumerState<HealthAlertsScreen> {
       final result = await runImmediateHealthCheck(widget.userId);
       if (mounted) {
         // Check if sleep data was missing
-        final hasSleepData = result?['hasSleepData'] as bool? ?? true;
+        final hasSleepData = result['hasSleepData'] as bool? ?? true;
 
         if (!hasSleepData) {
           // Show warning about missing sleep data
@@ -121,7 +121,11 @@ class _HealthAlertsScreenState extends ConsumerState<HealthAlertsScreen> {
     final autoEnabled = ref.watch(autoMonitoringEnabledProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Cảnh báo sức khỏe AI'), elevation: 0),
+      appBar: AppBar(
+        title: const Text('Cảnh báo sức khỏe AI'),
+        centerTitle: true,
+        elevation: 0,
+      ),
       body: Column(
         children: [
           // Control Panel

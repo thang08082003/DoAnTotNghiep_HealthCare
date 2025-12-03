@@ -6,7 +6,6 @@ import '../data/repositories/follow_request_repository.dart';
 import '../data/services/health_connect_service.dart';
 import '../data/services/health_monitoring_service.dart';
 import '../data/models/health_alert_model.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 final healthAlertRepositoryProvider = Provider<HealthAlertRepository>((ref) {
   return HealthAlertRepository();
