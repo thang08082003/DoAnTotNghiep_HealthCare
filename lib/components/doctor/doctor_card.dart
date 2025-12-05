@@ -153,21 +153,29 @@ class DoctorCard extends StatelessWidget {
                 ),
               ],
 
-              if (primaryActionText != null) ...[
-                const SizedBox(height: 12),
-                PrimaryButton(
-                  text: primaryActionText!,
-                  onPressed: primaryActionDisabled ? null : onPrimaryAction,
-                  height: 40,
-                  fontSize: 14,
-                ),
-              ] else if (showBookButton) ...[
+              if (showBookButton && onBookAppointment != null) ...[
                 const SizedBox(height: 12),
                 PrimaryButton(
                   text: 'Đặt lịch khám',
                   onPressed: onBookAppointment,
                   height: 40,
                   fontSize: 14,
+                ),
+              ],
+              if (primaryActionText != null) ...[
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  onPressed: primaryActionDisabled ? null : onPrimaryAction,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 40),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    primaryActionText!,
+                    style: const TextStyle(fontSize: 14),
+                  ),
                 ),
               ],
             ],
