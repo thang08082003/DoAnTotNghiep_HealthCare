@@ -215,5 +215,14 @@ service cloud.firestore {
       allow delete: if request.auth != null && 
         resource.data.userId == request.auth.uid;
     }
+
+    // Doctor schedules - all authenticated users can read schedules (for booking appointments)
+    // Only doctors can write/update their own schedules
+    match /doctor_schedules/{doctorId} {
+      // All authenticated users can read doctor schedules (patients need to see available slots)
+      allow read: if request.auth != null;
+      // Only the doctor can create/update/delete their own schedule
+      allow write: if request.auth != null && request.auth.uid == doctorId;
+    }
   }
 }

@@ -6,6 +6,7 @@ import '../../providers/user_provider.dart';
 
 import '../../components/doctor/doctor_card.dart';
 import 'doctor_detail_screen.dart';
+import 'book_appointment_screen.dart';
 import '../../viewmodels/doctors/doctors_following_view_model.dart';
 
 class DoctorsFollowingListScreen extends ConsumerStatefulWidget {
@@ -64,7 +65,17 @@ class _DoctorsFollowingListScreenState
                     children: [
                       DoctorCard(
                         doctor: d,
-                        showBookButton: false,
+                        showBookButton: true,
+                        onBookAppointment: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => BookAppointmentScreen(
+                                doctorId: d.uid,
+                                doctorName: d.name,
+                              ),
+                            ),
+                          );
+                        },
                         primaryActionText: 'Trao đổi',
                         onPrimaryAction: () {
                           Navigator.of(context).push(
