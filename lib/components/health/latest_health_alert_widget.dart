@@ -362,25 +362,4 @@ class LatestHealthAlertWidget extends ConsumerWidget {
       return DateFormat('dd/MM/yyyy HH:mm').format(timestamp);
     }
   }
-
-  String _getMetricName(String key) {
-    switch (key) {
-      case 'heart_rate':
-        return 'Nhịp tim';
-      case 'spo2':
-        return 'SpO2';
-      case 'sleep_duration':
-        return 'Giấc ngủ (h)';
-      case 'sleep_efficiency':
-        return 'Hiệu suất ngủ (%)';
-      case 'rem_percent':
-        return 'REM (%)';
-      case 'deep_percent':
-        return 'Giấc sâu (%)';
-      case 'awake_minutes':
-        return 'Tỉnh giấc (phút)';
-      default:
-        return key;
-    }
-  }
 }
