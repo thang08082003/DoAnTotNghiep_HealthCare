@@ -155,6 +155,20 @@ class FollowRequestService {
       'status': 'accepted',
       'updatedAt': FieldValue.serverTimestamp(),
     });
+    // Persist relationship (idempotent)
+    final existing = await _firestore
+        .collection('patient_doctor_assignments')
+        .where('patientId', isEqualTo: patientId)
+        .where('doctorId', isEqualTo: doctorId)
+        .limit(1)
+        .get();
+    if (existing.docs.isEmpty) {
+      await _firestore.collection('patient_doctor_assignments').add({
+        'patientId': patientId,
+        'doctorId': doctorId,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
     try {
       // Determine doctor name
       String nameToUse = (doctorName ?? '').trim();
@@ -275,5 +289,40 @@ class FollowRequestService {
     } catch (e) {
       throw Exception('Failed to get pending requests: $e');
     }
+  }
+
+  /// Watch pending follow requests for a doctor in realtime
+  static Stream<List<FollowRequest>> watchPendingRequestsForDoctor(
+    String doctorId,
+  ) {
+    final pendingQuery = _firestore
+        .collection(_collection)
+        .where('doctorId', isEqualTo: doctorId)
+        .where('status', isEqualTo: 'pending')
+        .snapshots();
+
+    return pendingQuery.asyncMap((snapshot) async {
+      final List<FollowRequest> items = [];
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final patientId = data['patientId'] as String?;
+        if (patientId == null) continue;
+        // Fetch patient info
+        final patientDoc = await _firestore
+            .collection(_usersCollection)
+            .doc(patientId)
+            .get();
+        final patientData = patientDoc.data() ?? {};
+        items.add(FollowRequest.fromFirestore(doc, patientData));
+      }
+      // Sort newest first by createdAt
+      items.sort((a, b) {
+        if (a.createdAt == null && b.createdAt == null) return 0;
+        if (a.createdAt == null) return 1;
+        if (b.createdAt == null) return -1;
+        return b.createdAt!.compareTo(a.createdAt!);
+      });
+      return items;
+    });
   }
 }

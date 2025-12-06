@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../components/base_page/base_page_scaffold.dart';
-import '../doctors/doctors_list_content.dart';
+import '../doctors/doctors_screen.dart';
 import '../../data/models/user_model.dart';
 import '../../components/loading/loading_widget.dart';
 import '../../components/buttons/primary_button.dart';
@@ -77,7 +77,7 @@ class HomePageState extends BasePageState<HomePage> {
   Widget _buildDoctorsContent() {
     // For patient, this tab shows doctors. For doctor, it should show patients
     if (widget.userRole == UserRole.patient) {
-      return const DoctorsListContent();
+      return const DoctorsScreen();
     } else {
       return const PatientsListContent();
     }

@@ -54,6 +54,7 @@ dependencies:
   fl_chart: ^0.68.0
   camera: ^0.11.0
   intl: ^0.19.0
+  table_calendar: ^3.1.2
   
   # State management
   flutter_riverpod: ^2.6.1

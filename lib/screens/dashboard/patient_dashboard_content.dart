@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
 import '../doctors/doctors_following_list_screen.dart';
+import '../appointments/patient_appointments_screen.dart';
 import '../../components/info_section/today_health_info_section.dart';
 import '../../components/health/latest_health_alert_widget.dart';
 
@@ -115,6 +116,21 @@ class PatientDashboardContent extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
+              _buildQuickAccessCard(
+                icon: Icons.calendar_month,
+                title: 'Lịch khám của tôi',
+                subtitle: 'Xem & quản lý lịch hẹn',
+                color: Colors.orange.withValues(alpha: 0.08),
+                iconColor: Colors.orange,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const PatientAppointmentsScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
               _buildQuickAccessCard(
                 icon: Icons.health_and_safety,
                 title: 'Phát hiện sớm',

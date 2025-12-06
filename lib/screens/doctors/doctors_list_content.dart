@@ -4,9 +4,10 @@ import '../../components/doctor/doctor_card.dart';
 import '../../components/loading/loading_widget.dart';
 import '../../data/models/doctor_model.dart';
 import '../../data/resources/gene/app_colors.dart';
-import '../../data/services/follow_request_service.dart';
 import '../../data/models/user_model.dart';
 import '../../providers/user_provider.dart';
+import '../../data/services/follow_request_service.dart';
+import '../appointments/book_appointment_screen.dart';
 import 'doctor_detail_screen.dart';
 
 class DoctorsListContent extends ConsumerStatefulWidget {
@@ -238,7 +239,14 @@ class DoctorsListContentState extends ConsumerState<DoctorsListContent> {
           padding: const EdgeInsets.only(bottom: 12),
           child: DoctorCard(
             doctor: doctor,
-            showBookButton: false,
+            showBookButton: true,
+            onBookAppointment: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => BookAppointmentScreen(doctor: doctor),
+                ),
+              );
+            },
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
@@ -251,74 +259,6 @@ class DoctorsListContentState extends ConsumerState<DoctorsListContent> {
                   ),
                 ),
               );
-            },
-
-            primaryActionText: () {
-              switch (category) {
-                case _DoctorCategory.accepted:
-                  return 'Đang theo dõi';
-                case _DoctorCategory.pending:
-                  return 'Đã gửi yêu cầu';
-                case _DoctorCategory.requestable:
-                  return 'Yêu cầu theo dõi';
-              }
-            }(),
-            primaryActionDisabled: category != _DoctorCategory.requestable,
-            onPrimaryAction: () async {
-              final messenger = ScaffoldMessenger.of(context);
-              final currentUser = await ref.read(currentUserProvider.future);
-              if (currentUser == null || !currentUser.isPatient) {
-                messenger.showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Bạn cần đăng nhập bằng tài khoản bệnh nhân.',
-                    ),
-                  ),
-                );
-                return;
-              }
-              try {
-                final ok = await FollowRequestService.requestFollow(
-                  patientId: currentUser.uid,
-                  doctorId: doctor.uid,
-                  patientName: currentUser.name,
-                );
-                if (ok) {
-                  if (!mounted) return;
-                  try {
-                    final currentUser = await ref.read(
-                      currentUserProvider.future,
-                    );
-                    if (currentUser != null) {
-                      final latest =
-                          await FollowRequestService.getRequestStatus(
-                            patientId: currentUser.uid,
-                            doctorId: doctor.uid,
-                          );
-                      setState(() {
-                        if (latest != null) {
-                          _requestStatuses[doctor.uid] = latest;
-                        } else {
-                          _requestStatuses.remove(doctor.uid);
-                        }
-                      });
-                    }
-                  } catch (_) {
-                    setState(() {
-                      _requestStatuses[doctor.uid] = 'pending';
-                    });
-                  }
-                  messenger.showSnackBar(
-                    const SnackBar(
-                      content: Text('Đã gửi yêu cầu theo dõi đến bác sĩ.'),
-                    ),
-                  );
-                }
-              } catch (e) {
-                messenger.showSnackBar(
-                  SnackBar(content: Text('Gửi yêu cầu thất bại: $e')),
-                );
-              }
             },
           ),
         );

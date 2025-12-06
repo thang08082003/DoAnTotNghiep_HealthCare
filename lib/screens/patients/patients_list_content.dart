@@ -187,10 +187,11 @@ class PatientsListContentState extends ConsumerState<PatientsListContent>
   }
 
   Widget _buildPendingTab(String doctorId) {
-    return FutureBuilder<List<FollowRequest>>(
-      future: FollowRequestService.getPendingRequestsForDoctor(doctorId),
+    return StreamBuilder<List<FollowRequest>>(
+      stream: FollowRequestService.watchPendingRequestsForDoctor(doctorId),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
           return const Center(child: LoadingWidget());
         }
 
@@ -202,17 +203,12 @@ class PatientsListContentState extends ConsumerState<PatientsListContent>
                 const Icon(Icons.error, size: 64, color: AppColors.error),
                 const SizedBox(height: 12),
                 Text('Lỗi: ${snapshot.error}'),
-                const SizedBox(height: 12),
-                ElevatedButton(
-                  onPressed: () => setState(() {}),
-                  child: const Text('Thử lại'),
-                ),
               ],
             ),
           );
         }
 
-        final allRequests = snapshot.data ?? [];
+        final allRequests = snapshot.data ?? const <FollowRequest>[];
         final requests = allRequests
             .where(
               (r) =>

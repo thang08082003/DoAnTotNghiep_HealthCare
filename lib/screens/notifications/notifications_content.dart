@@ -5,6 +5,7 @@ import '../../data/models/notification_model.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../viewmodels/notifications/notifications_view_model.dart';
 import '../../providers/user_provider.dart';
+// Removed follow-request action imports as actions are no longer shown
 
 class NotificationsListContent extends ConsumerStatefulWidget {
   const NotificationsListContent({super.key});
@@ -141,66 +142,7 @@ class _NotificationsListContentState
                       ),
                       if (user.isDoctor &&
                           n.type == NotificationType.followRequest)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Row(
-                            children: [
-                              TextButton(
-                                onPressed: () async {
-                                  final data = n.data ?? {};
-                                  final reqId = data['requestId'] as String?;
-                                  final patientId =
-                                      data['patientId'] as String?;
-                                  if (reqId != null && patientId != null) {
-                                    await vm.delete(n.id);
-                                    await vm.acceptFollow(
-                                      requestId: reqId,
-                                      doctorId: user.uid,
-                                      patientId: patientId,
-                                    );
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Đã chấp nhận yêu cầu'),
-                                        ),
-                                      );
-                                    }
-                                  }
-                                },
-                                child: const Text('Đồng ý'),
-                              ),
-                              const SizedBox(width: 8),
-                              TextButton(
-                                onPressed: () async {
-                                  final data = n.data ?? {};
-                                  final reqId = data['requestId'] as String?;
-                                  final patientId =
-                                      data['patientId'] as String?;
-                                  if (reqId != null && patientId != null) {
-                                    await vm.delete(n.id);
-                                    await vm.declineFollow(
-                                      requestId: reqId,
-                                      doctorId: user.uid,
-                                      patientId: patientId,
-                                    );
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Đã từ chối yêu cầu'),
-                                        ),
-                                      );
-                                    }
-                                  }
-                                },
-                                child: const Text('Từ chối'),
-                              ),
-                            ],
-                          ),
-                        ),
+                        const SizedBox.shrink(),
                     ],
                   ),
                   // Tap: mark as read (do not delete; keep item visible)

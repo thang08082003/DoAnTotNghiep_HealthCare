@@ -59,6 +59,19 @@ class DoctorModel extends UserModel {
 
   // Factory constructor from JSON
   factory DoctorModel.fromJson(Map<String, dynamic> json) {
+    // Parse specialty safely
+    Specialty parsedSpecialty;
+    final specialtyValue = json['specialty'];
+
+    if (specialtyValue is String) {
+      parsedSpecialty = Specialty.fromString(specialtyValue);
+    } else if (specialtyValue is Specialty) {
+      parsedSpecialty = specialtyValue;
+    } else {
+      // Default fallback
+      parsedSpecialty = Specialty.stress;
+    }
+
     return DoctorModel(
       uid: json['uid'] ?? '',
       name: json['name'] ?? '',
@@ -67,7 +80,7 @@ class DoctorModel extends UserModel {
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
-      specialty: Specialty.fromString(json['specialty'] ?? 'General Medicine'),
+      specialty: parsedSpecialty,
       yearsExperience:
           (json['yearsExperience'] ??
                   json['experienceYears'] ??

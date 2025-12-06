@@ -3,16 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/health_monitoring_provider.dart';
-import '../../data/services/follow_request_service.dart';
-import '../../data/models/user_model.dart';
+// removed: follow_request_service unused
+// removed: user_model unused
 import '../../data/models/health_alert_model.dart';
-import '../patients/patient_detail_screen.dart';
+// removed: patient_detail_screen unused
 import '../health_alerts/doctor_patient_alerts_screen.dart';
+// import removed: doctor appointments quick action hidden on dashboard
 
 import '../../components/reviews/reviews_list.dart';
 import '../../viewmodels/reviews/doctor_reviews_view_model.dart';
 import '../doctors/doctor_reviews_screen.dart';
 import '../resources/clinical_resources_screen.dart';
+import '../../components/schedule/doctor_schedule_widget.dart';
 
 class DoctorDashboardContent extends ConsumerWidget {
   const DoctorDashboardContent({super.key});
@@ -87,9 +89,9 @@ class DoctorDashboardContent extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
 
-              // Hỗ trợ
+              // Lịch làm việc hôm nay
               const Text(
-                'Hỗ trợ',
+                'Lịch làm việc hôm nay',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -97,6 +99,21 @@ class DoctorDashboardContent extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 12),
+              const DoctorScheduleWidget(),
+
+              const SizedBox(height: 24),
+
+              // Quản lý
+              const Text(
+                'Quản lý',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Đã ẩn mục "Quản lý lịch khám" khỏi phần Quản lý trên trang chủ bác sĩ
               _ClinicalInfoEntryButton(),
 
               const SizedBox(height: 24),
@@ -131,6 +148,66 @@ class DoctorDashboardContent extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildQuickActionCard({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required Color iconColor,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: iconColor, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey[400]),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -196,159 +273,7 @@ class _RecentReviewsPreview extends ConsumerWidget {
   }
 }
 
-// replaced by InlineUserAvatar in shared components
-
-class _FollowedPatientsList extends ConsumerStatefulWidget {
-  final String doctorId;
-  const _FollowedPatientsList({required this.doctorId});
-
-  @override
-  ConsumerState<_FollowedPatientsList> createState() =>
-      _FollowedPatientsListState();
-}
-
-class _FollowedPatientsListState extends ConsumerState<_FollowedPatientsList> {
-  bool _loading = true;
-  List<UserModel> _patients = [];
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    if (widget.doctorId.isEmpty) {
-      setState(() {
-        _loading = false;
-        _patients = [];
-      });
-      return;
-    }
-    try {
-      final ids = await FollowRequestService.getAcceptedPatientIdsForDoctor(
-        widget.doctorId,
-      );
-      final repo = ref.read(userRepositoryProvider);
-      final all = await repo.getUsersByRole(UserRole.patient);
-      final filtered = all.where((u) => ids.contains(u.uid)).toList();
-      if (mounted) {
-        setState(() {
-          _patients = filtered;
-          _loading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString();
-          _loading = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_error != null) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Lỗi tải danh sách: $_error',
-            style: const TextStyle(color: AppColors.error),
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton(onPressed: _load, child: const Text('Thử lại')),
-        ],
-      );
-    }
-    if (_patients.isEmpty) {
-      return const Text(
-        'Chưa có bệnh nhân nào được chấp nhận theo dõi.',
-        style: TextStyle(color: AppColors.textSecondary),
-      );
-    }
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: _patients.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (context, index) {
-        final p = _patients[index];
-        return Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: AppColors.primaryColor.withValues(alpha: 0.1),
-                backgroundImage:
-                    (p.avatarUrl != null && p.avatarUrl!.isNotEmpty)
-                    ? NetworkImage(p.avatarUrl!)
-                    : null,
-                child: (p.avatarUrl == null || p.avatarUrl!.isEmpty)
-                    ? const Icon(Icons.person, color: AppColors.primaryColor)
-                    : null,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      p.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      p.email,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                icon: const Icon(
-                  Icons.chevron_right,
-                  color: AppColors.textSecondary,
-                ),
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => PatientDetailScreen(patientId: p.uid),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
+// Followed patients widget removed (unused and to simplify dashboard)
 
 class _AbnormalAlertsPreview extends ConsumerWidget {
   final String doctorId;
