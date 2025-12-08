@@ -83,7 +83,7 @@ class GAD7ChartWidget extends StatelessWidget {
   LineChartData _buildChartData(BuildContext context) {
     // Xử lý dữ liệu theo timeRange
     final List<AnxietyRisk> dataToDisplay;
-    
+
     if (timeRange == TimeRange.day) {
       // Hiển thị tất cả các lần đánh giá trong ngày
       dataToDisplay = assessments.reversed.toList();
@@ -119,7 +119,8 @@ class GAD7ChartWidget extends StatelessWidget {
             reservedSize: timeRange == TimeRange.week ? 45 : 30,
             interval: _getXAxisInterval(),
             getTitlesWidget: (value, meta) {
-              if (value.toInt() >= dataToDisplay.length) return const SizedBox();
+              if (value.toInt() >= dataToDisplay.length)
+                return const SizedBox();
               final assessment = dataToDisplay[value.toInt()];
               return Padding(
                 padding: const EdgeInsets.only(top: 8),
@@ -216,7 +217,7 @@ class GAD7ChartWidget extends StatelessWidget {
   /// Tính interval cho trục X để tránh tràn nhãn
   double _getXAxisInterval() {
     if (assessments.isEmpty) return 1;
-        
+
     switch (timeRange) {
       case TimeRange.day:
         // Hiển thị tối đa 6-8 nhãn giờ
@@ -238,9 +239,9 @@ class GAD7ChartWidget extends StatelessWidget {
   List<AnxietyRisk> _calculateMonthlyAverage(List<AnxietyRisk> assessments) {
     if (assessments.isEmpty) return [];
 
-    final avgScore = assessments
-        .map((a) => a.score)
-        .reduce((a, b) => a + b) ~/ assessments.length;
+    final avgScore =
+        assessments.map((a) => a.score).reduce((a, b) => a + b) ~/
+        assessments.length;
 
     // Tạo 1 AnxietyRisk duy nhất đại diện cho trung bình cả tháng
     return [
@@ -273,20 +274,22 @@ class GAD7ChartWidget extends StatelessWidget {
 
     for (final entry in groupedByDay.entries) {
       final dayAssessments = entry.value;
-      final avgScore = dayAssessments
-          .map((a) => a.score)
-          .reduce((a, b) => a + b) ~/ dayAssessments.length;
+      final avgScore =
+          dayAssessments.map((a) => a.score).reduce((a, b) => a + b) ~/
+          dayAssessments.length;
 
       // Tạo AnxietyRisk đại diện cho trung bình ngày đó
       // Sử dụng thời gian của lần đánh giá đầu tiên trong ngày
-      dailyAverages.add(AnxietyRisk(
-        id: 'avg_${entry.key}',
-        userId: dayAssessments.first.userId,
-        score: avgScore,
-        level: AnxietyRisk.calculateLevel(avgScore),
-        answers: dayAssessments.first.answers,
-        createdAt: dayAssessments.first.createdAt,
-      ));
+      dailyAverages.add(
+        AnxietyRisk(
+          id: 'avg_${entry.key}',
+          userId: dayAssessments.first.userId,
+          score: avgScore,
+          level: AnxietyRisk.calculateLevel(avgScore),
+          answers: dayAssessments.first.answers,
+          createdAt: dayAssessments.first.createdAt,
+        ),
+      );
     }
 
     // Sắp xếp theo thời gian và đảo ngược để giống với logic ban đầu
