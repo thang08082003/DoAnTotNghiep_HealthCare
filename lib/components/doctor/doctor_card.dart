@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import '../buttons/primary_button.dart';
 import '../../data/models/doctor_model.dart';
 import '../../data/resources/gene/app_colors.dart';
-import '../reviews/reviews_summary.dart';
 import '../reviews/inline_user_avatar.dart';
-import '../../viewmodels/reviews/doctor_reviews_view_model.dart';
 
 class DoctorCard extends StatelessWidget {
   final DoctorModel doctor;
@@ -88,70 +86,8 @@ class DoctorCard extends StatelessWidget {
                       ],
                     ),
                   ),
-
-                  // Role indicator
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'Bác sĩ',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.green,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
                 ],
               ),
-
-              SizedBox(height: 12),
-
-              // Specialization info
-              Row(
-                children: [
-                  Icon(
-                    Icons.medical_services,
-                    size: 16,
-                    color: AppColors.textSecondary,
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    'Chuyên khoa: ${doctor.specialty.vietnameseName}',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-
-              // Rating row (avg), optional
-              if (showRating) ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.star, color: Colors.amber, size: 16),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: ReviewsSummary(
-                        doctorId: doctor.uid,
-                        reviewsVm: DoctorReviewsViewModel(),
-                        compact: true,
-                      ),
-                    ),
-                    if (onRate != null)
-                      TextButton.icon(
-                        onPressed: onRate,
-                        icon: const Icon(Icons.rate_review, size: 16),
-                        label: const Text('Đánh giá'),
-                      ),
-                  ],
-                ),
-              ],
 
               if (primaryActionText != null) ...[
                 const SizedBox(height: 12),

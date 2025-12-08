@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:healthcare/data/resources/gene/app_colors.dart';
 import 'package:healthcare/router/app_router.dart';
 import 'package:healthcare/router/navigation_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 import 'dart:io' show Platform;
 import 'package:healthcare/data/services/android_passive_listener_service.dart';
 import 'package:healthcare/data/services/health_monitoring_trigger.dart';
@@ -12,6 +15,10 @@ import 'package:healthcare/data/services/health_monitoring_trigger.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+
+  // Initialize timezone for scheduled notifications
+  tz.initializeTimeZones();
+  tz.setLocalLocation(tz.getLocation('Asia/Ho_Chi_Minh'));
 
   // Initialize health monitoring trigger listener
   HealthMonitoringTrigger.initialize();
@@ -39,6 +46,13 @@ class HealthCareApp extends StatelessWidget {
       title: 'Healthcare App',
       debugShowCheckedModeBanner: false,
       navigatorKey: NavigationService.navigatorKey,
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [Locale('vi', 'VN'), Locale('en', 'US')],
+      locale: const Locale('vi', 'VN'),
       theme: ThemeData(
         primarySwatch: MaterialColor(0xFF1976D2, const <int, Color>{
           50: Color(0xFFE3F2FD),
