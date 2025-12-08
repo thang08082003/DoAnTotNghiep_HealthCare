@@ -81,7 +81,21 @@ class PHQ9ChartWidget extends StatelessWidget {
   }
 
   LineChartData _buildChartData(BuildContext context) {
-    final spots = assessments.reversed.toList().asMap().entries.map((entry) {
+    // Xử lý dữ liệu theo timeRange
+    final List<DepressionRisk> dataToDisplay;
+    
+    if (timeRange == TimeRange.day) {
+      // Hiển thị tất cả các lần đánh giá trong ngày
+      dataToDisplay = assessments.reversed.toList();
+    } else if (timeRange == TimeRange.week) {
+      // Nhóm theo ngày và tính trung bình cho tuần
+      dataToDisplay = _groupByDayAndAverage(assessments);
+    } else {
+      // Tháng: tính trung bình cả tháng (1 điểm duy nhất)
+      dataToDisplay = _calculateMonthlyAverage(assessments);
+    }
+
+    final spots = dataToDisplay.asMap().entries.map((entry) {
       return FlSpot(entry.key.toDouble(), entry.value.score.toDouble());
     }).toList();
 
@@ -105,8 +119,8 @@ class PHQ9ChartWidget extends StatelessWidget {
             reservedSize: timeRange == TimeRange.week ? 45 : 30,
             interval: _getXAxisInterval(),
             getTitlesWidget: (value, meta) {
-              if (value.toInt() >= assessments.length) return const SizedBox();
-              final assessment = assessments.reversed.toList()[value.toInt()];
+              if (value.toInt() >= dataToDisplay.length) return const SizedBox();
+              final assessment = dataToDisplay[value.toInt()];
               return Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
@@ -140,7 +154,7 @@ class PHQ9ChartWidget extends StatelessWidget {
         ),
       ),
       minX: 0,
-      maxX: (assessments.length - 1).toDouble(),
+      maxX: (dataToDisplay.length - 1).toDouble(),
       minY: 0,
       maxY: 27,
       lineBarsData: [
@@ -185,7 +199,7 @@ class PHQ9ChartWidget extends StatelessWidget {
         touchTooltipData: LineTouchTooltipData(
           getTooltipItems: (touchedSpots) {
             return touchedSpots.map((spot) {
-              final assessment = assessments.reversed.toList()[spot.x.toInt()];
+              final assessment = dataToDisplay[spot.x.toInt()];
               return LineTooltipItem(
                 '${DateFormat('dd/MM HH:mm').format(assessment.createdAt)}\n'
                 'Điểm: ${spot.y.toInt()}/27\n'
@@ -201,12 +215,12 @@ class PHQ9ChartWidget extends StatelessWidget {
 
   /// Tính interval cho trục X để tránh tràn nhãn
   double _getXAxisInterval() {
-    final count = assessments.length;
-    if (count <= 1) return 1;
-
+    if (assessments.isEmpty) return 1;
+        
     switch (timeRange) {
       case TimeRange.day:
         // Hiển thị tối đa 6-8 nhãn giờ
+        final count = assessments.length;
         if (count <= 6) return 1;
         return (count / 6).ceilToDouble();
 
@@ -215,10 +229,69 @@ class PHQ9ChartWidget extends StatelessWidget {
         return 1;
 
       case TimeRange.month:
-        // Hiển thị tối đa 8-10 nhãn ngày
-        if (count <= 8) return 1;
-        return (count / 8).ceilToDouble();
+        // Chỉ có 1 điểm (trung bình cả tháng)
+        return 1;
     }
+  }
+
+  /// Tính điểm trung bình của cả tháng
+  List<DepressionRisk> _calculateMonthlyAverage(List<DepressionRisk> assessments) {
+    if (assessments.isEmpty) return [];
+
+    final avgScore = assessments
+        .map((a) => a.score)
+        .reduce((a, b) => a + b) ~/ assessments.length;
+
+    // Tạo 1 DepressionRisk duy nhất đại diện cho trung bình cả tháng
+    return [
+      DepressionRisk(
+        id: 'avg_month',
+        userId: assessments.first.userId,
+        score: avgScore,
+        level: DepressionRisk.calculateLevel(avgScore),
+        answers: assessments.first.answers,
+        createdAt: assessments.first.createdAt,
+      ),
+    ];
+  }
+
+  /// Nhóm các assessment theo ngày và tính điểm trung bình
+  List<DepressionRisk> _groupByDayAndAverage(List<DepressionRisk> assessments) {
+    if (assessments.isEmpty) return [];
+
+    // Map để lưu các assessment theo ngày
+    final Map<String, List<DepressionRisk>> groupedByDay = {};
+
+    for (final assessment in assessments) {
+      final dateKey = DateFormat('yyyy-MM-dd').format(assessment.createdAt);
+      groupedByDay.putIfAbsent(dateKey, () => []);
+      groupedByDay[dateKey]!.add(assessment);
+    }
+
+    // Tính trung bình cho mỗi ngày và tạo DepressionRisk mới
+    final List<DepressionRisk> dailyAverages = [];
+
+    for (final entry in groupedByDay.entries) {
+      final dayAssessments = entry.value;
+      final avgScore = dayAssessments
+          .map((a) => a.score)
+          .reduce((a, b) => a + b) ~/ dayAssessments.length;
+
+      // Tạo DepressionRisk đại diện cho trung bình ngày đó
+      // Sử dụng thời gian của lần đánh giá đầu tiên trong ngày
+      dailyAverages.add(DepressionRisk(
+        id: 'avg_${entry.key}',
+        userId: dayAssessments.first.userId,
+        score: avgScore,
+        level: DepressionRisk.calculateLevel(avgScore),
+        answers: dayAssessments.first.answers,
+        createdAt: dayAssessments.first.createdAt,
+      ));
+    }
+
+    // Sắp xếp theo thời gian và đảo ngược để giống với logic ban đầu
+    dailyAverages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    return dailyAverages.reversed.toList();
   }
 
   /// Format nhãn trục X theo timeRange
