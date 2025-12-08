@@ -218,9 +218,11 @@ service cloud.firestore {
 
     // Care plan tasks - daily health tasks
     match /care_plan_tasks/{taskId} {
-      // Users can read their own tasks
-      allow read: if request.auth != null && 
-        resource.data.userId == request.auth.uid;
+      // Users can read their own tasks OR doctors can read their patients' tasks
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        isDoctorUser(request.auth.uid)
+      );
       // Users can create their own tasks
       allow create: if request.auth != null && 
         request.resource.data.userId == request.auth.uid;
@@ -234,9 +236,11 @@ service cloud.firestore {
 
     // Health goals - long-term health objectives
     match /health_goals/{goalId} {
-      // Users can read their own goals
-      allow read: if request.auth != null && 
-        resource.data.userId == request.auth.uid;
+      // Users can read their own goals OR doctors can read their patients' goals
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        isDoctorUser(request.auth.uid)
+      );
       // Users can create their own goals
       allow create: if request.auth != null && 
         request.resource.data.userId == request.auth.uid;
@@ -272,7 +276,11 @@ service cloud.firestore {
 
     // Medications - quản lý thuốc của người dùng
     match /medications/{medicationId} {
-      allow read: if request.auth != null;
+      // Users can read their own medications OR doctors can read their patients' medications
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        isDoctorUser(request.auth.uid)
+      );
       allow create: if request.auth != null && 
         request.auth.uid == request.resource.data.userId;
       allow update, delete: if request.auth != null && 
@@ -290,7 +298,11 @@ service cloud.firestore {
 
     // Depression risk assessments - đánh giá nguy cơ trầm cảm
     match /depression_risks/{assessmentId} {
-      allow read: if request.auth != null;
+      // Users can read their own assessments OR doctors can read their patients' assessments
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        isDoctorUser(request.auth.uid)
+      );
       allow create: if request.auth != null && 
         request.auth.uid == request.resource.data.userId;
       allow update, delete: if request.auth != null && 
@@ -299,7 +311,11 @@ service cloud.firestore {
 
     // Anxiety risk assessments - đánh giá nguy cơ lo âu
     match /anxiety_risks/{assessmentId} {
-      allow read: if request.auth != null;
+      // Users can read their own assessments OR doctors can read their patients' assessments
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        isDoctorUser(request.auth.uid)
+      );
       allow create: if request.auth != null && 
         request.auth.uid == request.resource.data.userId;
       allow update, delete: if request.auth != null && 

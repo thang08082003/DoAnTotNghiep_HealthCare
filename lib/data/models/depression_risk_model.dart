@@ -85,6 +85,24 @@ class DepressionRisk {
     }
   }
 
+  /// Lời khuyên dựa trên mức độ
+  String get recommendation {
+    switch (level) {
+      case 'minimal':
+        return 'Tình trạng tâm lý tốt. Tiếp tục duy trì lối sống lành mạnh.';
+      case 'mild':
+        return 'Có dấu hiệu trầm cảm nhẹ. Nên tăng cường hoạt động thể chất, giao tiếp xã hội.';
+      case 'moderate':
+        return 'Có triệu chứng trầm cảm trung bình. Nên tìm kiếm sự hỗ trợ từ bạn bè, gia đình.';
+      case 'moderately_severe':
+        return 'Triệu chứng trầm cảm khá nghiêm trọng. Nên gặp chuyên gia tâm lý để được tư vấn.';
+      case 'severe':
+        return 'Triệu chứng trầm cảm nghiêm trọng. Cần được chăm sóc chuyên khoa ngay lập tức.';
+      default:
+        return 'Nên theo dõi và đánh giá lại.';
+    }
+  }
+
   /// Lấy màu sắc tương ứng với mức độ
   String get levelColor {
     switch (level) {

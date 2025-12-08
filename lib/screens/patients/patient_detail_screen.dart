@@ -12,6 +12,9 @@ import '../../viewmodels/call/call_view_model.dart';
 import '../../components/info_section/today_health_info_section.dart';
 import '../../components/chat/chat_thread_view.dart';
 import '../../components/app_bar/chat_app_bar_title.dart';
+import 'widgets/patient_mental_health_tab.dart';
+import 'widgets/patient_medications_tab.dart';
+import 'widgets/patient_care_plan_tab.dart';
 
 class PatientDetailScreen extends ConsumerStatefulWidget {
   final String patientId;
@@ -42,9 +45,9 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
   void initState() {
     super.initState();
     _tabController = TabController(
-      length: 2,
+      length: 5, // Tăng lên 5 tabs
       vsync: this,
-      initialIndex: widget.initialTab.clamp(0, 1),
+      initialIndex: widget.initialTab.clamp(0, 4),
     );
     _tabController.addListener(() {
       if (mounted) setState(() {});
@@ -88,7 +91,7 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: (_tabController.index == 1 && _patient != null)
+        title: (_tabController.index == 4 && _patient != null)
             ? ChatAppBarTitle(
                 name: _patient!.name,
                 avatarUrl:
@@ -99,8 +102,12 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
         bottom: TabBar(
           controller: _tabController,
           labelColor: Colors.white,
+          isScrollable: true,
           tabs: const [
             Tab(text: 'Thông tin'),
+            Tab(text: 'Sức khỏe TT'),
+            Tab(text: 'Thuốc'),
+            Tab(text: 'Kế hoạch'),
             Tab(text: 'Tin nhắn'),
           ],
         ),
@@ -125,7 +132,22 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
             )
           : TabBarView(
               controller: _tabController,
-              children: [_buildInfoTab(), _buildMessagesTab()],
+              children: [
+                _buildInfoTab(),
+                PatientMentalHealthTab(
+                  patientId: widget.patientId,
+                  isPending: widget.isPending,
+                ),
+                PatientMedicationsTab(
+                  patientId: widget.patientId,
+                  isPending: widget.isPending,
+                ),
+                PatientCarePlanTab(
+                  patientId: widget.patientId,
+                  isPending: widget.isPending,
+                ),
+                _buildMessagesTab(),
+              ],
             ),
     );
   }
