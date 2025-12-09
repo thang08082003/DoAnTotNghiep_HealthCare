@@ -215,63 +215,94 @@ class DepressionRiskScreen extends ConsumerWidget {
     DepressionRiskViewModel viewModel,
   ) {
     final color = _getLevelColor(assessment.level);
+    final icon = _getLevelIcon(assessment.level);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: () => _showAssessmentDetails(context, assessment),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  shape: BoxShape.circle,
+      child: ExpansionTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 24),
+        ),
+        title: Row(
+          children: [
+            Text(
+              '${assessment.score}/27 điểm',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                assessment.levelDescription,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
                 ),
-                child: Center(
-                  child: Text(
-                    '${assessment.score}',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: color,
-                    ),
+              ),
+            ),
+          ],
+        ),
+        subtitle: Text(
+          DateFormat('dd/MM/yyyy HH:mm').format(assessment.createdAt),
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Lời khuyên
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.lightbulb_outline,
+                        color: Colors.blue,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          assessment.recommendation,
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      assessment.levelDescription,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: color,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      DateFormat(
-                        'dd/MM/yyyy HH:mm',
-                      ).format(assessment.createdAt),
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    ),
-                  ],
+                const SizedBox(height: 12),
+
+                // Nút xóa
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    label: const Text('Xóa'),
+                    onPressed: () =>
+                        _confirmDelete(context, assessment, viewModel),
+                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                  ),
                 ),
-              ),
-              Icon(Icons.chevron_right, color: Colors.grey[400]),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -293,6 +324,23 @@ class DepressionRiskScreen extends ConsumerWidget {
     }
   }
 
+  IconData _getLevelIcon(String level) {
+    switch (level) {
+      case 'minimal':
+        return Icons.sentiment_satisfied;
+      case 'mild':
+        return Icons.sentiment_neutral;
+      case 'moderate':
+        return Icons.sentiment_dissatisfied;
+      case 'moderately_severe':
+        return Icons.sentiment_very_dissatisfied;
+      case 'severe':
+        return Icons.sentiment_very_dissatisfied;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
   void _showAssessmentDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -300,33 +348,42 @@ class DepressionRiskScreen extends ConsumerWidget {
     );
   }
 
-  void _showAssessmentDetails(BuildContext context, DepressionRisk assessment) {
-    showDialog(
+  Future<void> _confirmDelete(
+    BuildContext context,
+    DepressionRisk assessment,
+    DepressionRiskViewModel viewModel,
+  ) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(assessment.levelDescription),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Điểm: ${assessment.score}/27'),
-            const SizedBox(height: 8),
-            Text(
-              'Ngày đánh giá: ${DateFormat('dd/MM/yyyy HH:mm').format(assessment.createdAt)}',
-            ),
-            if (assessment.note != null && assessment.note!.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text('Ghi chú: ${assessment.note}'),
-            ],
-          ],
+        title: const Text('Xác nhận xóa'),
+        content: Text(
+          'Bạn có chắc muốn xóa đánh giá ngày ${DateFormat('dd/MM/yyyy HH:mm').format(assessment.createdAt)}?',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Đóng'),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Xóa'),
           ),
         ],
       ),
     );
+
+    if (confirmed == true && context.mounted) {
+      await viewModel.deleteAssessment(assessment.id);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đã xóa đánh giá'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    }
   }
 }

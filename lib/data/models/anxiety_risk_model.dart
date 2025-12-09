@@ -51,13 +51,13 @@ class AnxietyRisk {
   String get recommendation {
     switch (level) {
       case 'minimal':
-        return 'Bạn đang có mức độ lo âu tối thiểu. Hãy duy trì lối sống lành mạnh và các hoạt động thư giãn.';
+        return 'Đang có mức độ lo âu tối thiểu. Hãy duy trì lối sống lành mạnh và các hoạt động thư giãn.';
       case 'mild':
-        return 'Bạn có dấu hiệu lo âu nhẹ. Hãy thử các kỹ thuật thư giãn, tập thể dục đều đặn và duy trì giấc ngủ tốt.';
+        return 'Đang có lo âu nhẹ. Hãy thử các kỹ thuật thư giãn, tập thể dục đều đặn và duy trì giấc ngủ tốt.';
       case 'moderate':
-        return 'Bạn đang có lo âu ở mức trung bình. Nên cân nhắc tham khảo ý kiến bác sĩ hoặc chuyên gia tâm lý.';
+        return 'Đang có lo âu ở mức trung bình. Nên cân nhắc tham khảo ý kiến bác sĩ hoặc chuyên gia tâm lý.';
       case 'severe':
-        return 'Bạn có dấu hiệu lo âu nặng. Nên gặp bác sĩ hoặc chuyên gia sức khỏe tâm thần để được tư vấn và hỗ trợ kịp thời.';
+        return 'Đang có lo âu ở mức nặng. Nên gặp bác sĩ hoặc chuyên gia sức khỏe tâm thần để được tư vấn và hỗ trợ kịp thời.';
       default:
         return '';
     }

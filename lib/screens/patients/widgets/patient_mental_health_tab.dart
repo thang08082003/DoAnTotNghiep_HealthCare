@@ -123,65 +123,89 @@ class _AnxietyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Color levelColor;
+    IconData levelIcon;
+
     if (assessment.score <= 4) {
       levelColor = Colors.green;
+      levelIcon = Icons.sentiment_satisfied;
     } else if (assessment.score <= 9) {
       levelColor = Colors.orange;
+      levelIcon = Icons.sentiment_neutral;
     } else if (assessment.score <= 14) {
       levelColor = Colors.deepOrange;
+      levelIcon = Icons.sentiment_dissatisfied;
     } else {
       levelColor = Colors.red;
+      levelIcon = Icons.sentiment_very_dissatisfied;
     }
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ExpansionTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: levelColor.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(levelIcon, color: levelColor, size: 24),
+        ),
+        title: Row(
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: levelColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: levelColor),
-                  ),
-                  child: Text(
-                    '${assessment.score}/21',
-                    style: TextStyle(
-                      color: levelColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  assessment.levelDescription,
-                  style: TextStyle(
-                    color: levelColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  DateFormat('dd/MM/yyyy HH:mm').format(assessment.createdAt),
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
             Text(
-              assessment.recommendation,
-              style: const TextStyle(fontSize: 13, color: Colors.grey),
+              '${assessment.score}/21 điểm',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: levelColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                assessment.levelDescription,
+                style: TextStyle(
+                  color: levelColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         ),
+        subtitle: Text(
+          DateFormat('dd/MM/yyyy HH:mm').format(assessment.createdAt),
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.lightbulb_outline,
+                    color: Colors.blue,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      assessment.recommendation,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -242,67 +266,92 @@ class _DepressionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Color levelColor;
+    IconData levelIcon;
+
     if (assessment.score <= 4) {
       levelColor = Colors.green;
+      levelIcon = Icons.sentiment_satisfied;
     } else if (assessment.score <= 9) {
       levelColor = Colors.orange;
+      levelIcon = Icons.sentiment_neutral;
     } else if (assessment.score <= 14) {
       levelColor = Colors.deepOrange;
+      levelIcon = Icons.sentiment_dissatisfied;
     } else if (assessment.score <= 19) {
       levelColor = Colors.red;
+      levelIcon = Icons.sentiment_very_dissatisfied;
     } else {
       levelColor = Colors.red.shade900;
+      levelIcon = Icons.sentiment_very_dissatisfied;
     }
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ExpansionTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: levelColor.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(levelIcon, color: levelColor, size: 24),
+        ),
+        title: Row(
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: levelColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: levelColor),
-                  ),
-                  child: Text(
-                    '${assessment.score}/27',
-                    style: TextStyle(
-                      color: levelColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  assessment.levelDescription,
-                  style: TextStyle(
-                    color: levelColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  DateFormat('dd/MM/yyyy HH:mm').format(assessment.createdAt),
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
             Text(
-              assessment.recommendation,
-              style: const TextStyle(fontSize: 13, color: Colors.grey),
+              '${assessment.score}/27 điểm',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: levelColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                assessment.levelDescription,
+                style: TextStyle(
+                  color: levelColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         ),
+        subtitle: Text(
+          DateFormat('dd/MM/yyyy HH:mm').format(assessment.createdAt),
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.lightbulb_outline,
+                    color: Colors.blue,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      assessment.recommendation,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -33,14 +33,15 @@ class GAD7ChartWidget extends StatelessWidget {
               children: [
                 const Icon(Icons.show_chart, size: 20),
                 const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-                const Spacer(),
                 if (showLegend) _buildLegend(),
               ],
             ),
@@ -56,11 +57,11 @@ class GAD7ChartWidget extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _buildLegendItem(Colors.green, 'Tốt (0-4)'),
-        const SizedBox(width: 8),
-        _buildLegendItem(Colors.orange, 'TB (5-14)'),
-        const SizedBox(width: 8),
-        _buildLegendItem(Colors.red, 'Cao (15+)'),
+        _buildLegendItem(Colors.green, 'Tốt'),
+        const SizedBox(width: 6),
+        _buildLegendItem(Colors.orange, 'TB'),
+        const SizedBox(width: 6),
+        _buildLegendItem(Colors.red, 'Cao'),
       ],
     );
   }
@@ -70,12 +71,12 @@ class GAD7ChartWidget extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 12,
-          height: 12,
+          width: 10,
+          height: 10,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 10)),
+        const SizedBox(width: 3),
+        Text(label, style: const TextStyle(fontSize: 9)),
       ],
     );
   }
