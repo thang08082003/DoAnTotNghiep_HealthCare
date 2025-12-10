@@ -4,6 +4,8 @@ import 'package:image_picker/image_picker.dart';
 import '../../components/buttons/logout_button.dart';
 import '../../components/loading/loading_widget.dart';
 import '../../data/resources/gene/app_colors.dart';
+import '../../data/resources/gene/app_text_styles.dart';
+import '../../data/resources/gene/app_dimensions.dart';
 import '../../providers/auth_provider.dart';
 import '../../viewmodels/profile/patient_profile_view_model.dart';
 import '../../viewmodels/profile/doctor_profile_view_model.dart';
@@ -25,15 +27,15 @@ class ProfileContent extends ConsumerWidget {
 
     return userAsyncValue.when(
       data: (user) => SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: AppDimensions.paddingAll,
         child: Column(
           children: [
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(20),
+              padding: AppDimensions.paddingAllLarge,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: AppDimensions.borderRadiusLarge,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.05),
@@ -49,26 +51,22 @@ class ProfileContent extends ConsumerWidget {
                     uid: user?.uid,
                     onUpdated: () => ref.invalidate(currentUserProvider),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: AppDimensions.spacingMedium),
                   Text(
                     user?.name ?? 'Chưa cập nhật',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
+                    style: AppTextStyles.heading2,
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: AppDimensions.spacingXSmall),
                   Text(
                     user?.email ?? 'Chưa cập nhật',
-                    style: const TextStyle(color: AppColors.textSecondary),
+                    style: AppTextStyles.body2Secondary,
                   ),
                 ],
               ),
             ),
             // Patient-specific info card
             if ((user?.isPatient ?? false)) ...[
-              const SizedBox(height: 16),
+              SizedBox(height: AppDimensions.spacingMedium),
               _PatientInfoCard(
                 user: user!,
                 onEdit: () {
@@ -78,7 +76,7 @@ class ProfileContent extends ConsumerWidget {
             ],
             // Doctor-specific info card
             if ((user?.isDoctor ?? false)) ...[
-              const SizedBox(height: 16),
+              SizedBox(height: AppDimensions.spacingMedium),
               _DoctorInfoCard(
                 doctor: user as DoctorModel,
                 onEdit: () {
@@ -86,13 +84,13 @@ class ProfileContent extends ConsumerWidget {
                 },
               ),
             ],
-            const SizedBox(height: 24),
+            SizedBox(height: AppDimensions.spacingLarge),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(20),
+              padding: AppDimensions.paddingAllLarge,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: AppDimensions.borderRadiusLarge,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.05),
@@ -104,15 +102,8 @@ class ProfileContent extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Cài đặt',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
+                  Text('Cài đặt', style: AppTextStyles.body1Bold),
+                  SizedBox(height: AppDimensions.spacingMedium),
                   if (user?.isPatient == true)
                     ListTile(
                       leading: const Icon(
@@ -163,7 +154,7 @@ class ProfileContent extends ConsumerWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: AppDimensions.spacingLarge),
             SizedBox(
               width: double.infinity,
               child: Consumer(
@@ -231,10 +222,10 @@ class _PatientInfoCard extends ConsumerWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: AppDimensions.paddingAllLarge,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppDimensions.borderRadiusLarge,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -249,18 +240,11 @@ class _PatientInfoCard extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Thông tin bệnh nhân',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
+              Text('Thông tin bệnh nhân', style: AppTextStyles.body1Bold),
               const SizedBox.shrink(),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: AppDimensions.spacingSmall),
           _editableRow(
             context,
             label: 'Số điện thoại',
@@ -323,16 +307,13 @@ class _PatientInfoCard extends ConsumerWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Bệnh theo dõi',
-                  style: TextStyle(color: AppColors.textSecondary),
-                ),
-                const SizedBox(width: 12),
+                Text('Bệnh theo dõi', style: AppTextStyles.body2Secondary),
+                SizedBox(width: AppDimensions.spacingMedium),
                 Flexible(
                   child: Text(
                     diseaseFocusText,
                     textAlign: TextAlign.right,
-                    style: const TextStyle(color: AppColors.textPrimary),
+                    style: AppTextStyles.body2,
                   ),
                 ),
               ],
@@ -343,29 +324,23 @@ class _PatientInfoCard extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Giới tính',
-                style: TextStyle(color: AppColors.textSecondary),
-              ),
-              const SizedBox(width: 12),
+              Text('Giới tính', style: AppTextStyles.body2Secondary),
+              SizedBox(width: AppDimensions.spacingMedium),
               Flexible(
                 child: Text(
                   _displayOrNA(gender),
                   textAlign: TextAlign.right,
-                  style: const TextStyle(color: AppColors.textPrimary),
+                  style: AppTextStyles.body2,
                 ),
               ),
             ],
           ),
           const Divider(height: 24),
-          const Text(
+          Text(
             'Tiền sử bệnh (tối đa 150 ký tự)',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
+            style: AppTextStyles.body2Bold,
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: AppDimensions.spacingSmall),
           InkWell(
             onTap: () async {
               final current = _displayOrNA(medicalHistory);
@@ -393,7 +368,7 @@ class _PatientInfoCard extends ConsumerWidget {
             },
             child: Text(
               _displayOrNA(medicalHistory),
-              style: const TextStyle(color: AppColors.textSecondary),
+              style: AppTextStyles.body2Secondary,
             ),
           ),
         ],
@@ -431,13 +406,13 @@ class _PatientInfoCard extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: AppColors.textSecondary)),
-          const SizedBox(width: 12),
+          Text(label, style: AppTextStyles.body2Secondary),
+          SizedBox(width: AppDimensions.spacingMedium),
           Flexible(
             child: Text(
               value,
               textAlign: TextAlign.right,
-              style: const TextStyle(color: AppColors.textPrimary),
+              style: AppTextStyles.body2,
             ),
           ),
         ],

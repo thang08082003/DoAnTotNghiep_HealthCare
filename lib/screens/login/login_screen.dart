@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:healthcare/data/resources/gene/app_colors.dart';
+import 'package:healthcare/data/resources/gene/app_text_styles.dart';
+import 'package:healthcare/data/resources/gene/app_dimensions.dart';
 import 'package:healthcare/router/app_router.dart';
 
 import 'package:healthcare/screens/home/home_page.dart';
@@ -89,45 +91,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+            padding: AppDimensions.paddingAllLarge,
             child: Card(
               elevation: 8,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: AppDimensions.borderRadiusLarge,
               ),
               child: Padding(
-                padding: const EdgeInsets.all(24.0),
+                padding: AppDimensions.paddingAllLarge,
                 child: Form(
                   key: _formKey,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Logo hoặc title
                       const Icon(
                         Icons.local_hospital,
                         size: 80,
                         color: AppColors.primaryColor,
                       ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Đăng Nhập',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
+                      SizedBox(height: AppDimensions.spacingMedium),
+                      Text('Đăng Nhập', style: AppTextStyles.heading1),
+                      SizedBox(height: AppDimensions.spacingSmall),
+                      Text(
                         'Chào mừng bạn trở lại!',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: AppColors.textSecondary,
-                        ),
+                        style: AppTextStyles.body1Secondary,
                       ),
-                      const SizedBox(height: 32),
+                      SizedBox(height: AppDimensions.spacingXLarge),
 
-                      // Email field
                       TextFormField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
@@ -135,10 +125,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           labelText: 'Email',
                           prefixIcon: const Icon(Icons.email_outlined),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: AppDimensions.borderRadiusMedium,
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: AppDimensions.borderRadiusMedium,
                             borderSide: const BorderSide(
                               color: AppColors.primaryColor,
                               width: 2,
@@ -157,7 +147,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: AppDimensions.spacingMedium),
 
                       // Password field
                       TextFormField(
@@ -179,10 +169,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             },
                           ),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: AppDimensions.borderRadiusMedium,
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: AppDimensions.borderRadiusMedium,
                             borderSide: const BorderSide(
                               color: AppColors.primaryColor,
                               width: 2,
@@ -199,7 +189,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: AppDimensions.spacingSmall),
 
                       // Forgot password link
                       Align(
@@ -208,16 +198,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           onPressed: () {
                             Navigator.of(context).pushNamed('/forgot-password');
                           },
-                          child: const Text(
+                          child: Text(
                             'Quên mật khẩu?',
-                            style: TextStyle(
+                            style: AppTextStyles.body2Bold.copyWith(
                               color: AppColors.primaryColor,
-                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: AppDimensions.spacingMedium),
 
                       // Login button
                       PrimaryButton(
@@ -225,25 +214,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         onPressed: _login,
                         isLoading: vmState.isLoading,
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: AppDimensions.spacingMedium),
 
                       // Register link
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text(
+                          Text(
                             'Chưa có tài khoản? ',
-                            style: TextStyle(color: AppColors.textSecondary),
+                            style: AppTextStyles.body2Secondary,
                           ),
                           TextButton(
                             onPressed: () {
                               AppRouter.pushRegister(context);
                             },
-                            child: const Text(
+                            child: Text(
                               'Đăng ký ngay',
-                              style: TextStyle(
+                              style: AppTextStyles.body2Bold.copyWith(
                                 color: AppColors.primaryColor,
-                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),

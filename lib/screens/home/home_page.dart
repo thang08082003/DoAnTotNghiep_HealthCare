@@ -6,6 +6,7 @@ import '../../data/models/user_model.dart';
 import '../../components/loading/loading_widget.dart';
 import '../../components/buttons/primary_button.dart';
 import '../../data/resources/gene/app_colors.dart';
+import '../../data/resources/gene/app_dimensions.dart';
 import '../../providers/user_provider.dart';
 import '../notifications/notifications_content.dart';
 import '../dashboard/patient_dashboard_content.dart';
@@ -58,9 +59,9 @@ class HomePageState extends BasePageState<HomePage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(Icons.error, size: 64, color: AppColors.error),
-                const SizedBox(height: 16),
+                SizedBox(height: AppDimensions.spacingMedium),
                 Text('Lỗi: $error'),
-                const SizedBox(height: 16),
+                SizedBox(height: AppDimensions.spacingMedium),
                 PrimaryButton(
                   text: 'Thử lại',
                   onPressed: () => ref.refresh(currentUserProvider),

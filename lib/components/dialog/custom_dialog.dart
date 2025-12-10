@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/resources/gene/app_colors.dart';
+import '../../data/resources/gene/app_text_styles.dart';
+import '../../data/resources/gene/app_dimensions.dart';
 import '../buttons/primary_button.dart';
 
 class CustomDialog {
@@ -13,26 +15,21 @@ class CustomDialog {
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: AppDimensions.borderRadiusLarge,
+        ),
         title: Row(
           children: [
-            Icon(Icons.info_outline, color: AppColors.primaryColor, size: 28),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+            Icon(
+              Icons.info_outline,
+              color: AppColors.primaryColor,
+              size: AppDimensions.iconLarge,
             ),
+            SizedBox(width: AppDimensions.spacingMedium),
+            Expanded(child: Text(title, style: AppTextStyles.heading3)),
           ],
         ),
-        content: Text(
-          message,
-          style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
-        ),
+        content: Text(message, style: AppTextStyles.body1Secondary),
         actions: [
           PrimaryButton(
             text: buttonText ?? 'OK',
@@ -41,7 +38,7 @@ class CustomDialog {
               onPressed?.call();
             },
             width: 100,
-            height: 40,
+            height: AppDimensions.buttonHeightSmall,
           ),
         ],
       ),
@@ -58,26 +55,21 @@ class CustomDialog {
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: AppDimensions.borderRadiusLarge,
+        ),
         title: Row(
           children: [
-            Icon(Icons.error_outline, color: AppColors.error, size: 28),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+            Icon(
+              Icons.error_outline,
+              color: AppColors.error,
+              size: AppDimensions.iconLarge,
             ),
+            SizedBox(width: AppDimensions.spacingMedium),
+            Expanded(child: Text(title, style: AppTextStyles.heading3)),
           ],
         ),
-        content: Text(
-          message,
-          style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
-        ),
+        content: Text(message, style: AppTextStyles.body1Secondary),
         actions: [
           PrimaryButton(
             text: buttonText ?? 'OK',
@@ -86,7 +78,7 @@ class CustomDialog {
               onPressed?.call();
             },
             width: 100,
-            height: 40,
+            height: AppDimensions.buttonHeightSmall,
             backgroundColor: AppColors.error,
           ),
         ],
@@ -104,30 +96,21 @@ class CustomDialog {
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: AppDimensions.borderRadiusLarge,
+        ),
         title: Row(
           children: [
             Icon(
               Icons.check_circle_outline,
               color: AppColors.success,
-              size: 28,
+              size: AppDimensions.iconLarge,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+            SizedBox(width: AppDimensions.spacingMedium),
+            Expanded(child: Text(title, style: AppTextStyles.heading3)),
           ],
         ),
-        content: Text(
-          message,
-          style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
-        ),
+        content: Text(message, style: AppTextStyles.body1Secondary),
         actions: [
           PrimaryButton(
             text: buttonText ?? 'OK',
@@ -136,7 +119,7 @@ class CustomDialog {
               onPressed?.call();
             },
             width: 100,
-            height: 40,
+            height: AppDimensions.buttonHeightSmall,
             backgroundColor: AppColors.success,
           ),
         ],
@@ -156,26 +139,21 @@ class CustomDialog {
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: AppDimensions.borderRadiusLarge,
+        ),
         title: Row(
           children: [
-            Icon(Icons.help_outline, color: AppColors.warning, size: 28),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+            Icon(
+              Icons.help_outline,
+              color: AppColors.warning,
+              size: AppDimensions.iconLarge,
             ),
+            SizedBox(width: AppDimensions.spacingMedium),
+            Expanded(child: Text(title, style: AppTextStyles.heading3)),
           ],
         ),
-        content: Text(
-          message,
-          style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
-        ),
+        content: Text(message, style: AppTextStyles.body1Secondary),
         actions: [
           SecondaryButton(
             text: cancelText ?? 'Hủy',
@@ -184,9 +162,9 @@ class CustomDialog {
               onCancel?.call();
             },
             width: 80,
-            height: 40,
+            height: AppDimensions.buttonHeightSmall,
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: AppDimensions.spacingMedium),
           PrimaryButton(
             text: confirmText ?? 'Xác nhận',
             onPressed: () {
@@ -194,7 +172,7 @@ class CustomDialog {
               onConfirm?.call();
             },
             width: 100,
-            height: 40,
+            height: AppDimensions.buttonHeightSmall,
           ),
         ],
       ),
@@ -209,17 +187,19 @@ class CustomDialog {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: AppDimensions.borderRadiusLarge,
+        ),
         content: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: AppDimensions.paddingAllMedium,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const CircularProgressIndicator(),
-              const SizedBox(height: 16),
+              SizedBox(height: AppDimensions.spacingMedium),
               Text(
                 message ?? 'Đang xử lý...',
-                style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
+                style: AppTextStyles.body1Secondary,
                 textAlign: TextAlign.center,
               ),
             ],
@@ -248,11 +228,11 @@ class CustomBottomSheet {
       isDismissible: isDismissible,
       backgroundColor: backgroundColor ?? Colors.transparent,
       builder: (context) => Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
+            topLeft: Radius.circular(AppDimensions.radiusXLarge),
+            topRight: Radius.circular(AppDimensions.radiusXLarge),
           ),
         ),
         child: Column(
@@ -262,7 +242,10 @@ class CustomBottomSheet {
             Container(
               width: 40,
               height: 4,
-              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              margin: EdgeInsets.only(
+                top: AppDimensions.spacingMedium,
+                bottom: AppDimensions.spacingSmall,
+              ),
               decoration: BoxDecoration(
                 color: Colors.grey[300],
                 borderRadius: BorderRadius.circular(2),

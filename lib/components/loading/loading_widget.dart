@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/resources/gene/app_colors.dart';
+import '../../data/resources/gene/app_text_styles.dart';
+import '../../data/resources/gene/app_dimensions.dart';
 
 class LoadingWidget extends StatelessWidget {
   final String? message;
@@ -22,10 +24,10 @@ class LoadingWidget extends StatelessWidget {
           ),
         ),
         if (message != null) ...[
-          const SizedBox(height: 16),
+          SizedBox(height: AppDimensions.spacingMedium),
           Text(
             message!,
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+            style: AppTextStyles.body2Secondary,
             textAlign: TextAlign.center,
           ),
         ],
@@ -52,12 +54,12 @@ class FullScreenLoading extends StatelessWidget {
       color: backgroundColor ?? Colors.black54,
       child: Center(
         child: Card(
-          elevation: 8,
+          elevation: AppDimensions.elevationHigh,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: AppDimensions.borderRadiusMedium,
           ),
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: AppDimensions.paddingAllXLarge,
             child: LoadingWidget(
               message: message ?? 'Đang tải...',
               color: loadingColor,
@@ -99,7 +101,7 @@ class ListLoading extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: AppDimensions.paddingAllXLarge,
         child: LoadingWidget(
           message: message ?? 'Đang tải dữ liệu...',
           color: color,
@@ -118,19 +120,19 @@ class RefreshLoading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: AppDimensions.paddingAllMedium,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
+          SizedBox(
+            width: AppDimensions.iconMedium,
+            height: AppDimensions.iconMedium,
+            child: const CircularProgressIndicator(strokeWidth: 2),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: AppDimensions.spacingMedium),
           Text(
             message ?? 'Đang làm mới...',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+            style: AppTextStyles.body2Secondary,
           ),
         ],
       ),

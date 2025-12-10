@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../data/models/user_model.dart';
 import '../../data/resources/gene/app_colors.dart';
+import '../../data/resources/gene/app_text_styles.dart';
+import '../../data/resources/gene/app_dimensions.dart';
 import '../reviews/inline_user_avatar.dart';
 
 class PatientCard extends StatelessWidget {
@@ -25,10 +27,10 @@ class PatientCard extends StatelessWidget {
         statusColor ?? (isPending ? Colors.orange : AppColors.primaryColor);
 
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      elevation: 2,
+      margin: const EdgeInsets.symmetric(vertical: AppDimensions.spacingSmall),
+      elevation: AppDimensions.elevationMedium,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppDimensions.borderRadiusMedium,
         side: BorderSide(
           color: isPending
               ? Colors.orange.withValues(alpha: 0.3)
@@ -38,9 +40,9 @@ class PatientCard extends StatelessWidget {
       ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppDimensions.borderRadiusMedium,
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: AppDimensions.paddingAllSmall,
           child: Row(
             children: [
               // Patient Avatar
@@ -50,33 +52,23 @@ class PatientCard extends StatelessWidget {
                 displayName: patient.name,
                 radius: 24,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppDimensions.spacingMedium),
 
               // Patient Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      patient.name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
+                    Text(patient.name, style: AppTextStyles.body1Bold),
+                    const SizedBox(height: AppDimensions.spacingXSmall),
                     Text(
                       patient.email,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
-                      ),
+                      style: AppTextStyles.body2Secondary,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (statusText != null) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppDimensions.spacingXSmall),
                       Row(
                         children: [
                           Container(
@@ -87,11 +79,10 @@ class PatientCard extends StatelessWidget {
                               shape: BoxShape.circle,
                             ),
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: AppDimensions.spacingSmall),
                           Text(
                             statusText!,
-                            style: TextStyle(
-                              fontSize: 12,
+                            style: AppTextStyles.caption.copyWith(
                               color: effectiveStatusColor,
                               fontWeight: FontWeight.w500,
                             ),
@@ -104,9 +95,9 @@ class PatientCard extends StatelessWidget {
               ),
 
               // Arrow icon
-              Icon(
+              const Icon(
                 Icons.arrow_forward_ios,
-                size: 16,
+                size: AppDimensions.iconSmall,
                 color: AppColors.textSecondary,
               ),
             ],

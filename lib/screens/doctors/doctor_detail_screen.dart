@@ -4,6 +4,7 @@ import '../../components/reviews/inline_user_avatar.dart';
 import '../../data/models/doctor_model.dart';
 import '../../data/models/user_model.dart';
 import '../../data/resources/gene/app_colors.dart';
+import '../../data/resources/gene/app_dimensions.dart';
 import '../../providers/user_provider.dart';
 import '../../components/chat/chat_thread_view.dart';
 import '../../components/app_bar/chat_app_bar_title.dart';
@@ -105,9 +106,9 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(Icons.error, size: 64, color: AppColors.error),
-                  const SizedBox(height: 12),
+                  SizedBox(height: AppDimensions.spacingMedium),
                   Text(_error!),
-                  const SizedBox(height: 12),
+                  SizedBox(height: AppDimensions.spacingMedium),
                   ElevatedButton(
                     onPressed: _load,
                     child: const Text('Thử lại'),
@@ -144,7 +145,7 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
     final avatarUrl = _user?.avatarUrl;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: AppDimensions.paddingAll,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(

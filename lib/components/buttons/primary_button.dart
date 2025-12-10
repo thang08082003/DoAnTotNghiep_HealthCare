@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../data/resources/gene/app_colors.dart';
+import '../../data/resources/gene/app_dimensions.dart';
 
 class PrimaryButton extends StatelessWidget {
   final String text;
@@ -21,11 +22,11 @@ class PrimaryButton extends StatelessWidget {
     this.onPressed,
     this.isLoading = false,
     this.width,
-    this.height = 50,
+    this.height = AppDimensions.buttonHeightMedium,
     this.backgroundColor,
     this.textColor,
     this.loadingColor,
-    this.borderRadius = 12,
+    this.borderRadius = AppDimensions.buttonRadiusMedium,
     this.icon,
     this.fontSize = 16,
     this.fontWeight = FontWeight.bold,
@@ -110,11 +111,11 @@ class SecondaryButton extends StatelessWidget {
     this.onPressed,
     this.isLoading = false,
     this.width,
-    this.height = 50,
+    this.height = AppDimensions.buttonHeightMedium,
     this.borderColor,
     this.textColor,
     this.loadingColor,
-    this.borderRadius = 12,
+    this.borderRadius = AppDimensions.buttonRadiusMedium,
     this.icon,
     this.fontSize = 16,
     this.fontWeight = FontWeight.bold,

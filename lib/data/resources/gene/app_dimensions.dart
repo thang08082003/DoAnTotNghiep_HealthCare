@@ -24,6 +24,8 @@ class AppDimensions {
   static const EdgeInsets paddingAll = EdgeInsets.all(paddingValue);
   static const EdgeInsets paddingAllSmall = EdgeInsets.all(paddingSmall);
   static const EdgeInsets paddingAllLarge = EdgeInsets.all(paddingLarge);
+  static const EdgeInsets paddingAllMedium = EdgeInsets.all(paddingValue);
+  static const EdgeInsets paddingAllXLarge = EdgeInsets.all(spacingXLarge);
 
   static const EdgeInsets paddingHorizontal = EdgeInsets.symmetric(
     horizontal: paddingValue,
@@ -74,6 +76,9 @@ class AppDimensions {
   static const double buttonHeightSmall = 40.0;
   static const double buttonHeightMedium = 50.0;
   static const double buttonHeightLarge = 56.0;
+
+  // Button Radius (specific for buttons to override default)
+  static const double buttonRadiusMedium = 12.0;
 
   // Margins (for spacing between cards/sections)
   static const EdgeInsets marginCard = EdgeInsets.symmetric(
