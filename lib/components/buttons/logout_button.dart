@@ -40,11 +40,7 @@ class LogoutButton extends StatelessWidget {
                     strokeWidth: 2,
                   ),
                 )
-              : Icon(
-                  Icons.logout,
-                  color: Colors.white,
-                  size: size * 0.5,
-                ),
+              : Icon(Icons.logout, color: Colors.white, size: size * 0.5),
         ),
       );
     }
@@ -70,11 +66,7 @@ class LogoutButton extends StatelessWidget {
                   strokeWidth: 2,
                 ),
               )
-            : const Icon(
-                Icons.logout,
-                color: Colors.white,
-                size: 16,
-              ),
+            : const Icon(Icons.logout, color: Colors.white, size: 16),
         label: Text(
           text ?? 'Đăng xuất',
           style: const TextStyle(

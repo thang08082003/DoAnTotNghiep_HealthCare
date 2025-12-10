@@ -328,30 +328,17 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
                       // Start session monitoring for single-device login enforcement
                       _sessionSubscription
                           ?.cancel(); // Cancel existing before creating new
-                      print(
-                        '[AuthWrapper] Starting session monitoring for user: ${user.uid}',
-                      );
                       _sessionSubscription =
                           SessionService.watchSessionValidity(user.uid).listen((
                             isValid,
                           ) {
-                            print(
-                              '[AuthWrapper] Session validity changed: $isValid',
-                            );
                             // Only show kicked dialog if still authenticated
                             // (to prevent showing during logout)
                             if (!isValid && mounted) {
                               final currentAuthState = ref.read(authProvider);
                               if (currentAuthState.isAuthenticated) {
                                 // Session kicked by another device
-                                print(
-                                  '[AuthWrapper] Session invalid! Showing kicked dialog',
-                                );
                                 _showKickedDialog();
-                              } else {
-                                print(
-                                  '[AuthWrapper] Session invalid but user logged out, skipping dialog',
-                                );
                               }
                             }
                           });

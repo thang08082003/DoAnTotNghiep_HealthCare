@@ -5,11 +5,11 @@ import '../../data/services/doctor_reviews_service.dart';
 import '../../components/reviews/reviews_summary.dart';
 import '../../components/reviews/reviews_list.dart';
 import '../../components/reviews/review_editor_sheet.dart';
+import '../../components/dialog/custom_dialog.dart';
 import '../../viewmodels/reviews/doctor_reviews_view_model.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
 import '../../data/services/follow_request_service.dart';
-import '../../data/services/user_service.dart';
 
 class DoctorReviewsScreen extends ConsumerWidget {
   final String doctorId;
@@ -116,22 +116,12 @@ class DoctorReviewsScreen extends ConsumerWidget {
     DoctorReviewsService service,
     DoctorReview r,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await CustomDialog.showConfirmation(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Xoá nhận xét'),
-        content: const Text('Bạn có chắc muốn xoá nhận xét này?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Huỷ'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Xoá'),
-          ),
-        ],
-      ),
+      title: 'Xoá nhận xét',
+      message: 'Bạn có chắc muốn xoá nhận xét này?',
+      confirmText: 'Xoá',
+      cancelText: 'Huỷ',
     );
     if (confirmed == true) {
       try {
@@ -208,7 +198,7 @@ class _AvatarThumb extends StatelessWidget {
   }
 }
 
-class _ReviewAvatar extends StatefulWidget {
+class _ReviewAvatar extends ConsumerStatefulWidget {
   final String patientId;
   final String? initialUrl;
   final String name;
@@ -219,10 +209,10 @@ class _ReviewAvatar extends StatefulWidget {
   });
 
   @override
-  State<_ReviewAvatar> createState() => _ReviewAvatarState();
+  ConsumerState<_ReviewAvatar> createState() => _ReviewAvatarState();
 }
 
-class _ReviewAvatarState extends State<_ReviewAvatar> {
+class _ReviewAvatarState extends ConsumerState<_ReviewAvatar> {
   String? _url;
   bool _loading = false;
   bool _tried = false;
@@ -241,8 +231,8 @@ class _ReviewAvatarState extends State<_ReviewAvatar> {
     _tried = true;
     setState(() => _loading = true);
     try {
-      final svc = UserService();
-      final u = await svc.getUserById(widget.patientId);
+      final userRepo = ref.read(userRepositoryProvider);
+      final u = await userRepo.getUserById(widget.patientId);
       if (!mounted) return;
       setState(() {
         _url = u?.avatarUrl;

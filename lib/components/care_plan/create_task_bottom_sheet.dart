@@ -78,15 +78,8 @@ class _CreateTaskBottomSheetState extends ConsumerState<CreateTaskBottomSheet> {
         final goal = allGoals.firstWhere((g) => g.id == goalId);
 
         if (goal.targetDate == null) {
-          print('⚠️ Bỏ qua goal ${goal.title} vì không có targetDate');
           continue;
         }
-
-        print('📝 Đang tạo task cho goal: ${goal.title} (${goal.id})');
-        print('   - Title: ${_titleController.text.trim()}');
-        print('   - Type: ${_selectedType.name}');
-        print('   - Date: ${goal.targetDate}');
-        print('   - Time: $scheduledTime');
 
         await carePlanService.createGoalTask(
           goalId: goal.id,
@@ -100,11 +93,8 @@ class _CreateTaskBottomSheetState extends ConsumerState<CreateTaskBottomSheet> {
           type: _selectedType,
           notificationEnabled: _notificationEnabled,
         );
-        print('✅ Đã tạo task thành công cho goal ${goal.title}');
         successCount++;
       }
-
-      print('🎉 Tổng số task đã tạo: $successCount');
 
       if (mounted) {
         Navigator.pop(context);
@@ -115,9 +105,7 @@ class _CreateTaskBottomSheetState extends ConsumerState<CreateTaskBottomSheet> {
           ),
         );
       }
-    } catch (e, stackTrace) {
-      print('❌ LỖI khi tạo task: $e');
-      print('Stack trace: $stackTrace');
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),

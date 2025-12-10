@@ -23,47 +23,35 @@ class LatestHealthAlertWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    print('[HealthAlertWidget] Building widget for userId: $userId');
     final alertAsync = ref.watch(latestHealthAlertProvider(userId));
 
     return alertAsync.when(
       data: (alert) {
-        print(
-          '[HealthAlertWidget] Data state: alert = ${alert != null ? 'exists (${alert.level.name})' : 'null'}',
-        );
         if (alert == null) {
           return _buildNoAlertCard(context);
         }
         return _buildAlertCard(context, alert);
       },
       loading: () {
-        print('[HealthAlertWidget] Loading state');
         return _buildLoadingCard(context);
       },
       error: (error, stack) {
-        print('[HealthAlertWidget] Error state: $error');
         return _buildErrorCard(context);
       },
     );
   }
 
   Widget _buildNoAlertCard(BuildContext context) {
-    print('[HealthAlertWidget] Building NO alert card');
     return GestureDetector(
       onTap: () {
-        print('[HealthAlertWidget] *** NO ALERT CARD TAPPED ***');
-        print('[HealthAlertWidget] No alert card tapped, userId: $userId');
-        print('[HealthAlertWidget] Context is valid: ${context.mounted}');
         try {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => HealthAlertsScreen(userId: userId),
             ),
           );
-          print('[HealthAlertWidget] Navigation successful');
-        } catch (e, stackTrace) {
-          print('[HealthAlertWidget] Navigation error: $e');
-          print('[HealthAlertWidget] Stack trace: $stackTrace');
+        } catch (e) {
+          // Silently catch navigation errors
         }
       },
       child: Card(
@@ -118,9 +106,6 @@ class LatestHealthAlertWidget extends ConsumerWidget {
   }
 
   Widget _buildAlertCard(BuildContext context, HealthAlert alert) {
-    print(
-      '[HealthAlertWidget] Building alert card with level: ${alert.level.name}',
-    );
     final level = alert.level;
     final color = _getAlertColor(level);
     final icon = _getAlertIcon(level);
@@ -128,21 +113,14 @@ class LatestHealthAlertWidget extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () {
-        print('[HealthAlertWidget] *** ALERT CARD TAPPED ***');
-        print(
-          '[HealthAlertWidget] Alert card tapped, userId: $userId, level: ${level.name}',
-        );
-        print('[HealthAlertWidget] Context is valid: ${context.mounted}');
         try {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => HealthAlertsScreen(userId: userId),
             ),
           );
-          print('[HealthAlertWidget] Navigation successful');
-        } catch (e, stackTrace) {
-          print('[HealthAlertWidget] Navigation error: $e');
-          print('[HealthAlertWidget] Stack trace: $stackTrace');
+        } catch (e) {
+          // Silently catch navigation errors
         }
       },
       child: Card(
@@ -277,21 +255,16 @@ class LatestHealthAlertWidget extends ConsumerWidget {
   }
 
   Widget _buildErrorCard(BuildContext context) {
-    print('[HealthAlertWidget] Building error card (tappable)');
     return GestureDetector(
       onTap: () {
-        print('[HealthAlertWidget] *** ERROR CARD TAPPED ***');
-        print('[HealthAlertWidget] userId: $userId');
         try {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => HealthAlertsScreen(userId: userId),
             ),
           );
-          print('[HealthAlertWidget] Navigation successful');
-        } catch (e, stackTrace) {
-          print('[HealthAlertWidget] Navigation error: $e');
-          print('[HealthAlertWidget] Stack trace: $stackTrace');
+        } catch (e) {
+          // Silently catch navigation errors
         }
       },
       child: Card(

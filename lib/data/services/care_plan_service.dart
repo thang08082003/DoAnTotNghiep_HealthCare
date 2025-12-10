@@ -115,19 +115,12 @@ class CarePlanService {
 
   // Get tasks for a goal
   Stream<List<GoalTask>> getGoalTasks(String goalId) {
-    print('🔍 getGoalTasks được gọi với goalId: $goalId');
     return _firestore
         .collection('goal_tasks')
         .where('goalId', isEqualTo: goalId)
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-          print(
-            '📊 Query snapshot nhận được ${snapshot.docs.length} documents',
-          );
-          for (var doc in snapshot.docs) {
-            print('   - Doc ID: ${doc.id}, goalId: ${doc.data()['goalId']}');
-          }
           return snapshot.docs
               .map((doc) => GoalTask.fromFirestore(doc))
               .toList();
@@ -163,13 +156,6 @@ class CarePlanService {
     required TaskType type,
     bool notificationEnabled = true,
   }) async {
-    print('🔥 createGoalTask được gọi với:');
-    print('   goalId: $goalId');
-    print('   userId: $userId');
-    print('   title: $title');
-    print('   scheduledDates: $scheduledDates');
-    print('   type: ${type.name}');
-
     final task = GoalTask(
       id: '',
       goalId: goalId,
@@ -185,11 +171,7 @@ class CarePlanService {
     );
 
     final taskData = task.toFirestore();
-    print('📦 Task data sẽ ghi vào Firestore:');
-    print(taskData);
-
     final docRef = await _firestore.collection('goal_tasks').add(taskData);
-    print('✅ Task đã được ghi vào Firestore với ID: ${docRef.id}');
 
     // Schedule reminders if enabled
     if (notificationEnabled) {
@@ -220,7 +202,6 @@ class CarePlanService {
 
   // Delete task
   Future<void> deleteGoalTask(String taskId) async {
-    print('🔥 deleteGoalTask được gọi với taskId: $taskId');
     try {
       // Get task to know how many dates to cancel
       final doc = await _firestore.collection('goal_tasks').doc(taskId).get();
@@ -234,10 +215,7 @@ class CarePlanService {
       }
 
       await _firestore.collection('goal_tasks').doc(taskId).delete();
-      print('✅ Đã xóa document từ Firestore');
-    } catch (e, stackTrace) {
-      print('❌ LỖI khi xóa từ Firestore: $e');
-      print('Stack trace: $stackTrace');
+    } catch (e) {
       rethrow;
     }
   }

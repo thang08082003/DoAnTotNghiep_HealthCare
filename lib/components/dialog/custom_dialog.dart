@@ -13,16 +13,10 @@ class CustomDialog {
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            Icon(
-              Icons.info_outline,
-              color: AppColors.primaryColor,
-              size: 28,
-            ),
+            Icon(Icons.info_outline, color: AppColors.primaryColor, size: 28),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -37,10 +31,7 @@ class CustomDialog {
         ),
         content: Text(
           message,
-          style: TextStyle(
-            fontSize: 16,
-            color: AppColors.textSecondary,
-          ),
+          style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
         ),
         actions: [
           PrimaryButton(
@@ -67,16 +58,10 @@ class CustomDialog {
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            Icon(
-              Icons.error_outline,
-              color: AppColors.error,
-              size: 28,
-            ),
+            Icon(Icons.error_outline, color: AppColors.error, size: 28),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -91,10 +76,7 @@ class CustomDialog {
         ),
         content: Text(
           message,
-          style: TextStyle(
-            fontSize: 16,
-            color: AppColors.textSecondary,
-          ),
+          style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
         ),
         actions: [
           PrimaryButton(
@@ -122,9 +104,7 @@ class CustomDialog {
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             Icon(
@@ -146,10 +126,7 @@ class CustomDialog {
         ),
         content: Text(
           message,
-          style: TextStyle(
-            fontSize: 16,
-            color: AppColors.textSecondary,
-          ),
+          style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
         ),
         actions: [
           PrimaryButton(
@@ -179,16 +156,10 @@ class CustomDialog {
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            Icon(
-              Icons.help_outline,
-              color: AppColors.warning,
-              size: 28,
-            ),
+            Icon(Icons.help_outline, color: AppColors.warning, size: 28),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -203,10 +174,7 @@ class CustomDialog {
         ),
         content: Text(
           message,
-          style: TextStyle(
-            fontSize: 16,
-            color: AppColors.textSecondary,
-          ),
+          style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
         ),
         actions: [
           SecondaryButton(
@@ -241,9 +209,7 @@ class CustomDialog {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         content: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -253,10 +219,7 @@ class CustomDialog {
               const SizedBox(height: 16),
               Text(
                 message ?? 'Đang xử lý...',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: AppColors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
             ],

@@ -2,30 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/care_plan_model.dart';
 import '../../data/services/care_plan_service.dart';
 
-// State class để quản lý trạng thái của Care Plan
-class CarePlanState {
-  final DateTime selectedDate;
-  final bool isLoading;
-  final String? errorMessage;
-
-  CarePlanState({
-    required this.selectedDate,
-    this.isLoading = false,
-    this.errorMessage,
-  });
-
-  CarePlanState copyWith({
-    DateTime? selectedDate,
-    bool? isLoading,
-    String? errorMessage,
-  }) {
-    return CarePlanState(
-      selectedDate: selectedDate ?? this.selectedDate,
-      isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage,
-    );
-  }
-}
+import 'care_plan_state.dart';
 
 // ViewModel class để xử lý business logic
 class CarePlanViewModel extends StateNotifier<CarePlanState> {

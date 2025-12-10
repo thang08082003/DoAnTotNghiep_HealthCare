@@ -120,8 +120,9 @@ class PHQ9ChartWidget extends StatelessWidget {
             reservedSize: timeRange == TimeRange.week ? 45 : 30,
             interval: _getXAxisInterval(),
             getTitlesWidget: (value, meta) {
-              if (value.toInt() >= dataToDisplay.length)
+              if (value.toInt() >= dataToDisplay.length) {
                 return const SizedBox();
+              }
               final assessment = dataToDisplay[value.toInt()];
               return Padding(
                 padding: const EdgeInsets.only(top: 8),

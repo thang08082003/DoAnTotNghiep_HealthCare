@@ -105,9 +105,7 @@ class _VideoCallIncomingScreenState extends State<VideoCallIncomingScreen> {
     );
 
     // When returning from VideoCallScreen, close this screen too
-    print('DEBUG _accept: Returned from VideoCallScreen, mounted=$mounted');
     if (mounted) {
-      print('DEBUG _accept: Popping VideoCallIncomingScreen');
       Navigator.of(context).pop();
     }
   }

@@ -127,7 +127,7 @@ class NotificationService {
       'userId': userId,
       'senderId': userId, // System notification, sender is user themselves
       'type': NotificationType.reminder.value,
-      'title': '💊 Nhắc uống thuốc',
+      'title': 'Nhắc uống thuốc',
       'body': 'Đã đến giờ uống $medicationName',
       'notificationKey': notificationKey, // Store at top level for indexing
       'data': {
@@ -154,40 +154,12 @@ class NotificationService {
       'userId': userId,
       'senderId': userId, // System notification
       'type': NotificationType.reminder.value,
-      'title': '🎯 Nhắc mục tiêu',
+      'title': 'Nhắc mục tiêu',
       'body': 'Đã đến giờ thực hiện mục tiêu: $goalTitle',
       'notificationKey': notificationKey, // Store at top level for indexing
       'data': {
         'reminderType': 'goal',
         'goalTitle': goalTitle,
-        'description': description,
-        'scheduledTime': scheduledTime.toIso8601String(),
-      },
-      'isRead': false,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  /// Create task reminder notification
-  static Future<void> createTaskReminder({
-    required String userId,
-    required String taskTitle,
-    required String taskType,
-    required DateTime scheduledTime,
-    String? description,
-    String? notificationKey,
-  }) async {
-    await _firestore.collection(_collection).add({
-      'userId': userId,
-      'senderId': userId, // System notification
-      'type': NotificationType.reminder.value,
-      'title': '📋 Nhắc việc cần làm',
-      'body': '$taskType: $taskTitle',
-      'notificationKey': notificationKey, // Store at top level for indexing
-      'data': {
-        'reminderType': 'task',
-        'taskTitle': taskTitle,
-        'taskType': taskType,
         'description': description,
         'scheduledTime': scheduledTime.toIso8601String(),
       },

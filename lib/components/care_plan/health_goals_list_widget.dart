@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/care_plan_model.dart';
 import '../../viewmodels/care_plan/care_plan_viewmodel.dart';
+import '../dialog/custom_dialog.dart';
 import 'health_goal_item_widget.dart';
 
 // Widget hiển thị danh sách mục tiêu
@@ -104,50 +105,37 @@ class HealthGoalsListWidget extends ConsumerWidget {
     }
   }
 
-  void _showDeleteConfirmation(
+  Future<void> _showDeleteConfirmation(
     BuildContext context,
     WidgetRef ref,
     String userId,
     String goalId,
-  ) {
-    showDialog(
+  ) async {
+    final confirmed = await CustomDialog.showConfirmation(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Xác nhận xóa'),
-        content: const Text('Bạn có chắc muốn xóa mục tiêu này?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Hủy'),
-          ),
-          TextButton(
-            onPressed: () async {
-              try {
-                await ref
-                    .read(carePlanViewModelProvider(userId).notifier)
-                    .deleteHealthGoal(goalId);
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Đã xóa mục tiêu')),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Lỗi: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text('Xóa', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+      title: 'Xác nhận xóa',
+      message: 'Bạn có chắc muốn xóa mục tiêu này?',
+      confirmText: 'Xóa',
+      cancelText: 'Hủy',
     );
+
+    if (confirmed == true && context.mounted) {
+      try {
+        await ref
+            .read(carePlanViewModelProvider(userId).notifier)
+            .deleteHealthGoal(goalId);
+        if (context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Đã xóa mục tiêu')));
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
   }
 }

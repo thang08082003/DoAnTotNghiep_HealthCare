@@ -6,12 +6,7 @@ class LoadingWidget extends StatelessWidget {
   final Color? color;
   final double size;
 
-  const LoadingWidget({
-    super.key,
-    this.message,
-    this.color,
-    this.size = 24,
-  });
+  const LoadingWidget({super.key, this.message, this.color, this.size = 24});
 
   @override
   Widget build(BuildContext context) {
@@ -30,10 +25,7 @@ class LoadingWidget extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             message!,
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
             textAlign: TextAlign.center,
           ),
         ],
@@ -82,11 +74,7 @@ class ButtonLoading extends StatelessWidget {
   final Color? color;
   final double size;
 
-  const ButtonLoading({
-    super.key,
-    this.color,
-    this.size = 20,
-  });
+  const ButtonLoading({super.key, this.color, this.size = 20});
 
   @override
   Widget build(BuildContext context) {
@@ -105,11 +93,7 @@ class ListLoading extends StatelessWidget {
   final String? message;
   final Color? color;
 
-  const ListLoading({
-    super.key,
-    this.message,
-    this.color,
-  });
+  const ListLoading({super.key, this.message, this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -129,10 +113,7 @@ class ListLoading extends StatelessWidget {
 class RefreshLoading extends StatelessWidget {
   final String? message;
 
-  const RefreshLoading({
-    super.key,
-    this.message,
-  });
+  const RefreshLoading({super.key, this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -144,17 +125,12 @@ class RefreshLoading extends StatelessWidget {
           const SizedBox(
             width: 16,
             height: 16,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-            ),
+            child: CircularProgressIndicator(strokeWidth: 2),
           ),
           const SizedBox(width: 12),
           Text(
             message ?? 'Đang làm mới...',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
           ),
         ],
       ),

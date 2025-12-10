@@ -46,10 +46,6 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
   @override
   void initState() {
     super.initState();
-    // Debug log
-    print(
-      'DoctorDetailScreen: infoOnly = ${widget.infoOnly}, doctorId = ${widget.doctorId}',
-    );
     _tabController = TabController(
       length: widget.infoOnly ? 1 : 2, // Only 1 tab if infoOnly
       vsync: this,
@@ -89,9 +85,6 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
     final tabsList = widget.infoOnly
         ? const [Tab(text: 'Thông tin bác sĩ')]
         : const [Tab(text: 'Thông tin bác sĩ'), Tab(text: 'Tin nhắn')];
-    print(
-      'DoctorDetailScreen.build: infoOnly=${widget.infoOnly}, _tabController.length=${_tabController.length}, tabsList.length=${tabsList.length}',
-    );
     return Scaffold(
       appBar: AppBar(
         title: (_tabController.index == 1 && _user != null && !widget.infoOnly)

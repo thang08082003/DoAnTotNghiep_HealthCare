@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../data/models/care_plan_model.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../data/services/goal_reminder_service.dart';
+import '../dialog/custom_dialog.dart';
 
 // Widget hiển thị một mục tiêu
 class HealthGoalItemWidget extends ConsumerWidget {
@@ -34,23 +35,12 @@ class HealthGoalItemWidget extends ConsumerWidget {
         child: const Icon(Icons.delete, color: Colors.white, size: 32),
       ),
       confirmDismiss: (direction) async {
-        return await showDialog(
+        return await CustomDialog.showConfirmation(
           context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Xác nhận xóa'),
-            content: Text('Bạn có chắc muốn xóa mục tiêu "${goal.title}"?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Hủy'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                child: const Text('Xóa'),
-              ),
-            ],
-          ),
+          title: 'Xác nhận xóa',
+          message: 'Bạn có chắc muốn xóa mục tiêu "${goal.title}"?',
+          confirmText: 'Xóa',
+          cancelText: 'Hủy',
         );
       },
       onDismissed: (direction) => onDelete(),
@@ -308,7 +298,6 @@ class HealthGoalItemWidget extends ConsumerWidget {
                         await reminderService.setGoalReminderTime(
                           goalId: goal.id,
                           reminderTime: reminderTime,
-                          goalTitle: goal.title,
                         );
 
                         if (context.mounted) {

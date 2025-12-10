@@ -7,6 +7,7 @@ import 'package:healthcare/screens/home/home_page.dart';
 import 'package:healthcare/data/models/user_model.dart';
 import '../../components/buttons/index.dart';
 import '../../viewmodels/auth/auth_view_model.dart';
+import '../../viewmodels/auth/auth_state.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../data/models/care_plan_model.dart';
 import '../../data/services/care_plan_service.dart';
+import '../dialog/custom_dialog.dart';
 
 /// Component hiển thị danh sách tasks của một goal
 class TaskListWidget extends ConsumerWidget {
@@ -14,21 +15,9 @@ class TaskListWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final carePlanService = ref.watch(carePlanServiceProvider);
 
-    print('📋 TaskListWidget build cho goal: ${goal.title} (${goal.id})');
-
     return StreamBuilder<List<GoalTask>>(
       stream: carePlanService.getGoalTasks(goal.id),
       builder: (context, snapshot) {
-        print('🔄 StreamBuilder state: ${snapshot.connectionState}');
-        print('   hasData: ${snapshot.hasData}');
-        print('   hasError: ${snapshot.hasError}');
-        if (snapshot.hasData) {
-          print('   tasks count: ${snapshot.data!.length}');
-        }
-        if (snapshot.hasError) {
-          print('   error: ${snapshot.error}');
-        }
-
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -110,23 +99,12 @@ class _TaskCard extends ConsumerWidget {
         child: const Icon(Icons.delete, color: Colors.white, size: 32),
       ),
       confirmDismiss: (direction) async {
-        return await showDialog<bool>(
+        return await CustomDialog.showConfirmation(
           context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Xác nhận xóa'),
-            content: Text('Bạn có chắc muốn xóa "${task.title}"?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Hủy'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                child: const Text('Xóa'),
-              ),
-            ],
-          ),
+          title: 'Xác nhận xóa',
+          message: 'Bạn có chắc muốn xóa "${task.title}"?',
+          confirmText: 'Xóa',
+          cancelText: 'Hủy',
         );
       },
       onDismissed: (direction) async {

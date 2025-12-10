@@ -8,6 +8,7 @@ import '../../providers/user_provider.dart';
 import '../../viewmodels/depression_risk/depression_risk_state.dart';
 import '../../viewmodels/depression_risk/depression_risk_viewmodel.dart';
 import '../../components/chart/phq9_chart_widget.dart';
+import '../../components/dialog/custom_dialog.dart';
 import 'phq9_assessment_dialog.dart';
 
 /// Màn hình đánh giá nguy cơ trầm cảm - View layer (MVVM)
@@ -353,25 +354,13 @@ class DepressionRiskScreen extends ConsumerWidget {
     DepressionRisk assessment,
     DepressionRiskViewModel viewModel,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await CustomDialog.showConfirmation(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Xác nhận xóa'),
-        content: Text(
+      title: 'Xác nhận xóa',
+      message:
           'Bạn có chắc muốn xóa đánh giá ngày ${DateFormat('dd/MM/yyyy HH:mm').format(assessment.createdAt)}?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Hủy'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Xóa'),
-          ),
-        ],
-      ),
+      confirmText: 'Xóa',
+      cancelText: 'Hủy',
     );
 
     if (confirmed == true && context.mounted) {

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../buttons/primary_button.dart';
 import '../../data/models/doctor_model.dart';
 import '../../data/resources/gene/app_colors.dart';
+import '../../data/resources/gene/app_text_styles.dart';
+import '../../data/resources/gene/app_dimensions.dart';
 import '../reviews/inline_user_avatar.dart';
 
 class DoctorCard extends StatelessWidget {
@@ -31,13 +33,13 @@ class DoctorCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 2,
+      margin: AppDimensions.marginCard,
+      elevation: AppDimensions.elevationMedium,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppDimensions.borderRadiusSmall,
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding: AppDimensions.paddingAll,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -50,38 +52,25 @@ class DoctorCard extends StatelessWidget {
                     displayName: doctor.name,
                     radius: 30,
                   ),
-                  SizedBox(width: 16),
+                  const SizedBox(width: AppDimensions.spacingMedium),
 
                   // Doctor Info
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          doctor.name,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        SizedBox(height: 4),
+                        Text(doctor.name, style: AppTextStyles.heading3),
+                        const SizedBox(height: AppDimensions.spacingXSmall),
                         Text(
                           doctor.specialty.vietnameseName,
-                          style: TextStyle(
-                            fontSize: 14,
+                          style: AppTextStyles.body2Bold.copyWith(
                             color: AppColors.primaryColor,
-                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                        SizedBox(height: 2),
-                        SizedBox(height: 2),
+                        const SizedBox(height: AppDimensions.spacingXSmall),
                         Text(
                           'Kinh nghiệm: ${doctor.yearsExperience != null ? '${doctor.yearsExperience} năm' : 'Chưa cập nhật'}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                          ),
+                          style: AppTextStyles.labelSecondary,
                         ),
                       ],
                     ),
@@ -90,19 +79,19 @@ class DoctorCard extends StatelessWidget {
               ),
 
               if (primaryActionText != null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: AppDimensions.spacingMedium),
                 PrimaryButton(
                   text: primaryActionText!,
                   onPressed: primaryActionDisabled ? null : onPrimaryAction,
-                  height: 40,
+                  height: AppDimensions.buttonHeightSmall,
                   fontSize: 14,
                 ),
               ] else if (showBookButton) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: AppDimensions.spacingMedium),
                 PrimaryButton(
                   text: 'Đặt lịch khám',
                   onPressed: onBookAppointment,
-                  height: 40,
+                  height: AppDimensions.buttonHeightSmall,
                   fontSize: 14,
                 ),
               ],
@@ -124,8 +113,11 @@ class DoctorCompactCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      elevation: 1,
+      margin: const EdgeInsets.symmetric(
+        horizontal: AppDimensions.paddingValue,
+        vertical: AppDimensions.spacingXSmall,
+      ),
+      elevation: AppDimensions.elevationLow,
       child: ListTile(
         leading: InlineUserAvatar(
           userId: doctor.uid,
@@ -133,26 +125,22 @@ class DoctorCompactCard extends StatelessWidget {
           displayName: doctor.name,
           radius: 20,
         ),
-        title: Text(
-          doctor.name,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
+        title: Text(doctor.name, style: AppTextStyles.body1Bold),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               doctor.specialty.vietnameseName,
-              style: TextStyle(color: AppColors.primaryColor, fontSize: 13),
+              style: AppTextStyles.labelSecondary.copyWith(
+                color: AppColors.primaryColor,
+              ),
             ),
-            Text(
-              doctor.email,
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-            ),
+            Text(doctor.email, style: AppTextStyles.caption),
           ],
         ),
-        trailing: Icon(
+        trailing: const Icon(
           Icons.arrow_forward_ios,
-          size: 16,
+          size: AppDimensions.iconSmall,
           color: AppColors.textSecondary,
         ),
         onTap: onTap,

@@ -37,11 +37,8 @@ class ScheduledNotificationService {
 
       // Check goal reminders
       await _checkGoalReminders(userId, now);
-
-      // Check task reminders
-      await _checkTaskReminders(userId, now);
     } catch (e) {
-      print('❌ Lỗi check scheduled notifications: $e');
+      // Silently catch errors
     }
   }
 
@@ -101,10 +98,6 @@ class ScheduledNotificationService {
                     instructions: instructions,
                     notificationKey: notificationKey,
                   );
-
-                  print(
-                    '✅ Đã tạo notification cho: $medicationName lúc ${hour}:${minute.toString().padLeft(2, '0')}',
-                  );
                 }
               }
             }
@@ -112,7 +105,7 @@ class ScheduledNotificationService {
         }
       }
     } catch (e) {
-      print('❌ Lỗi check medication reminders: $e');
+      // Silently catch medication reminder errors
     }
   }
 
@@ -167,88 +160,12 @@ class ScheduledNotificationService {
                 description: description,
                 notificationKey: notificationKey,
               );
-
-              print(
-                '✅ Goal reminder: $goalTitle lúc ${reminderDate.hour}:${reminderDate.minute.toString().padLeft(2, '0')}',
-              );
             }
           }
         }
       }
     } catch (e) {
-      print('❌ Lỗi check goal reminders: $e');
-    }
-  }
-
-  /// Check task reminders
-  Future<void> _checkTaskReminders(String userId, DateTime now) async {
-    try {
-      final startOfDay = DateTime(now.year, now.month, now.day);
-      final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
-
-      // Get tasks for today with notifications enabled
-      final tasksSnapshot = await _firestore
-          .collection('care_plan_tasks')
-          .where('userId', isEqualTo: userId)
-          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
-          .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
-          .where('notificationEnabled', isEqualTo: true)
-          .get();
-
-      for (final doc in tasksSnapshot.docs) {
-        final data = doc.data();
-        final taskTitle = data['title'] as String? ?? 'Nhiệm vụ';
-        final taskType = data['type'] as String? ?? 'Task';
-        final scheduledTime = data['time'] != null
-            ? (data['time'] as Timestamp).toDate()
-            : null;
-
-        if (scheduledTime != null) {
-          final taskDateTime = DateTime(
-            now.year,
-            now.month,
-            now.day,
-            scheduledTime.hour,
-            scheduledTime.minute,
-          );
-
-          // Check if this time has just passed (within last minute)
-          final diff = now.difference(taskDateTime);
-
-          if (diff.inSeconds >= 0 && diff.inSeconds < 60) {
-            // Check if notification already created
-            final notificationKey =
-                '$userId-task-${doc.id}-${taskDateTime.toString().substring(0, 16)}';
-
-            final existingNotif = await _firestore
-                .collection('notifications')
-                .where('userId', isEqualTo: userId)
-                .where('notificationKey', isEqualTo: notificationKey)
-                .limit(1)
-                .get();
-
-            if (existingNotif.docs.isEmpty) {
-              final description = data['description'] as String?;
-
-              // Create notification in Firestore
-              await NotificationService.createTaskReminder(
-                userId: userId,
-                taskTitle: taskTitle,
-                taskType: taskType,
-                scheduledTime: taskDateTime,
-                description: description,
-                notificationKey: notificationKey,
-              );
-
-              print(
-                '✅ Task reminder: $taskTitle lúc ${scheduledTime.hour}:${scheduledTime.minute.toString().padLeft(2, '0')}',
-              );
-            }
-          }
-        }
-      }
-    } catch (e) {
-      print('❌ Lỗi check task reminders: $e');
+      // Silently catch goal reminder errors
     }
   }
 

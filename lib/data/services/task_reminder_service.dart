@@ -58,7 +58,6 @@ class TaskReminderService {
 
       // Nếu thời gian đã qua, không schedule
       if (scheduledTime.isBefore(tz.TZDateTime.now(tz.local))) {
-        print('⏭️ Task time passed, skipping: ${task.title} at $scheduledTime');
         return;
       }
 
@@ -98,10 +97,8 @@ class TaskReminderService {
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
       );
-
-      print('✅ Đã lên lịch nhắc task: ${task.title} vào $scheduledTime');
     } catch (e) {
-      print('❌ Lỗi lên lịch nhắc task: $e');
+      // Silently catch scheduling errors
     }
   }
 
@@ -112,9 +109,8 @@ class TaskReminderService {
         final notificationId = _notificationId('${taskId}_$i');
         await _notifications.cancel(notificationId);
       }
-      print('✅ Đã hủy nhắc task: $taskId');
     } catch (e) {
-      print('❌ Lỗi hủy nhắc task: $e');
+      // Silently catch cancel errors
     }
   }
 

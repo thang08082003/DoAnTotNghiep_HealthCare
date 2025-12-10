@@ -6,6 +6,7 @@ import '../../data/services/medication_service.dart';
 import '../../data/services/medication_reminder_service.dart';
 import '../../providers/user_provider.dart';
 import '../../viewmodels/medication/medication_viewmodel.dart';
+import '../../components/dialog/custom_dialog.dart';
 import 'medication_reminder_dialog.dart';
 
 /// Trang quản lý thuốc - View layer (MVVM)
@@ -164,23 +165,12 @@ class _MedicationCard extends ConsumerWidget {
         child: const Icon(Icons.delete, color: Colors.white, size: 32),
       ),
       confirmDismiss: (direction) async {
-        return await showDialog<bool>(
+        return await CustomDialog.showConfirmation(
           context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Xác nhận xóa'),
-            content: Text('Bạn có chắc muốn xóa thuốc "${medication.name}"?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Hủy'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                child: const Text('Xóa'),
-              ),
-            ],
-          ),
+          title: 'Xác nhận xóa',
+          message: 'Bạn có chắc muốn xóa thuốc "${medication.name}"?',
+          confirmText: 'Xóa',
+          cancelText: 'Hủy',
         );
       },
       onDismissed: (direction) async {

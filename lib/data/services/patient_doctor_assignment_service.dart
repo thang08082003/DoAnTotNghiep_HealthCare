@@ -16,7 +16,7 @@ class PatientDoctorAssignmentService {
     try {
       // Lấy danh sách bác sĩ có chuyên khoa tương ứng
       final doctors = await _userService.getUsersByRole(UserRole.doctor);
-      
+
       // Lọc bác sĩ theo specialty
       final doctorModels = <DoctorModel>[];
       for (final user in doctors) {
@@ -33,7 +33,7 @@ class PatientDoctorAssignmentService {
 
       // Chọn bác sĩ có ít bệnh nhân nhất, hoặc random nếu bằng nhau
       final doctorWithPatientCounts = <Map<String, dynamic>>[];
-      
+
       for (final doctor in doctorModels) {
         final patientCount = await _getPatientCountForDoctor(doctor.uid);
         doctorWithPatientCounts.add({
@@ -43,19 +43,21 @@ class PatientDoctorAssignmentService {
       }
 
       // Sắp xếp theo số lượng bệnh nhân tăng dần
-      doctorWithPatientCounts.sort((a, b) => 
-        (a['patientCount'] as int).compareTo(b['patientCount'] as int));
+      doctorWithPatientCounts.sort(
+        (a, b) =>
+            (a['patientCount'] as int).compareTo(b['patientCount'] as int),
+      );
 
       // Lấy những bác sĩ có ít bệnh nhân nhất
-      final minPatientCount = doctorWithPatientCounts.first['patientCount'] as int;
+      final minPatientCount =
+          doctorWithPatientCounts.first['patientCount'] as int;
       final availableDoctors = doctorWithPatientCounts
           .where((d) => d['patientCount'] == minPatientCount)
           .toList();
 
       // Chọn random một bác sĩ từ danh sách có ít bệnh nhân nhất
-      final selectedDoctor = availableDoctors[
-        _random.nextInt(availableDoctors.length)
-      ];
+      final selectedDoctor =
+          availableDoctors[_random.nextInt(availableDoctors.length)];
       final selectedDoctorId = selectedDoctor['doctorId'] as String;
 
       // Cập nhật assignedDoctorId cho bệnh nhân
@@ -69,7 +71,6 @@ class PatientDoctorAssignmentService {
 
       // Log: Đã gán bác sĩ cho bệnh nhân
       return selectedDoctorId;
-      
     } catch (e) {
       // Log: Lỗi khi gán bác sĩ
       return null;
@@ -110,7 +111,9 @@ class PatientDoctorAssignmentService {
         return null;
       }
 
-      final doctorUser = await _userService.getUserById(patient!.assignedDoctorId!);
+      final doctorUser = await _userService.getUserById(
+        patient!.assignedDoctorId!,
+      );
       if (doctorUser == null || !doctorUser.isDoctor) {
         return null;
       }
@@ -127,9 +130,7 @@ class PatientDoctorAssignmentService {
     try {
       final patient = await _userService.getUserById(patientId);
       if (patient != null) {
-        final updatedPatient = patient.copyWith(
-          assignedDoctorId: null,
-        );
+        final updatedPatient = patient.copyWith(assignedDoctorId: null);
         await _userService.updateUser(updatedPatient);
         return true;
       }

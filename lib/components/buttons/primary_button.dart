@@ -44,7 +44,9 @@ class PrimaryButton extends StatelessWidget {
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: effectiveBackgroundColor,
-          disabledBackgroundColor: effectiveBackgroundColor.withValues(alpha: 0.6),
+          disabledBackgroundColor: effectiveBackgroundColor.withValues(
+            alpha: 0.6,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(borderRadius),
           ),
@@ -60,22 +62,12 @@ class PrimaryButton extends StatelessWidget {
                 ),
               )
             : icon != null
-                ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      icon!,
-                      const SizedBox(width: 8),
-                      Text(
-                        text,
-                        style: TextStyle(
-                          fontSize: fontSize,
-                          fontWeight: fontWeight,
-                          color: effectiveTextColor,
-                        ),
-                      ),
-                    ],
-                  )
-                : Text(
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  icon!,
+                  const SizedBox(width: 8),
+                  Text(
                     text,
                     style: TextStyle(
                       fontSize: fontSize,
@@ -83,6 +75,16 @@ class PrimaryButton extends StatelessWidget {
                       color: effectiveTextColor,
                     ),
                   ),
+                ],
+              )
+            : Text(
+                text,
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: fontWeight,
+                  color: effectiveTextColor,
+                ),
+              ),
       ),
     );
   }
@@ -145,22 +147,12 @@ class SecondaryButton extends StatelessWidget {
                 ),
               )
             : icon != null
-                ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      icon!,
-                      const SizedBox(width: 8),
-                      Text(
-                        text,
-                        style: TextStyle(
-                          fontSize: fontSize,
-                          fontWeight: fontWeight,
-                          color: effectiveTextColor,
-                        ),
-                      ),
-                    ],
-                  )
-                : Text(
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  icon!,
+                  const SizedBox(width: 8),
+                  Text(
                     text,
                     style: TextStyle(
                       fontSize: fontSize,
@@ -168,6 +160,16 @@ class SecondaryButton extends StatelessWidget {
                       color: effectiveTextColor,
                     ),
                   ),
+                ],
+              )
+            : Text(
+                text,
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: fontWeight,
+                  color: effectiveTextColor,
+                ),
+              ),
       ),
     );
   }

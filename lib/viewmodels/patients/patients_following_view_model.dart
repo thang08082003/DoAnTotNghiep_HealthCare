@@ -4,32 +4,7 @@ import '../../data/models/user_model.dart';
 import '../../data/repositories/follow_request_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../providers/user_provider.dart';
-
-class PatientsFollowingState {
-  final bool loading;
-  final String? error;
-  final List<UserModel> patients;
-  const PatientsFollowingState({
-    required this.loading,
-    required this.error,
-    required this.patients,
-  });
-  const PatientsFollowingState.initial()
-    : loading = false,
-      error = null,
-      patients = const [];
-  PatientsFollowingState copyWith({
-    bool? loading,
-    String? error,
-    List<UserModel>? patients,
-  }) {
-    return PatientsFollowingState(
-      loading: loading ?? this.loading,
-      error: error,
-      patients: patients ?? this.patients,
-    );
-  }
-}
+import 'patients_following_state.dart';
 
 class PatientsFollowingViewModel extends StateNotifier<PatientsFollowingState> {
   final FollowRequestRepository _followRepo;

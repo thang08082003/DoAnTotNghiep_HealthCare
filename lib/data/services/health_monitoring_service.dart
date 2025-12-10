@@ -138,9 +138,6 @@ class HealthMonitoringService {
 
       // Check if we have enough data (at least HR and SpO2)
       if (heartRate == null || spo2 == null) {
-        print(
-          '[HealthMonitoring] Insufficient data: HR=$heartRate, SpO2=$spo2, Sleep=$sleepDuration',
-        );
         return null;
       }
 
@@ -148,7 +145,6 @@ class HealthMonitoringService {
       // AI model should handle missing features appropriately
       final hasSleepData = sleepDuration > 0;
       if (!hasSleepData) {
-        print('[HealthMonitoring] No sleep data - will show info only');
         // Keep sleepDuration = 0 to indicate no data
         // Keep other sleep metrics at 0.0 (default from initialization)
       }
@@ -168,7 +164,6 @@ class HealthMonitoringService {
 
       return metrics;
     } catch (e) {
-      print('[HealthMonitoring] Error collecting metrics: $e');
       return null;
     }
   }
@@ -177,9 +172,6 @@ class HealthMonitoringService {
   Future<HealthPrediction> runPrediction(HealthMetricsInput input) async {
     // TODO: Replace with actual TensorFlow Lite model inference
     // For now, use rule-based logic as placeholder
-
-    final inputList = input.toModelInput();
-    print('[HealthMonitoring] Model input: $inputList');
 
     // Placeholder logic
     double dangerScore = 0.0;
@@ -210,10 +202,6 @@ class HealthMonitoringService {
       if (input.sleepEfficiency < 70) {
         warningScore += 0.2;
       }
-    } else {
-      print(
-        '[HealthMonitoring] Sleep data not available, skipping sleep analysis',
-      );
     }
 
     // Normalize scores
@@ -235,24 +223,15 @@ class HealthMonitoringService {
       probabilityDanger: dangerScore,
     );
 
-    print(
-      '[HealthMonitoring] Prediction: Normal=${(normalScore * 100).toStringAsFixed(1)}%, '
-      'Warning=${(warningScore * 100).toStringAsFixed(1)}%, '
-      'Danger=${(dangerScore * 100).toStringAsFixed(1)}%',
-    );
-
     return prediction;
   }
 
   /// Process monitoring for a user
   Future<Map<String, dynamic>> monitorUser(String userId) async {
     try {
-      print('[HealthMonitoring] Starting monitoring for user: $userId');
-
       // Collect metrics
       final metrics = await collectHealthMetrics(userId);
       if (metrics == null || !metrics.hasValidData) {
-        print('[HealthMonitoring] No valid metrics collected');
         return {'hasSleepData': false};
       }
 
@@ -263,7 +242,6 @@ class HealthMonitoringService {
 
       if (!hasSleepData) {
         // Create info-only alert without prediction
-        print('[HealthMonitoring] Creating info alert (no sleep data)');
         alert = HealthAlert(
           id: '',
           userId: userId,
@@ -278,9 +256,6 @@ class HealthMonitoringService {
       } else {
         // Run prediction with full data
         final prediction = await runPrediction(metrics);
-        print(
-          '[HealthMonitoring] Creating alert for level: ${prediction.alertLevel.name}',
-        );
 
         alert = HealthAlert(
           id: '',
@@ -297,7 +272,6 @@ class HealthMonitoringService {
 
       // Save to Firestore
       final alertId = await _alertRepository.saveAlert(alert);
-      print('[HealthMonitoring] Alert created: $alertId');
 
       // Send notification to patient (for all levels)
       await _sendPatientNotification(alert);
@@ -311,7 +285,6 @@ class HealthMonitoringService {
 
       return {'hasSleepData': hasSleepData};
     } catch (e) {
-      print('[HealthMonitoring] Error monitoring user: $e');
       rethrow;
     }
   }
@@ -396,8 +369,6 @@ class HealthMonitoringService {
       details,
       payload: 'health_alert:${alert.id}',
     );
-
-    print('[HealthMonitoring] Patient notification sent');
   }
 
   Future<void> _notifyDoctor(String patientId, HealthAlert alert) async {
@@ -409,7 +380,6 @@ class HealthMonitoringService {
           .get();
 
       if (assignmentsSnapshot.docs.isEmpty) {
-        print('[HealthMonitoring] No doctors assigned to patient');
         return;
       }
 
@@ -445,9 +415,8 @@ class HealthMonitoringService {
       }
 
       await batch.commit();
-      print('[HealthMonitoring] Doctor notifications created');
     } catch (e) {
-      print('[HealthMonitoring] Error notifying doctors: $e');
+      // Silently catch notification errors
     }
   }
 }

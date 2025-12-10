@@ -5,6 +5,7 @@ import 'package:healthcare/data/resources/gene/app_colors.dart';
 import 'package:healthcare/router/app_router.dart';
 import '../../components/buttons/index.dart';
 import '../../viewmodels/auth/auth_view_model.dart';
+import '../../viewmodels/auth/auth_state.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});

@@ -73,10 +73,7 @@ class UIHelper {
     required BuildContext context,
     String? message,
   }) {
-    return CustomDialog.showLoading(
-      context: context,
-      message: message,
-    );
+    return CustomDialog.showLoading(context: context, message: message);
   }
 
   /// Hide loading dialog
@@ -97,9 +94,7 @@ class UIHelper {
         backgroundColor: isError ? Colors.red : Colors.green,
         duration: duration ?? const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }

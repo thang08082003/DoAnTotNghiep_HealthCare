@@ -74,12 +74,8 @@ class ChatService {
           if (roles.patientId != null) 'patientId': roles.patientId,
         },
       );
-    } catch (e, st) {
-      // Log notification failure to help diagnose missing notifications
-      // ignore: avoid_print
-      print('ChatService.sendMessage notification error: $e');
-      // ignore: avoid_print
-      print(st);
+    } catch (e) {
+      // Silently catch notification errors - message still sent successfully
     }
   }
 
@@ -134,11 +130,8 @@ class ChatService {
           if (roles.patientId != null) 'patientId': roles.patientId,
         },
       );
-    } catch (e, st) {
-      // ignore: avoid_print
-      print('ChatService.sendImageMessage notification error: $e');
-      // ignore: avoid_print
-      print(st);
+    } catch (e) {
+      // Silently catch notification errors - image still sent successfully
     }
   }
 
@@ -200,11 +193,8 @@ class ChatService {
           if (roles.patientId != null) 'patientId': roles.patientId,
         },
       );
-    } catch (e, st) {
-      // ignore: avoid_print
-      print('ChatService.sendFileMessage notification error: $e');
-      // ignore: avoid_print
-      print(st);
+    } catch (e) {
+      // Silently catch notification errors - file still sent successfully
     }
   }
 
@@ -258,11 +248,8 @@ class ChatService {
           if (roles.patientId != null) 'patientId': roles.patientId,
         },
       );
-    } catch (e, st) {
-      // ignore: avoid_print
-      print('ChatService.sendVideoMessage notification error: $e');
-      // ignore: avoid_print
-      print(st);
+    } catch (e) {
+      // Silently catch notification errors - video still sent successfully
     }
   }
 

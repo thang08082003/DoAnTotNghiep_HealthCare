@@ -3,25 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/avatar_repository.dart';
-
-class AvatarState {
-  final bool uploading;
-  final String? error;
-  final String? lastUrl;
-  const AvatarState({
-    required this.uploading,
-    required this.error,
-    required this.lastUrl,
-  });
-  const AvatarState.initial() : uploading = false, error = null, lastUrl = null;
-  AvatarState copyWith({bool? uploading, String? error, String? lastUrl}) {
-    return AvatarState(
-      uploading: uploading ?? this.uploading,
-      error: error,
-      lastUrl: lastUrl ?? this.lastUrl,
-    );
-  }
-}
+import 'avatar_state.dart';
 
 class AvatarViewModel extends StateNotifier<AvatarState> {
   final AvatarRepository _repo;

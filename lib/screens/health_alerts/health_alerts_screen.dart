@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/health_alert_model.dart';
 import '../../providers/health_monitoring_provider.dart';
 import '../../data/resources/gene/app_colors.dart';
+import '../../components/dialog/custom_dialog.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -366,23 +367,12 @@ class _HealthAlertsScreenState extends ConsumerState<HealthAlertsScreen> {
         ),
       ),
       confirmDismiss: (direction) async {
-        return await showDialog(
+        return await CustomDialog.showConfirmation(
           context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Xác nhận xóa'),
-            content: const Text('Bạn có chắc muốn xóa cảnh báo này?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Hủy'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                style: TextButton.styleFrom(foregroundColor: AppColors.error),
-                child: const Text('Xóa'),
-              ),
-            ],
-          ),
+          title: 'Xác nhận xóa',
+          message: 'Bạn có chắc muốn xóa cảnh báo này?',
+          confirmText: 'Xóa',
+          cancelText: 'Hủy',
         );
       },
       onDismissed: (direction) async {

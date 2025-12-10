@@ -23,27 +23,22 @@ class HealthMonitoringTrigger {
   /// Handle health monitoring check triggered from background
   static Future<void> _handleHealthCheck(String userId) async {
     try {
-      print('[HealthMonitoringTrigger] Check triggered for user: $userId');
-
       // Verify user is still authenticated
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser?.uid != userId) {
-        print('[HealthMonitoringTrigger] User not authenticated, skipping');
         return;
       }
 
       // Check if should run (respects 6-hour interval)
       final shouldRun = await shouldRunAIMonitoring(userId);
       if (!shouldRun) {
-        print('[HealthMonitoringTrigger] Not time yet, skipping');
         return;
       }
 
       // Run monitoring
       await runImmediateHealthCheck(userId);
-      print('[HealthMonitoringTrigger] Check completed successfully');
     } catch (e) {
-      print('[HealthMonitoringTrigger] Error: $e');
+      // Silently catch errors
     }
   }
 
@@ -55,7 +50,7 @@ class HealthMonitoringTrigger {
 
       await _channel.invokeMethod('triggerHealthCheck', {'userId': userId});
     } catch (e) {
-      print('[HealthMonitoringTrigger] Manual trigger failed: $e');
+      // Silently catch errors
     }
   }
 }

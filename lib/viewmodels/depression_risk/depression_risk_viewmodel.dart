@@ -58,10 +58,16 @@ class DepressionRiskViewModel extends StateNotifier<DepressionRiskState> {
         );
       case TimeRange.week:
         final weekAgo = today.subtract(const Duration(days: 7));
-        return DateTimeRange(start: weekAgo, end: today.add(const Duration(days: 1)));
+        return DateTimeRange(
+          start: weekAgo,
+          end: today.add(const Duration(days: 1)),
+        );
       case TimeRange.month:
         final monthAgo = DateTime(now.year, now.month - 1, now.day);
-        return DateTimeRange(start: monthAgo, end: today.add(const Duration(days: 1)));
+        return DateTimeRange(
+          start: monthAgo,
+          end: today.add(const Duration(days: 1)),
+        );
     }
   }
 }
@@ -77,6 +83,6 @@ class DateTimeRange {
 /// Provider cho DepressionRiskViewModel
 final depressionRiskViewModelProvider =
     StateNotifierProvider<DepressionRiskViewModel, DepressionRiskState>((ref) {
-  final service = ref.watch(depressionRiskServiceProvider);
-  return DepressionRiskViewModel(service);
-});
+      final service = ref.watch(depressionRiskServiceProvider);
+      return DepressionRiskViewModel(service);
+    });

@@ -1,29 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:healthcare/data/models/help_guide_model.dart';
 import 'package:healthcare/data/models/user_model.dart';
 import 'package:healthcare/data/repositories/help_repository.dart';
 
-class HelpState {
-  final bool loading;
-  final String? error;
-  final HelpGuide? guide;
-
-  const HelpState({
-    required this.loading,
-    required this.error,
-    required this.guide,
-  });
-
-  const HelpState.initial() : loading = true, error = null, guide = null;
-
-  HelpState copyWith({bool? loading, String? error, HelpGuide? guide}) {
-    return HelpState(
-      loading: loading ?? this.loading,
-      error: error,
-      guide: guide ?? this.guide,
-    );
-  }
-}
+import 'help_state.dart';
 
 class HelpViewModel extends StateNotifier<HelpState> {
   final HelpRepository _repo;

@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../data/models/health_alert_model.dart';
 import '../../data/models/user_model.dart';
-import '../../data/repositories/user_repository.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../providers/health_monitoring_provider.dart';
+import '../../providers/user_provider.dart';
 
 /// Screen showing all health alerts from patients followed by a doctor
 class DoctorPatientAlertsScreen extends ConsumerStatefulWidget {
@@ -20,7 +20,6 @@ class DoctorPatientAlertsScreen extends ConsumerStatefulWidget {
 
 class _DoctorPatientAlertsScreenState
     extends ConsumerState<DoctorPatientAlertsScreen> {
-  final _userRepo = UserRepository();
   final Map<String, UserModel?> _patientCache = {};
 
   @override
@@ -360,11 +359,11 @@ class _DoctorPatientAlertsScreenState
     }
 
     try {
-      final patient = await _userRepo.getUserById(userId);
+      final userRepo = ref.read(userRepositoryProvider);
+      final patient = await userRepo.getUserById(userId);
       _patientCache[userId] = patient;
       return patient;
     } catch (e) {
-      print('[DoctorPatientAlerts] Error loading patient: $e');
       return null;
     }
   }
@@ -512,7 +511,7 @@ class _DoctorPatientAlertsScreenState
                     ],
                   ),
                 );
-              }).toList(),
+              }),
             ],
           ),
         ),

@@ -1,16 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/medication_reminder_model.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/timezone.dart' as tz;
-import '../../providers/health_monitoring_provider.dart';
 
-/// Service quản lý lịch nhắc thuốc
+/// Service quản lý lịch nhắc thuốc (chỉ CRUD Firestore)
+/// Local notifications được quản lý bởi ScheduledNotificationService
 class MedicationReminderService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FlutterLocalNotificationsPlugin _notifications;
-
-  MedicationReminderService(this._notifications);
 
   /// Collection reference
   CollectionReference get _remindersCollection =>
@@ -47,14 +42,8 @@ class MedicationReminderService {
   Future<String> addReminder(MedicationReminder reminder) async {
     try {
       final docRef = await _remindersCollection.add(reminder.toFirestore());
-
-      // Schedule notifications
-      await _scheduleNotifications(reminder.copyWith(id: docRef.id));
-
-      print('✅ Đã thêm lịch nhắc thuốc: ${reminder.medicationName}');
       return docRef.id;
     } catch (e) {
-      print('❌ Lỗi thêm lịch nhắc: $e');
       rethrow;
     }
   }
@@ -65,16 +54,7 @@ class MedicationReminderService {
       await _remindersCollection
           .doc(reminder.id)
           .update(reminder.toFirestore());
-
-      // Cancel old notifications and schedule new ones
-      await _cancelNotifications(reminder);
-      if (reminder.isActive) {
-        await _scheduleNotifications(reminder);
-      }
-
-      print('✅ Đã cập nhật lịch nhắc thuốc: ${reminder.medicationName}');
     } catch (e) {
-      print('❌ Lỗi cập nhật lịch nhắc: $e');
       rethrow;
     }
   }
@@ -83,22 +63,7 @@ class MedicationReminderService {
   Future<void> toggleReminder(String reminderId, bool isActive) async {
     try {
       await _remindersCollection.doc(reminderId).update({'isActive': isActive});
-
-      // Get reminder to manage notifications
-      final doc = await _remindersCollection.doc(reminderId).get();
-      final reminder = MedicationReminder.fromFirestore(doc);
-
-      if (isActive) {
-        await _scheduleNotifications(reminder);
-      } else {
-        await _cancelNotifications(reminder);
-      }
-
-      print(
-        '✅ Đã ${isActive ? "bật" : "tắt"} nhắc nhở: ${reminder.medicationName}',
-      );
     } catch (e) {
-      print('❌ Lỗi toggle nhắc nhở: $e');
       rethrow;
     }
   }
@@ -106,141 +71,10 @@ class MedicationReminderService {
   /// Xóa lịch nhắc
   Future<void> deleteReminder(String reminderId) async {
     try {
-      // Get reminder to cancel notifications
-      final doc = await _remindersCollection.doc(reminderId).get();
-      if (doc.exists) {
-        final reminder = MedicationReminder.fromFirestore(doc);
-        await _cancelNotifications(reminder);
-      }
-
       await _remindersCollection.doc(reminderId).delete();
-      print('✅ Đã xóa lịch nhắc');
     } catch (e) {
-      print('❌ Lỗi xóa lịch nhắc: $e');
       rethrow;
     }
-  }
-
-  /// Lên lịch thông báo cho tất cả các mốc thời gian
-  Future<void> _scheduleNotifications(MedicationReminder reminder) async {
-    for (final time in reminder.reminderTimes) {
-      await _scheduleNotification(reminder, time);
-    }
-  }
-
-  /// Lên lịch một thông báo cụ thể
-  Future<void> _scheduleNotification(
-    MedicationReminder reminder,
-    ReminderTime time,
-  ) async {
-    try {
-      final now = tz.TZDateTime.now(tz.local);
-      var scheduledDate = tz.TZDateTime(
-        tz.local,
-        now.year,
-        now.month,
-        now.day,
-        time.hour,
-        time.minute,
-      );
-
-      print('📅 Thời gian hiện tại: ${now.toString()}');
-      print('⏰ Thời gian đặt lịch: ${scheduledDate.toString()}');
-
-      // If time has passed today, schedule for tomorrow
-      if (scheduledDate.isBefore(now)) {
-        scheduledDate = scheduledDate.add(const Duration(days: 1));
-        print(
-          '⏭️  Đã qua giờ hôm nay, chuyển sang ngày mai: ${scheduledDate.toString()}',
-        );
-      }
-
-      const androidDetails = AndroidNotificationDetails(
-        'medication_reminders',
-        'Nhắc uống thuốc',
-        channelDescription: 'Thông báo nhắc nhở uống thuốc theo lịch',
-        importance: Importance.high,
-        priority: Priority.high,
-        icon: '@mipmap/ic_launcher',
-        enableVibration: true,
-        playSound: true,
-      );
-
-      const iosDetails = DarwinNotificationDetails(
-        presentAlert: true,
-        presentBadge: true,
-        presentSound: true,
-      );
-
-      const details = NotificationDetails(
-        android: androidDetails,
-        iOS: iosDetails,
-      );
-
-      final notificationId = reminder.notificationId(time);
-      print('🔔 Notification ID: $notificationId');
-
-      await _notifications.zonedSchedule(
-        notificationId,
-        '💊 Nhắc uống thuốc',
-        '${reminder.medicationName} - Đã đến giờ uống thuốc',
-        scheduledDate,
-        details,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-        matchDateTimeComponents: DateTimeComponents.time, // Repeat daily
-      );
-
-      print(
-        '✅ Đã lên lịch thông báo: ${reminder.medicationName} lúc ${time.hour}:${time.minute.toString().padLeft(2, '0')}',
-      );
-      print('📍 Sẽ hiển thị vào: ${scheduledDate.toString()}');
-    } catch (e) {
-      print('❌ Lỗi lên lịch thông báo: $e');
-      rethrow;
-    }
-  }
-
-  /// Hủy tất cả thông báo của một reminder
-  Future<void> _cancelNotifications(MedicationReminder reminder) async {
-    for (final time in reminder.reminderTimes) {
-      await _notifications.cancel(reminder.notificationId(time));
-    }
-    print('✅ Đã hủy thông báo: ${reminder.medicationName}');
-  }
-
-  /// Test notification ngay lập tức (for debugging)
-  Future<void> testNotification(String medicationName) async {
-    const androidDetails = AndroidNotificationDetails(
-      'medication_reminders',
-      'Nhắc uống thuốc',
-      channelDescription: 'Thông báo nhắc nhở uống thuốc theo lịch',
-      importance: Importance.high,
-      priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
-      enableVibration: true,
-      playSound: true,
-    );
-
-    const iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-
-    const details = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
-
-    await _notifications.show(
-      DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      '💊 Nhắc uống thuốc (Test)',
-      '$medicationName - Đây là thông báo test',
-      details,
-    );
-    print('✅ Đã gửi thông báo test: $medicationName');
   }
 
   /// Xóa tất cả lịch nhắc của một thuốc
@@ -253,10 +87,8 @@ class MedicationReminderService {
       for (final doc in snapshot.docs) {
         await deleteReminder(doc.id);
       }
-
-      print('✅ Đã xóa tất cả lịch nhắc của thuốc');
     } catch (e) {
-      print('❌ Lỗi xóa lịch nhắc của thuốc: $e');
+      // Silent catch - errors already logged in deleteReminder
     }
   }
 }
@@ -265,6 +97,5 @@ class MedicationReminderService {
 final medicationReminderServiceProvider = Provider<MedicationReminderService>((
   ref,
 ) {
-  final notifications = ref.watch(localNotificationsProvider);
-  return MedicationReminderService(notifications);
+  return MedicationReminderService();
 });

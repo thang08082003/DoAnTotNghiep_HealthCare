@@ -65,7 +65,6 @@ Future<Map<String, dynamic>> runImmediateHealthCheck(String userId) async {
     final result = await service.monitorUser(userId);
     return result;
   } catch (e) {
-    print('[HealthMonitoring] Check failed: $e');
     rethrow;
   } finally {
     container.dispose();
@@ -135,7 +134,6 @@ Future<void> createTestAlert(String userId) async {
 
   try {
     await repository.saveAlert(testAlert);
-    print('[HealthMonitoring] Test alert created successfully');
 
     // Send notification for test alert
     await _sendPatientNotification(
@@ -143,9 +141,8 @@ Future<void> createTestAlert(String userId) async {
       alertLevel: testAlert.level,
       message: testAlert.message ?? 'Đã tạo cảnh báo test',
     );
-    print('[HealthMonitoring] Test notification sent');
   } catch (e) {
-    print('[HealthMonitoring] Failed to create test alert: $e');
+    // Silently catch test alert errors
   }
 }
 
@@ -185,6 +182,6 @@ Future<void> _sendPatientNotification({
       ),
     );
   } catch (e) {
-    print('[HealthMonitoring] Failed to send notification: $e');
+    // Silently catch notification errors
   }
 }

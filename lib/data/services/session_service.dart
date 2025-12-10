@@ -29,19 +29,12 @@ class SessionService {
       final deviceId = await getDeviceId();
       final timestamp = FieldValue.serverTimestamp();
 
-      print(
-        '[SessionService] Creating session for user: $userId, deviceId: $deviceId',
-      );
-
       await _firestore.collection(_collection).doc(userId).set({
         'deviceId': deviceId,
         'lastLoginAt': timestamp,
         'isActive': true,
       });
-
-      print('[SessionService] Session created successfully');
     } catch (e) {
-      print('[SessionService] Failed to create session: $e');
       throw Exception('Failed to create session: $e');
     }
   }
@@ -67,14 +60,10 @@ class SessionService {
   /// Listen to session changes (for detecting login from another device)
   static Stream<bool> watchSessionValidity(String userId) async* {
     final deviceId = await getDeviceId();
-    print(
-      '[SessionService] Start watching session for user: $userId, currentDeviceId: $deviceId',
-    );
 
     await for (final snapshot
         in _firestore.collection(_collection).doc(userId).snapshots()) {
       if (!snapshot.exists) {
-        print('[SessionService] Session document does not exist');
         yield false;
         continue;
       }
@@ -84,9 +73,6 @@ class SessionService {
       final isActive = data?['isActive'] as bool? ?? false;
 
       final isValid = storedDeviceId == deviceId && isActive;
-      print(
-        '[SessionService] Session update - storedDeviceId: $storedDeviceId, currentDeviceId: $deviceId, isActive: $isActive, isValid: $isValid',
-      );
 
       // Session is valid if deviceId matches and is active
       yield isValid;

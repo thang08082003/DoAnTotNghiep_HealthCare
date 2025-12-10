@@ -5,32 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/notification_model.dart';
 import '../../data/repositories/notification_repository.dart';
 import '../../data/repositories/follow_request_repository.dart';
-
-class NotificationsState {
-  final bool loading;
-  final String? error;
-  final List<AppNotification> items;
-  const NotificationsState({
-    required this.loading,
-    required this.error,
-    required this.items,
-  });
-  const NotificationsState.initial()
-    : loading = true,
-      error = null,
-      items = const [];
-  NotificationsState copyWith({
-    bool? loading,
-    String? error,
-    List<AppNotification>? items,
-  }) {
-    return NotificationsState(
-      loading: loading ?? this.loading,
-      error: error,
-      items: items ?? this.items,
-    );
-  }
-}
+import 'notifications_state.dart';
 
 class NotificationsViewModel extends StateNotifier<NotificationsState> {
   final NotificationRepository _repo;

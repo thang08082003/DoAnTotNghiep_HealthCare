@@ -11,7 +11,7 @@ final userRepositoryProvider = Provider<UserRepository>((ref) {
 // Current User Provider
 final currentUserProvider = FutureProvider<UserModel?>((ref) async {
   final authState = ref.watch(authProvider);
-  
+
   if (!authState.isAuthenticated || authState.uid == null) {
     return null;
   }
@@ -73,7 +73,7 @@ class UserNotifier extends StateNotifier<UserState> {
     String? diseaseFocus,
   }) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
-    
+
     try {
       await _userRepository.createUser(
         uid: uid,
@@ -82,83 +82,55 @@ class UserNotifier extends StateNotifier<UserState> {
         role: role,
         diseaseFocus: diseaseFocus,
       );
-      
+
       // Refresh current user
       await loadCurrentUser(uid);
-      
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 
   Future<void> loadCurrentUser(String uid) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
-    
+
     try {
       final user = await _userRepository.getUserById(uid);
-      state = state.copyWith(
-        isLoading: false,
-        currentUser: user,
-      );
+      state = state.copyWith(isLoading: false, currentUser: user);
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 
   Future<void> loadDoctors() async {
     state = state.copyWith(isLoading: true, errorMessage: null);
-    
+
     try {
       final doctors = await _userRepository.getUsersByRole(UserRole.doctor);
-      state = state.copyWith(
-        isLoading: false,
-        doctors: doctors,
-      );
+      state = state.copyWith(isLoading: false, doctors: doctors);
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 
   Future<void> loadPatients() async {
     state = state.copyWith(isLoading: true, errorMessage: null);
-    
+
     try {
       final patients = await _userRepository.getUsersByRole(UserRole.patient);
-      state = state.copyWith(
-        isLoading: false,
-        patients: patients,
-      );
+      state = state.copyWith(isLoading: false, patients: patients);
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 
   Future<void> updateUser(UserModel user) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
-    
+
     try {
       await _userRepository.updateUser(user);
-      state = state.copyWith(
-        isLoading: false,
-        currentUser: user,
-      );
+      state = state.copyWith(isLoading: false, currentUser: user);
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 
