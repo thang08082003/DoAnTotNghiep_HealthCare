@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/health_metrics_providers.dart';
 import '../providers/health_monitoring_provider.dart';
+import '../data/services/scheduled_notification_service.dart';
 import '../screens/login/login_screen.dart';
 import '../screens/register/register_screen.dart';
 import '../screens/forgot_password/forgot_password_screen.dart';
@@ -377,6 +378,11 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
                         ref
                             .read(foregroundServiceViewModelProvider)
                             .ensureTapListener();
+
+                        // Start scheduled notification checker for medication reminders
+                        ref
+                            .read(scheduledNotificationServiceProvider)
+                            .startPeriodicCheck();
                       });
                       return IncomingCallListener(
                         child: HomePage(userRole: user.role),

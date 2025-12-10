@@ -11,6 +11,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'dart:io' show Platform;
 import 'package:healthcare/data/services/android_passive_listener_service.dart';
 import 'package:healthcare/data/services/health_monitoring_trigger.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +20,95 @@ void main() async {
   // Initialize timezone for scheduled notifications
   tz.initializeTimeZones();
   tz.setLocalLocation(tz.getLocation('Asia/Ho_Chi_Minh'));
+
+  // Initialize local notifications
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+
+  final DarwinInitializationSettings initializationSettingsDarwin =
+      DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
+
+  final InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+    iOS: initializationSettingsDarwin,
+  );
+
+  await flutterLocalNotificationsPlugin.initialize(
+    initializationSettings,
+    onDidReceiveNotificationResponse: (NotificationResponse response) async {
+      // Handle notification tap
+      if (response.payload != null) {
+        // You can add custom handler here
+        debugPrint('Notification tapped with payload: ${response.payload}');
+      }
+    },
+  );
+
+  // Create notification channels for Android
+  if (Platform.isAndroid) {
+    // Medication reminders channel
+    const AndroidNotificationChannel medicationChannel =
+        AndroidNotificationChannel(
+          'medication_reminders', // id
+          'Nhắc uống thuốc', // name
+          description: 'Thông báo nhắc nhở uống thuốc theo lịch',
+          importance: Importance.high,
+          playSound: true,
+          enableVibration: true,
+          showBadge: true,
+        );
+
+    // Goal reminders channel
+    const AndroidNotificationChannel goalChannel = AndroidNotificationChannel(
+      'goal_reminders', // id
+      'Nhắc mục tiêu', // name
+      description: 'Thông báo nhắc nhở về mục tiêu sức khỏe',
+      importance: Importance.high,
+      playSound: true,
+      enableVibration: true,
+      showBadge: true,
+    );
+
+    final androidPlugin = flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+
+    await androidPlugin?.createNotificationChannel(medicationChannel);
+    await androidPlugin?.createNotificationChannel(goalChannel);
+  }
+
+  // Request notification permissions for Android 13+
+  if (Platform.isAndroid) {
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.requestNotificationsPermission();
+
+    // Request exact alarm permission for Android 12+ (required for medication reminders)
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.requestExactAlarmsPermission();
+  }
+
+  // Request notification permissions for iOS
+  if (Platform.isIOS) {
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >()
+        ?.requestPermissions(alert: true, badge: true, sound: true);
+  }
 
   // Initialize health monitoring trigger listener
   HealthMonitoringTrigger.initialize();

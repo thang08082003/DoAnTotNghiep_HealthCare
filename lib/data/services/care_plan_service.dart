@@ -111,50 +111,6 @@ class CarePlanService {
     });
   }
 
-  // ===== Goal Checklist Methods =====
-
-  // Get checklist items for a goal
-  Stream<List<GoalChecklistItem>> getGoalChecklistItems(String goalId) {
-    return _firestore
-        .collection('goal_checklist_items')
-        .where('goalId', isEqualTo: goalId)
-        .orderBy('order')
-        .orderBy('createdAt')
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map((doc) => GoalChecklistItem.fromFirestore(doc))
-              .toList(),
-        );
-  }
-
-  // Create checklist item
-  Future<void> createChecklistItem(GoalChecklistItem item) async {
-    await _firestore.collection('goal_checklist_items').add(item.toFirestore());
-  }
-
-  // Toggle checklist item completion
-  Future<void> toggleChecklistItemCompletion(
-    String itemId,
-    bool isCompleted,
-  ) async {
-    await _firestore.collection('goal_checklist_items').doc(itemId).update({
-      'isCompleted': isCompleted,
-    });
-  }
-
-  // Delete checklist item
-  Future<void> deleteChecklistItem(String itemId) async {
-    await _firestore.collection('goal_checklist_items').doc(itemId).delete();
-  }
-
-  // Update checklist item title
-  Future<void> updateChecklistItemTitle(String itemId, String title) async {
-    await _firestore.collection('goal_checklist_items').doc(itemId).update({
-      'title': title,
-    });
-  }
-
   // ===== Goal Task Methods =====
 
   // Get tasks for a goal

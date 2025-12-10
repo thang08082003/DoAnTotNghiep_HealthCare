@@ -53,6 +53,8 @@ class HealthGoal {
   final DateTime? targetDate;
   final bool isCompleted;
   final DateTime createdAt;
+  final DateTime? reminderTime;
+  final bool hasReminder;
 
   HealthGoal({
     required this.id,
@@ -62,6 +64,8 @@ class HealthGoal {
     this.targetDate,
     this.isCompleted = false,
     required this.createdAt,
+    this.reminderTime,
+    this.hasReminder = false,
   });
 
   factory HealthGoal.fromFirestore(DocumentSnapshot doc) {
@@ -76,6 +80,10 @@ class HealthGoal {
           : null,
       isCompleted: data['isCompleted'] ?? false,
       createdAt: (data['createdAt'] as Timestamp).toDate(),
+      reminderTime: data['reminderTime'] != null
+          ? (data['reminderTime'] as Timestamp).toDate()
+          : null,
+      hasReminder: data['hasReminder'] ?? false,
     );
   }
 
@@ -87,47 +95,10 @@ class HealthGoal {
       'targetDate': targetDate != null ? Timestamp.fromDate(targetDate!) : null,
       'isCompleted': isCompleted,
       'createdAt': Timestamp.fromDate(createdAt),
-    };
-  }
-}
-
-// Model cho checklist item
-class GoalChecklistItem {
-  final String id;
-  final String goalId;
-  final String title;
-  final bool isCompleted;
-  final DateTime createdAt;
-  final int order;
-
-  GoalChecklistItem({
-    required this.id,
-    required this.goalId,
-    required this.title,
-    this.isCompleted = false,
-    required this.createdAt,
-    this.order = 0,
-  });
-
-  factory GoalChecklistItem.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return GoalChecklistItem(
-      id: doc.id,
-      goalId: data['goalId'] ?? '',
-      title: data['title'] ?? '',
-      isCompleted: data['isCompleted'] ?? false,
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      order: data['order'] ?? 0,
-    );
-  }
-
-  Map<String, dynamic> toFirestore() {
-    return {
-      'goalId': goalId,
-      'title': title,
-      'isCompleted': isCompleted,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'order': order,
+      'reminderTime': reminderTime != null
+          ? Timestamp.fromDate(reminderTime!)
+          : null,
+      'hasReminder': hasReminder,
     };
   }
 }

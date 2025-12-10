@@ -60,9 +60,15 @@ service cloud.firestore {
     
     // Notifications - users can read/write their own notifications
     match /notifications/{notificationId} {
-      allow read, write: if request.auth != null && 
+      allow read: if request.auth != null && 
         resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null;
+      allow write: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
+      // Allow query with where userId == currentUser
+      allow list: if request.auth != null && 
+        request.query.limit <= 100;
     }
 
     // Follow requests between patients and doctors
@@ -250,18 +256,6 @@ service cloud.firestore {
       // Users can delete their own goals
       allow delete: if request.auth != null && 
         resource.data.userId == request.auth.uid;
-    }
-
-    // Goal checklist items - sub-tasks for health goals
-    match /goal_checklist_items/{itemId} {
-      // Users can read checklist items for their goals
-      allow read: if request.auth != null;
-      // Users can create checklist items
-      allow create: if request.auth != null;
-      // Users can update checklist items
-      allow update: if request.auth != null;
-      // Users can delete checklist items
-      allow delete: if request.auth != null;
     }
 
     // Goal tasks - scheduled tasks for health goals (uống thuốc, đo huyết áp, etc.)

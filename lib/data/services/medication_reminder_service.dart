@@ -144,9 +144,15 @@ class MedicationReminderService {
         time.minute,
       );
 
+      print('📅 Thời gian hiện tại: ${now.toString()}');
+      print('⏰ Thời gian đặt lịch: ${scheduledDate.toString()}');
+
       // If time has passed today, schedule for tomorrow
       if (scheduledDate.isBefore(now)) {
         scheduledDate = scheduledDate.add(const Duration(days: 1));
+        print(
+          '⏭️  Đã qua giờ hôm nay, chuyển sang ngày mai: ${scheduledDate.toString()}',
+        );
       }
 
       const androidDetails = AndroidNotificationDetails(
@@ -171,8 +177,11 @@ class MedicationReminderService {
         iOS: iosDetails,
       );
 
+      final notificationId = reminder.notificationId(time);
+      print('🔔 Notification ID: $notificationId');
+
       await _notifications.zonedSchedule(
-        reminder.notificationId(time),
+        notificationId,
         '💊 Nhắc uống thuốc',
         '${reminder.medicationName} - Đã đến giờ uống thuốc',
         scheduledDate,
@@ -183,9 +192,13 @@ class MedicationReminderService {
         matchDateTimeComponents: DateTimeComponents.time, // Repeat daily
       );
 
-      print('✅ Đã lên lịch thông báo: ${reminder.medicationName} lúc $time');
+      print(
+        '✅ Đã lên lịch thông báo: ${reminder.medicationName} lúc ${time.hour}:${time.minute.toString().padLeft(2, '0')}',
+      );
+      print('📍 Sẽ hiển thị vào: ${scheduledDate.toString()}');
     } catch (e) {
       print('❌ Lỗi lên lịch thông báo: $e');
+      rethrow;
     }
   }
 
@@ -195,6 +208,39 @@ class MedicationReminderService {
       await _notifications.cancel(reminder.notificationId(time));
     }
     print('✅ Đã hủy thông báo: ${reminder.medicationName}');
+  }
+
+  /// Test notification ngay lập tức (for debugging)
+  Future<void> testNotification(String medicationName) async {
+    const androidDetails = AndroidNotificationDetails(
+      'medication_reminders',
+      'Nhắc uống thuốc',
+      channelDescription: 'Thông báo nhắc nhở uống thuốc theo lịch',
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@mipmap/ic_launcher',
+      enableVibration: true,
+      playSound: true,
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    await _notifications.show(
+      DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      '💊 Nhắc uống thuốc (Test)',
+      '$medicationName - Đây là thông báo test',
+      details,
+    );
+    print('✅ Đã gửi thông báo test: $medicationName');
   }
 
   /// Xóa tất cả lịch nhắc của một thuốc

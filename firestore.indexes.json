@@ -9,6 +9,14 @@
       ]
     },
     {
+      "collectionGroup": "notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "notificationKey", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "health_alerts",
       "queryScope": "COLLECTION",
       "fields": [
@@ -23,6 +31,15 @@
         { "fieldPath": "userId", "order": "ASCENDING" },
         { "fieldPath": "date", "order": "ASCENDING" },
         { "fieldPath": "time", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "care_plan_tasks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "notificationEnabled", "order": "ASCENDING" },
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "ASCENDING" }
       ]
     },
     {
@@ -43,12 +60,11 @@
       ]
     },
     {
-      "collectionGroup": "goal_checklist_items",
+      "collectionGroup": "health_goals",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "goalId", "order": "ASCENDING" },
-        { "fieldPath": "order", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "ASCENDING" }
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "hasReminder", "order": "ASCENDING" }
       ]
     },
     {

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../components/care_plan/action_menu_bottom_sheet.dart';
 import '../../components/care_plan/care_plan_calendar_widget.dart';
 import '../../components/care_plan/create_goal_with_dates_bottom_sheet.dart';
-import '../../components/care_plan/create_task_bottom_sheet.dart';
 import '../../components/care_plan/health_goals_list_widget.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
@@ -80,19 +78,12 @@ class CarePlanScreen extends ConsumerWidget {
       floatingActionButton: userAsync.when(
         data: (user) => user != null
             ? FloatingActionButton.extended(
-                onPressed: () => showActionMenuBottomSheet(
+                onPressed: () => showCreateGoalWithDatesBottomSheet(
                   context: context,
-                  onCreateGoal: () => showCreateGoalWithDatesBottomSheet(
-                    context: context,
-                    userId: user.uid,
-                  ),
-                  onCreateTask: () => showCreateTaskBottomSheet(
-                    context: context,
-                    userId: user.uid,
-                  ),
+                  userId: user.uid,
                 ),
                 icon: const Icon(Icons.add),
-                label: const Text('Tạo mới'),
+                label: const Text('Tạo mục tiêu'),
               )
             : null,
         loading: () => null,
