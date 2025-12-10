@@ -227,9 +227,9 @@ Card(
 
 ### Files được tạo mới:
 1. ✅ `lib/data/resources/gene/app_text_styles.dart` (113 dòng)
-2. ✅ `lib/data/resources/gene/app_dimensions.dart` (103 dòng)
+2. ✅ `lib/data/resources/gene/app_dimensions.dart` (106 dòng - updated với buttonRadiusMedium, paddingAllMedium, paddingAllXLarge)
 
-### Files được sửa:
+### Files được sửa (DI Fixes):
 1. ✅ `lib/screens/health_alerts/doctor_patient_alerts_screen.dart`
    - Xóa: 1 direct instantiation
    - Thêm: 1 import, 1 dòng DI
@@ -238,16 +238,41 @@ Card(
    - Convert: StatefulWidget → ConsumerStatefulWidget
    - Xóa: 1 direct instantiation, 1 unused import
    - Thêm: Riverpod DI
-   
+
+### Files được refactor (Priority 1 Components):
 3. ✅ `lib/components/doctor/doctor_card.dart`
    - Refactor: 2 classes (DoctorCard, DoctorCompactCard)
    - Thêm: 2 imports (AppTextStyles, AppDimensions)
    - Giảm: ~30 dòng duplicate code
+   
+4. ✅ `lib/components/patient/patient_card.dart`
+   - Refactor: PatientCard widget
+   - Thay thế: Hardcoded EdgeInsets, BorderRadius, inline TextStyle
+   - Thêm: 2 imports (AppTextStyles, AppDimensions)
+   - Sử dụng: body1Bold, body2Secondary, caption + spacingSmall/Medium, paddingAllSmall, iconSmall
+   
+5. ✅ `lib/components/buttons/primary_button.dart`
+   - Refactor: PrimaryButton + SecondaryButton
+   - Thay thế: height = 50 → buttonHeightMedium, borderRadius = 12 → buttonRadiusMedium
+   - Thêm: 1 import (AppDimensions)
+   
+6. ✅ `lib/components/loading/loading_widget.dart`
+   - Refactor: 5 loading widgets (LoadingWidget, FullScreenLoading, ButtonLoading, ListLoading, RefreshLoading)
+   - Thay thế: Hardcoded spacing (4, 12, 16, 24, 32), padding, borderRadius, text styles
+   - Thêm: 2 imports (AppTextStyles, AppDimensions)
+   - Cải thiện: Consistent spacing, semantic naming
+   
+7. ✅ `lib/components/dialog/custom_dialog.dart`
+   - Refactor: 4 dialog types (showInfo, showError, showSuccess, showConfirmation, showLoading) + CustomBottomSheet
+   - Thay thế: Hardcoded borderRadius (16, 20), padding (16, 24), spacing (12, 16), inline TextStyle
+   - Thêm: 2 imports (AppTextStyles, AppDimensions)
+   - Sử dụng: heading3, body1Secondary + borderRadiusLarge, iconLarge, spacingMedium, paddingAllMedium, buttonHeightSmall
 
 ### Code Quality:
-- ✅ **Flutter analyze:** 0 errors trong các files đã sửa
-- ✅ **Lint warnings:** Giảm từ 5 → 4 issues (fixed 1 direct instantiation warning)
-- ✅ **Code duplication:** Giảm đáng kể trong styling
+- ✅ **Flutter analyze:** 0 errors trong tất cả files đã sửa
+- ✅ **Lint warnings:** Chỉ còn 2 info warnings (không liên quan đến refactoring)
+- ✅ **Code duplication:** Giảm đáng kể trong styling (>100 dòng duplicate code removed)
+- ✅ **Maintainability:** Thay đổi 1 constant → apply cho toàn bộ app
 
 ---
 
@@ -316,19 +341,27 @@ final svc = SomeService();
 
 ## 🎯 ƯU TIÊN REFACTOR TIẾP THEO
 
-### **Priority 1 - High Impact Components** (Week 1)
-1. ✅ `doctor_card.dart` (DONE)
-2. ⏳ `patient_card.dart` - Tương tự doctor_card
-3. ⏳ `primary_button.dart` - Sử dụng AppDimensions cho height
-4. ⏳ `loading_widget.dart` - Standardize spacing
-5. ⏳ `custom_dialog.dart` - Padding & text styles
+### **Priority 1 - High Impact Components** (Week 1) ✅ COMPLETED
+1. ✅ `doctor_card.dart` - Refactored 2 card variants
+2. ✅ `patient_card.dart` - Applied AppTextStyles + AppDimensions
+3. ✅ `primary_button.dart` - Standardized button dimensions
+4. ✅ `loading_widget.dart` - Refactored 5 loading variants
+5. ✅ `custom_dialog.dart` - Refactored 4 dialog types + bottom sheet
 
-### **Priority 2 - Screens** (Week 2)
-6. ⏳ `home_page.dart` - Main entry point
-7. ⏳ `login_screen.dart` - User-facing
-8. ⏳ `register_screen.dart` - User-facing
-9. ⏳ `profile_content.dart` - Frequently used
-10. ⏳ `doctor_detail_screen.dart` - Complex layout
+**Status:** ✅ **ALL PRIORITY 1 COMPONENTS COMPLETED** - 5/5 done
+**Result:** 0 compile errors, 100+ lines of duplicate code eliminated
+
+### **Priority 2 - Screens** (Week 2) ✅ MOSTLY COMPLETED
+6. ✅ `home_page.dart` - Main entry point (2 instances)
+7. ✅ `login_screen.dart` - User-facing authentication (19 instances)
+8. ✅ `register_screen.dart` - User registration form (20 instances)
+9. ✅ `profile_content.dart` - User profile display (30+ instances)
+10. 🟡 `doctor_detail_screen.dart` - Complex layout (imports added, partial refactoring)
+
+**Status:** ✅ **4/5 SCREENS FULLY COMPLETED** + 1 partially started  
+**Result:** ~70+ hardcoded values eliminated, 0 compile errors in completed screens
+
+**Note:** `doctor_detail_screen.dart` is very complex (549 lines). Imports added and critical sections refactored. Full refactoring can be completed in next session.
 
 ### **Priority 3 - Remaining** (Week 3-4)
 11. ⏳ Tất cả các screens còn lại
