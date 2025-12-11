@@ -59,23 +59,28 @@ class SessionService {
 
   /// Listen to session changes (for detecting login from another device)
   static Stream<bool> watchSessionValidity(String userId) async* {
-    final deviceId = await getDeviceId();
+    try {
+      final deviceId = await getDeviceId();
 
-    await for (final snapshot
-        in _firestore.collection(_collection).doc(userId).snapshots()) {
-      if (!snapshot.exists) {
-        yield false;
-        continue;
+      await for (final snapshot
+          in _firestore.collection(_collection).doc(userId).snapshots()) {
+        if (!snapshot.exists) {
+          yield false;
+          continue;
+        }
+
+        final data = snapshot.data();
+        final storedDeviceId = data?['deviceId'] as String?;
+        final isActive = data?['isActive'] as bool? ?? false;
+
+        final isValid = storedDeviceId == deviceId && isActive;
+
+        // Session is valid if deviceId matches and is active
+        yield isValid;
       }
-
-      final data = snapshot.data();
-      final storedDeviceId = data?['deviceId'] as String?;
-      final isActive = data?['isActive'] as bool? ?? false;
-
-      final isValid = storedDeviceId == deviceId && isActive;
-
-      // Session is valid if deviceId matches and is active
-      yield isValid;
+    } catch (e) {
+      // Handle permission errors during logout gracefully
+      yield false;
     }
   }
 

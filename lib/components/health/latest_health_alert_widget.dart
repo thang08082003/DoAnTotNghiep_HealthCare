@@ -255,45 +255,70 @@ class LatestHealthAlertWidget extends ConsumerWidget {
   }
 
   Widget _buildErrorCard(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        try {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => HealthAlertsScreen(userId: userId),
+    return Consumer(
+      builder: (context, ref, _) {
+        return GestureDetector(
+          onTap: () {
+            // Refresh provider on tap
+            ref.invalidate(latestHealthAlertProvider(userId));
+          },
+          child: Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-          );
-        } catch (e) {
-          // Silently catch navigation errors
-        }
-      },
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: const Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              Icon(Icons.error_outline, color: AppColors.error),
-              SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  'Không thể tải cảnh báo',
-                  style: TextStyle(
-                    fontSize: 14,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.refresh,
+                      color: AppColors.warning,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Không thể tải cảnh báo',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Nhấn để thử lại',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.arrow_forward_ios,
+                    size: 16,
                     color: AppColors.textSecondary,
                   ),
-                ),
+                ],
               ),
-              Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: AppColors.textSecondary,
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

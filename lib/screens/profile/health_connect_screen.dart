@@ -22,7 +22,7 @@ class _GoogleFitConnectScreenState
   DateTime? _latestHrTime;
   double? _latestSpo2;
   DateTime? _latestSpo2Time;
-  Duration? _lastNightSleep;
+  Duration? _todaySleep;
   String? _error;
   bool _passiveEnabled = false;
   static const _prefsPassiveKey = 'passive_listener_enabled';
@@ -101,7 +101,7 @@ class _GoogleFitConnectScreenState
       _latestHrTime = snap.hrTime;
       _latestSpo2 = snap.spo2;
       _latestSpo2Time = snap.spo2Time;
-      _lastNightSleep = snap.lastNightSleep;
+      _todaySleep = snap.todaySleep;
 
       if (!mounted) return;
       setState(() {});
@@ -209,8 +209,8 @@ class _GoogleFitConnectScreenState
             ),
             const SizedBox(height: 8),
             _metricRow(
-              'Giấc ngủ (đêm qua)',
-              _formatDuration(_lastNightSleep ?? Duration.zero),
+              'Giấc ngủ (hôm nay)',
+              _formatDuration(_todaySleep ?? Duration.zero),
             ),
           ],
         ),

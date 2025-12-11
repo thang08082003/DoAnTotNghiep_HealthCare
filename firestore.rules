@@ -203,11 +203,10 @@ service cloud.firestore {
 
     // Health alerts - AI-generated health warnings
     match /health_alerts/{alertId} {
-      // Allow list queries filtered by userId
-      allow list: if request.auth != null && 
-        request.query.limit <= 100;
-      // Allow reading specific alert if user owns it OR if authenticated user is a doctor
-      allow get: if request.auth != null && (
+      // Allow users to list and read their own alerts
+      // Allow doctors to read all alerts
+      allow read: if request.auth != null && (
+        resource == null || // Allow list queries (resource doesn't exist for list)
         resource.data.userId == request.auth.uid ||
         isDoctorUser(request.auth.uid)
       );

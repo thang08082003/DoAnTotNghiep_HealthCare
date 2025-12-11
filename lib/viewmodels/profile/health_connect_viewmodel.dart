@@ -14,7 +14,7 @@ class HealthConnectViewModel extends StateNotifier<AsyncValue<void>> {
     DateTime? hrTime,
     double? spo2,
     DateTime? spo2Time,
-    Duration? lastNightSleep,
+    Duration? todaySleep,
   })
   _Latest(
     double? hr,
@@ -27,17 +27,17 @@ class HealthConnectViewModel extends StateNotifier<AsyncValue<void>> {
     hrTime: hrTime,
     spo2: spo2,
     spo2Time: spo2Time,
-    lastNightSleep: sleep,
+    todaySleep: sleep,
   );
 
-  /// Fetch latest HR, SpO2 within last 24h and last night's sleep duration
+  /// Fetch latest HR, SpO2 within last 24h and today's total sleep duration
   Future<
     ({
       double? hr,
       DateTime? hrTime,
       double? spo2,
       DateTime? spo2Time,
-      Duration? lastNightSleep,
+      Duration? todaySleep,
     })
   >
   fetchLatestMetrics() async {
@@ -50,7 +50,7 @@ class HealthConnectViewModel extends StateNotifier<AsyncValue<void>> {
     DateTime? latestHrTime;
     double? latestSpo2;
     DateTime? latestSpo2Time;
-    Duration? lastNightSleep;
+    Duration? todaySleep;
 
     final now = DateTime.now();
     final dayAgo = now.subtract(const Duration(days: 1));
@@ -113,21 +113,22 @@ class HealthConnectViewModel extends StateNotifier<AsyncValue<void>> {
       }
     } catch (_) {}
 
-    // Sleep last night
+    // Sleep: today + last night
+    // Window: 18:00 yesterday -> now (covers last night + today's naps/sleep)
     try {
       final today = DateTime(now.year, now.month, now.day);
-      final yesterday = today.subtract(const Duration(days: 1));
+      final yesterday18 = today.subtract(const Duration(hours: 6)); // 18:00 yesterday
       Duration total = Duration.zero;
       var sleep = await svc.getData(
         types: const [HealthDataType.SLEEP_SESSION],
-        start: yesterday,
-        end: today,
+        start: yesterday18,
+        end: now,
       );
       if (sleep.isEmpty) {
         sleep = await svc.getData(
           types: const [HealthDataType.SLEEP_ASLEEP],
-          start: yesterday,
-          end: today,
+          start: yesterday18,
+          end: now,
         );
       }
       for (final s in sleep) {
@@ -135,7 +136,7 @@ class HealthConnectViewModel extends StateNotifier<AsyncValue<void>> {
         if (!dt.isNegative) total += dt;
       }
       if (total > Duration.zero) {
-        lastNightSleep = total;
+        todaySleep = total;
       }
     } catch (_) {}
 
@@ -144,7 +145,7 @@ class HealthConnectViewModel extends StateNotifier<AsyncValue<void>> {
       latestHrTime,
       latestSpo2,
       latestSpo2Time,
-      lastNightSleep,
+      todaySleep,
     );
   }
 

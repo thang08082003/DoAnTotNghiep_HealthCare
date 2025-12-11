@@ -21,6 +21,8 @@ import '../viewmodels/foreground/foreground_service_view_model.dart';
 import '../viewmodels/passive_listener/passive_listener_view_model.dart';
 import '../components/incoming_call_listener.dart';
 import '../data/services/session_service.dart';
+import '../components/health/latest_health_alert_widget.dart';
+import '../screens/health_alerts/health_alerts_screen.dart';
 
 class AppRouter {
   // Route names
@@ -318,6 +320,8 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
                           ref.invalidate(spo2StreamProvider);
                           ref.invalidate(hrvStreamProvider);
                           ref.invalidate(sleepSessionsStreamProvider);
+                          ref.invalidate(latestHealthAlertProvider);
+                          ref.invalidate(healthAlertsProvider);
                         } catch (_) {}
                         // Cancel old session subscription
                         _sessionSubscription?.cancel();
@@ -329,19 +333,29 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
                       _sessionSubscription
                           ?.cancel(); // Cancel existing before creating new
                       _sessionSubscription =
-                          SessionService.watchSessionValidity(user.uid).listen((
-                            isValid,
-                          ) {
-                            // Only show kicked dialog if still authenticated
-                            // (to prevent showing during logout)
-                            if (!isValid && mounted) {
-                              final currentAuthState = ref.read(authProvider);
-                              if (currentAuthState.isAuthenticated) {
-                                // Session kicked by another device
-                                _showKickedDialog();
+                          SessionService.watchSessionValidity(user.uid).listen(
+                            (isValid) {
+                              // Only show kicked dialog if still authenticated
+                              // (to prevent showing during logout)
+                              if (!isValid && mounted) {
+                                try {
+                                  final currentAuthState = ref.read(
+                                    authProvider,
+                                  );
+                                  if (currentAuthState.isAuthenticated) {
+                                    // Session kicked by another device
+                                    _showKickedDialog();
+                                  }
+                                } catch (e) {
+                                  // Widget disposed, ignore
+                                }
                               }
-                            }
-                          });
+                            },
+                            onError: (error) {
+                              // Ignore permission errors during logout
+                            },
+                            cancelOnError: false,
+                          );
 
                       // Enable passive listener and AI monitoring ONLY for patients
                       // Doctors don't need health tracking
