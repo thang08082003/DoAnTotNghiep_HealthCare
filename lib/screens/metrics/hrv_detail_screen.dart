@@ -162,97 +162,29 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
         ),
     ];
 
-    final rmssd = agg.dayRmssd;
-    final rmssdMin = rmssd.min ?? 0;
-    final rmssdMax = rmssd.max ?? 0;
-    final rmssdAvg = rmssd.avg ?? 0;
-    final pnn = agg.dayPnn50;
-    final hr = agg.dayHr;
-    final sc = agg.dayScore;
-
     return SingleChildScrollView(
       child: Column(
         children: [
-          ChartContainer(
-            child: SizedBox(
-              height: 220,
-              child: BarChart(
-                BarChartData(
-                  minY: 0,
-                  maxY: 100,
-                  gridData: const FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
-                    horizontalInterval: 20,
-                  ),
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 35,
-                        interval: 20,
-                        getTitlesWidget: (v, m) {
-                          final iv = v.round();
-                          if (iv % 20 == 0 && iv >= 0 && iv <= 100) {
-                            return Text(iv.toString());
-                          }
-                          return const SizedBox.shrink();
-                        },
-                      ),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 20,
-                        getTitlesWidget: (v, m) {
-                          final tick = v.toInt();
-                          if (tick == 0 ||
-                              tick == 6 ||
-                              tick == 12 ||
-                              tick == 18) {
-                            return Text(
-                              '${tick}h',
-                              style: const TextStyle(fontSize: 10),
-                            );
-                          }
-                          return const SizedBox.shrink();
-                        },
-                      ),
-                    ),
-                  ),
-                  barGroups: bars,
-                ),
-              ),
-            ),
+          _buildBarChart(
+            bars: bars,
+            bottomTitles: (v, m) {
+              final tick = v.toInt();
+              if (tick == 0 || tick == 6 || tick == 12 || tick == 18) {
+                return Text('${tick}h', style: const TextStyle(fontSize: 10));
+              }
+              return const SizedBox.shrink();
+            },
           ),
           const SizedBox(height: 12),
-          _summaryCard('Tóm tắt hôm nay', [
-            _summaryRow('RMSSD', rmssdMin, rmssdAvg, rmssdMax, unit: 'ms'),
-            if (pnn != null)
-              _summaryRow(
-                'pNN50',
-                (pnn.min ?? 0),
-                (pnn.avg ?? 0),
-                (pnn.max ?? 0),
-                unit: '%',
-              ),
-            if (hr != null)
-              _summaryRow(
-                'HR',
-                (hr.min ?? 0),
-                (hr.avg ?? 0),
-                (hr.max ?? 0),
-                unit: 'bpm',
-              ),
-            if (sc != null)
-              _summaryRow('Score', (sc.min ?? 0), (sc.avg ?? 0), (sc.max ?? 0)),
-          ], showHeaders: true),
+          _buildSummaryCard('Tóm tắt hôm nay', [
+            _summaryRow('RMSSD', agg.dayRmssd.avg, 'ms'),
+            if (agg.dayPnn50 != null)
+              _summaryRow('pNN50', agg.dayPnn50!.avg, '%'),
+            if (agg.dayHr != null) _summaryRow('HR', agg.dayHr!.avg, 'bpm'),
+            if (agg.daySdnn != null)
+              _summaryRow('SDNN', agg.daySdnn!.avg, 'ms'),
+            if (agg.dayScore != null) _summaryRow('Score', agg.dayScore!.avg),
+          ]),
         ],
       ),
     );
@@ -277,75 +209,32 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
         ),
     ];
 
-    (double, double, double) s(List<double> v) => _summary(v);
-    final pnn = s(agg.weekPnn50);
-    final hr = s(agg.weekHr);
-    final sc = s(agg.weekScore);
-    final sd = s(agg.weekSdnn);
+    double avg(List<double> values) {
+      final valid = values.where((v) => v.isFinite && v > 0).toList();
+      if (valid.isEmpty) return 0;
+      return valid.reduce((a, b) => a + b) / valid.length;
+    }
 
     return SingleChildScrollView(
       child: Column(
         children: [
-          ChartContainer(
-            child: SizedBox(
-              height: 220,
-              child: BarChart(
-                BarChartData(
-                  minY: 0,
-                  maxY: 100,
-                  gridData: const FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
-                    horizontalInterval: 20,
-                  ),
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 35,
-                        interval: 20,
-                        getTitlesWidget: (v, m) {
-                          final iv = v.round();
-                          if (iv % 20 == 0 && iv >= 0 && iv <= 100) {
-                            return Text(iv.toString());
-                          }
-                          return const SizedBox.shrink();
-                        },
-                      ),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: 1,
-                        getTitlesWidget: (v, m) {
-                          final i = v.round();
-                          if (i < 0 || i > 6) return const SizedBox.shrink();
-                          final d = agg.weekStart.add(Duration(days: i));
-                          return Text(
-                            '${d.day}',
-                            style: const TextStyle(fontSize: 10),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  barGroups: bars,
-                ),
-              ),
-            ),
+          _buildBarChart(
+            bars: bars,
+            barWidth: 12,
+            bottomTitles: (v, m) {
+              final i = v.round();
+              if (i < 0 || i > 6) return const SizedBox.shrink();
+              final d = agg.weekStart.add(Duration(days: i));
+              return Text('${d.day}', style: const TextStyle(fontSize: 10));
+            },
           ),
           const SizedBox(height: 12),
-          _summaryCard('Tổng kết tuần', [
-            _summaryRow('pNN50', pnn.$1, pnn.$3, pnn.$2, unit: '%'),
-            _summaryRow('HR', hr.$1, hr.$3, hr.$2, unit: 'bpm'),
-            _summaryRow('Score', sc.$1, sc.$3, sc.$2),
-            _summaryRow('SDNN', sd.$1, sd.$3, sd.$2, unit: 'ms'),
+          _buildSummaryCard('Tổng kết tuần', [
+            _summaryRow('RMSSD', avg(agg.weekRmssd), 'ms'),
+            _summaryRow('pNN50', avg(agg.weekPnn50), '%'),
+            _summaryRow('HR', avg(agg.weekHr), 'bpm'),
+            _summaryRow('SDNN', avg(agg.weekSdnn), 'ms'),
+            _summaryRow('Score', avg(agg.weekScore)),
           ]),
         ],
       ),
@@ -369,103 +258,98 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
         ),
     ];
 
-    (double, double, double) s(List<double> v) => _summary(v);
-    final pnn = s(agg.monthPnn50);
-    final hr = s(agg.monthHr);
-    final sc = s(agg.monthScore);
-    final sd = s(agg.monthSdnn);
+    double avg(List<double> values) {
+      final valid = values.where((v) => v.isFinite && v > 0).toList();
+      if (valid.isEmpty) return 0;
+      return valid.reduce((a, b) => a + b) / valid.length;
+    }
 
     const ticks = {1, 7, 14, 21, 28};
     return SingleChildScrollView(
       child: Column(
         children: [
-          ChartContainer(
-            child: SizedBox(
-              height: 220,
-              child: BarChart(
-                BarChartData(
-                  minY: 0,
-                  maxY: 100,
-                  gridData: const FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
-                    horizontalInterval: 20,
-                  ),
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 35,
-                        interval: 20,
-                        getTitlesWidget: (v, m) {
-                          final iv = v.round();
-                          if (iv % 20 == 0 && iv >= 0 && iv <= 100) {
-                            return Text(iv.toString());
-                          }
-                          return const SizedBox.shrink();
-                        },
-                      ),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: 1,
-                        getTitlesWidget: (v, m) {
-                          final d = v.round();
-                          if (ticks.contains(d)) {
-                            return Text(
-                              '$d',
-                              style: const TextStyle(fontSize: 10),
-                            );
-                          }
-                          return const SizedBox.shrink();
-                        },
-                      ),
-                    ),
-                  ),
-                  barGroups: bars,
-                ),
-              ),
-            ),
+          _buildBarChart(
+            bars: bars,
+            barWidth: 10,
+            bottomTitles: (v, m) {
+              final d = v.round();
+              if (ticks.contains(d)) {
+                return Text('$d', style: const TextStyle(fontSize: 10));
+              }
+              return const SizedBox.shrink();
+            },
           ),
           const SizedBox(height: 12),
-          _summaryCard('Tổng kết tháng', [
-            _summaryRow('pNN50', pnn.$1, pnn.$3, pnn.$2, unit: '%'),
-            _summaryRow('HR', hr.$1, hr.$3, hr.$2, unit: 'bpm'),
-            _summaryRow('Score', sc.$1, sc.$3, sc.$2),
-            _summaryRow('SDNN', sd.$1, sd.$3, sd.$2, unit: 'ms'),
+          _buildSummaryCard('Tổng kết tháng', [
+            _summaryRow('RMSSD', avg(agg.monthRmssd), 'ms'),
+            _summaryRow('pNN50', avg(agg.monthPnn50), '%'),
+            _summaryRow('HR', avg(agg.monthHr), 'bpm'),
+            _summaryRow('SDNN', avg(agg.monthSdnn), 'ms'),
+            _summaryRow('Score', avg(agg.monthScore)),
           ]),
         ],
       ),
     );
   }
 
-  // ---- Summary helpers ----
-
-  (double, double, double) _summary(List<double> values) {
-    final xs = values.where((v) => v.isFinite && v > 0).toList();
-    if (xs.isEmpty) return (0, 0, 0);
-    xs.sort();
-    final minV = xs.first;
-    final maxV = xs.last;
-    final avgV = xs.reduce((a, b) => a + b) / xs.length;
-    return (minV, maxV, avgV);
+  // Reusable bar chart widget
+  Widget _buildBarChart({
+    required List<BarChartGroupData> bars,
+    double barWidth = 8,
+    required Widget Function(double, TitleMeta) bottomTitles,
+  }) {
+    return ChartContainer(
+      child: SizedBox(
+        height: 220,
+        child: BarChart(
+          BarChartData(
+            minY: 0,
+            maxY: 100,
+            gridData: const FlGridData(
+              show: true,
+              drawVerticalLine: false,
+              horizontalInterval: 20,
+            ),
+            titlesData: FlTitlesData(
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 35,
+                  interval: 20,
+                  getTitlesWidget: (v, m) {
+                    final iv = v.round();
+                    if (iv % 20 == 0 && iv >= 0 && iv <= 100) {
+                      return Text(iv.toString());
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ),
+              rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              topTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  getTitlesWidget: bottomTitles,
+                ),
+              ),
+            ),
+            barGroups: bars,
+          ),
+        ),
+      ),
+    );
   }
 
-  Widget _summaryCard(
-    String title,
-    List<Widget> rows, {
-    bool showHeaders = false,
-  }) {
+  // Summary card showing average values
+  Widget _buildSummaryCard(String title, List<Widget> rows) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -480,62 +364,38 @@ class _HrvDetailScreenState extends ConsumerState<HrvDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          if (showHeaders)
-            const Padding(
-              padding: EdgeInsets.only(bottom: 4),
-              child: Row(
-                children: [
-                  Expanded(flex: 2, child: SizedBox()),
-                  Expanded(
-                    child: Center(
-                      child: Text('Min', style: TextStyle(fontSize: 12)),
-                    ),
-                  ),
-                  Expanded(
-                    child: Center(
-                      child: Text('Avg', style: TextStyle(fontSize: 12)),
-                    ),
-                  ),
-                  Expanded(
-                    child: Center(
-                      child: Text('Max', style: TextStyle(fontSize: 12)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+          ),
+          const SizedBox(height: 12),
           ...rows,
         ],
       ),
     );
   }
 
-  Widget _summaryRow(
-    String name,
-    double min,
-    double avg,
-    double max, {
-    String unit = '',
-  }) {
-    String fmt(double v) => v <= 0
+  Widget _summaryRow(String name, double? avg, [String unit = '']) {
+    final value = avg == null || avg <= 0
         ? '-'
-        : '${v.toStringAsFixed(0)}${unit.isNotEmpty ? ' $unit' : ''}';
+        : '${avg.toStringAsFixed(1)}${unit.isNotEmpty ? ' $unit' : ''}';
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(
-            flex: 2,
-            child: Text(
-              name,
-              style: const TextStyle(fontWeight: FontWeight.w600),
+          Text(
+            name,
+            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.primaryColor,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          Expanded(child: Center(child: Text(fmt(min)))),
-          Expanded(child: Center(child: Text(fmt(avg)))),
-          Expanded(child: Center(child: Text(fmt(max)))),
         ],
       ),
     );

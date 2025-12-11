@@ -84,6 +84,7 @@ class HrvAggregate {
   final StatsAgg dayRmssd; // RMSSD stats for day
   final StatsAgg? dayPnn50; // optional: pNN50 stats for day
   final StatsAgg? dayHr; // optional: HR stats for day
+  final StatsAgg? daySdnn; // optional: SDNN stats for day
   final StatsAgg? dayScore; // optional: Score stats for day
 
   final List<double> weekScoreAvg; // len 7
@@ -91,11 +92,13 @@ class HrvAggregate {
   final DateTime weekStart; // Monday
 
   // Manual metrics collections for summaries
+  final List<double> weekRmssd;
   final List<double> weekPnn50;
   final List<double> weekHr;
   final List<double> weekScore;
   final List<double> weekSdnn;
 
+  final List<double> monthRmssd;
   final List<double> monthPnn50;
   final List<double> monthHr;
   final List<double> monthScore;
@@ -106,14 +109,17 @@ class HrvAggregate {
     required this.dayRmssd,
     this.dayPnn50,
     this.dayHr,
+    this.daySdnn,
     this.dayScore,
     required this.weekScoreAvg,
     required this.monthScoreAvg,
     required this.weekStart,
+    required this.weekRmssd,
     required this.weekPnn50,
     required this.weekHr,
     required this.weekScore,
     required this.weekSdnn,
+    required this.monthRmssd,
     required this.monthPnn50,
     required this.monthHr,
     required this.monthScore,

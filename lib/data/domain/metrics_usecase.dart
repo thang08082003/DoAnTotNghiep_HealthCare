@@ -218,6 +218,7 @@ class MetricsUsecase {
     final dayRmssdVals = <double>[];
     final dayPnn50Vals = <double>[];
     final dayHrVals = <double>[];
+    final daySdnnVals = <double>[];
     final dayScoreVals = <double>[];
     for (final s in dayDocs) {
       final hour = s.ts.difference(dayStart).inHours;
@@ -233,6 +234,7 @@ class MetricsUsecase {
       if (rm != null && rm.isFinite && rm > 0) dayRmssdVals.add(rm);
       if (s.pnn50 != null && s.pnn50!.isFinite) dayPnn50Vals.add(s.pnn50!);
       if (s.hr != null && s.hr!.isFinite) dayHrVals.add(s.hr!);
+      if (s.sdnn != null && s.sdnn!.isFinite) daySdnnVals.add(s.sdnn!);
       if (s.score != null) dayScoreVals.add(s.score!.toDouble());
     }
     final dayHourlyScore = [
@@ -242,6 +244,7 @@ class MetricsUsecase {
     final dayRmssd = mu.calcStats(dayRmssdVals);
     final dayPnn50 = mu.calcStats(dayPnn50Vals);
     final dayHr = mu.calcStats(dayHrVals);
+    final daySdnn = mu.calcStats(daySdnnVals);
     final dayScore = mu.calcStats(dayScoreVals);
 
     // Week: daily avg score and metric collections
@@ -249,6 +252,7 @@ class MetricsUsecase {
     final wDays = 7;
     final wSum = List<double>.filled(wDays, 0);
     final wCnt = List<int>.filled(wDays, 0);
+    final weekRmssd = <double>[];
     final weekPnn50 = <double>[];
     final weekHr = <double>[];
     final weekScore = <double>[];
@@ -260,6 +264,7 @@ class MetricsUsecase {
         wSum[idx] += sc;
         wCnt[idx] += 1;
       }
+      if (s.rmssd != null && s.rmssd!.isFinite) weekRmssd.add(s.rmssd!);
       if (s.pnn50 != null && s.pnn50!.isFinite) weekPnn50.add(s.pnn50!);
       if (s.hr != null && s.hr!.isFinite) weekHr.add(s.hr!);
       if (s.score != null) weekScore.add(s.score!.toDouble());
@@ -274,6 +279,7 @@ class MetricsUsecase {
     final mDays = monthEnd.difference(monthStart).inDays;
     final mSum = List<double>.filled(mDays, 0);
     final mCnt = List<int>.filled(mDays, 0);
+    final monthRmssd = <double>[];
     final monthPnn50 = <double>[];
     final monthHr = <double>[];
     final monthScore = <double>[];
@@ -285,6 +291,7 @@ class MetricsUsecase {
         mSum[idx] += sc;
         mCnt[idx] += 1;
       }
+      if (s.rmssd != null && s.rmssd!.isFinite) monthRmssd.add(s.rmssd!);
       if (s.pnn50 != null && s.pnn50!.isFinite) monthPnn50.add(s.pnn50!);
       if (s.hr != null && s.hr!.isFinite) monthHr.add(s.hr!);
       if (s.score != null) monthScore.add(s.score!.toDouble());
@@ -299,14 +306,17 @@ class MetricsUsecase {
       dayRmssd: _toAgg(dayRmssd),
       dayPnn50: _toAgg(dayPnn50),
       dayHr: _toAgg(dayHr),
+      daySdnn: _toAgg(daySdnn),
       dayScore: _toAgg(dayScore),
       weekScoreAvg: weekScoreAvg,
       monthScoreAvg: monthScoreAvg,
       weekStart: weekStart,
+      weekRmssd: weekRmssd,
       weekPnn50: weekPnn50,
       weekHr: weekHr,
       weekScore: weekScore,
       weekSdnn: weekSdnn,
+      monthRmssd: monthRmssd,
       monthPnn50: monthPnn50,
       monthHr: monthHr,
       monthScore: monthScore,

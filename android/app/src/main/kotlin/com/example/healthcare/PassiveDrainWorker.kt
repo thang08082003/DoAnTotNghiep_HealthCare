@@ -53,7 +53,7 @@ class PassiveDrainWorker(appContext: Context, params: WorkerParameters) : Corout
             if (!hasAll) return Result.success()
 
             val now = ZonedDateTime.now(ZoneId.systemDefault()).toInstant()
-            val start = now.minusSeconds(2 * 3600) // last 2 hours
+            val start = now.minusSeconds(24 * 3600) // last 24 hours to capture full sleep sessions
 
             val db = FirebaseFirestore.getInstance()
 

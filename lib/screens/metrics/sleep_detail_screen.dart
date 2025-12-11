@@ -425,94 +425,9 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
             ),
           ),
           const SizedBox(height: 16),
-          ChartContainer(
-            child: SizedBox(
-              height: 200,
-              child: LineChart(
-                LineChartData(
-                  minX: -0.5,
-                  maxX: 6.5,
-                  minY: 0,
-                  maxY: 24,
-                  gridData: const FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
-                    horizontalInterval: 6,
-                  ),
-                  lineTouchData: LineTouchData(
-                    enabled: true,
-                    touchTooltipData: LineTouchTooltipData(
-                      tooltipPadding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      getTooltipItems: (spots) => spots.map((s) {
-                        final idx = s.x.round().clamp(0, 6);
-                        final d = weekStart.add(Duration(days: idx));
-                        return LineTooltipItem(
-                          '${_fmtDay(d)} • ${_fmtHHMMFromHourDouble(s.y)}',
-                          const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: 6,
-                        reservedSize: 28,
-                        getTitlesWidget: (v, m) {
-                          final iv = v.round();
-                          if (iv % 6 == 0 && iv >= 0 && iv <= 24) {
-                            return Text('$iv');
-                          }
-                          return const SizedBox.shrink();
-                        },
-                      ),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: 1,
-                        reservedSize: 20,
-                        getTitlesWidget: (v, m) {
-                          final i = v.round();
-                          if (i < 0 || i > 6) return const SizedBox.shrink();
-                          final d = weekStart.add(Duration(days: i));
-                          return Text(
-                            '${d.day}',
-                            style: const TextStyle(fontSize: 10),
-                          );
-                        },
-                      ),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                  ),
-                  lineBarsData: [
-                    LineChartBarData(
-                      isCurved: false,
-                      color: AppColors.primaryColor,
-                      dotData: const FlDotData(show: true),
-                      spots: [
-                        for (int i = 0; i < 7; i++)
-                          if (agg.weekBedtimeHours.length > i &&
-                              agg.weekBedtimeHours[i] != null)
-                            FlSpot(i.toDouble(), agg.weekBedtimeHours[i]!),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          _AverageBedtimeCard(
+            bedtimeHours: agg.weekBedtimeHours,
+            period: 'tuần',
           ),
         ],
       ),
@@ -524,7 +439,6 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
     final groupsDur = <BarChartGroupData>[];
     final groupsScore = <BarChartGroupData>[];
     final now = DateTime.now();
-    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
     for (int i = 0; i < agg.monthDaily.length; i++) {
       final totalMin = agg.monthDaily[i].totalMinutes;
       final hours = totalMin / 60.0;
@@ -711,91 +625,9 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
             ),
           ),
           const SizedBox(height: 16),
-          ChartContainer(
-            child: SizedBox(
-              height: 200,
-              child: LineChart(
-                LineChartData(
-                  minX: -0.5,
-                  maxX: daysInMonth.toDouble() + 0.5,
-                  minY: 0,
-                  maxY: 24,
-                  gridData: const FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
-                    horizontalInterval: 6,
-                  ),
-                  lineTouchData: LineTouchData(
-                    enabled: true,
-                    touchTooltipData: LineTouchTooltipData(
-                      tooltipPadding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      getTooltipItems: (spots) => spots.map((s) {
-                        final day = s.x.round().clamp(1, daysInMonth);
-                        return LineTooltipItem(
-                          '$day • ${_fmtHHMMFromHourDouble(s.y)}',
-                          const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: 6,
-                        reservedSize: 28,
-                        getTitlesWidget: (v, m) {
-                          final iv = v.round();
-                          if (iv % 6 == 0 && iv >= 0 && iv <= 24) {
-                            return Text('$iv');
-                          }
-                          return const SizedBox.shrink();
-                        },
-                      ),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: 1,
-                        reservedSize: 20,
-                        getTitlesWidget: (v, m) {
-                          final d = v.round();
-                          if ({1, 7, 14, 21, 28}.contains(d)) return Text('$d');
-                          return const SizedBox.shrink();
-                        },
-                      ),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                  ),
-                  lineBarsData: [
-                    LineChartBarData(
-                      isCurved: false,
-                      color: AppColors.primaryColor,
-                      dotData: const FlDotData(show: true),
-                      spots: [
-                        for (int i = 0; i < agg.monthBedtimeHours.length; i++)
-                          if (agg.monthBedtimeHours[i] != null)
-                            FlSpot(
-                              (i + 1).toDouble(),
-                              agg.monthBedtimeHours[i]!,
-                            ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          _AverageBedtimeCard(
+            bedtimeHours: agg.monthBedtimeHours,
+            period: 'tháng',
           ),
         ],
       ),
@@ -812,19 +644,6 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
   String _fmtHHMMFromMinutes(int minutes) {
     final h = minutes ~/ 60;
     final m = minutes % 60;
-    final hh = h.toString().padLeft(2, '0');
-    final mm = m.toString().padLeft(2, '0');
-    return '$hh:$mm';
-  }
-
-  String _fmtHHMMFromHourDouble(double hour) {
-    int h = hour.floor();
-    int m = ((hour - h) * 60).round();
-    if (m >= 60) {
-      h += 1;
-      m = 0;
-    }
-    h = h % 24;
     final hh = h.toString().padLeft(2, '0');
     final mm = m.toString().padLeft(2, '0');
     return '$hh:$mm';
@@ -916,5 +735,100 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
         children: lines,
       ),
     );
+  }
+}
+
+// Reusable widget to display average bedtime information
+class _AverageBedtimeCard extends StatelessWidget {
+  final List<double?> bedtimeHours;
+  final String period;
+
+  const _AverageBedtimeCard({required this.bedtimeHours, required this.period});
+
+  @override
+  Widget build(BuildContext context) {
+    final avgBedtime = _calculateAverageBedtime(bedtimeHours);
+    final bedtimeText = avgBedtime != null
+        ? _formatHourDouble(avgBedtime)
+        : 'Không có dữ liệu';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.bedtime, color: AppColors.primaryColor, size: 24),
+              const SizedBox(width: 12),
+              Text(
+                'Giờ đi ngủ trung bình ($period)',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Center(
+            child: Text(
+              bedtimeText,
+              style: TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primaryColor,
+              ),
+            ),
+          ),
+          if (avgBedtime != null) ...[
+            const SizedBox(height: 8),
+            Center(
+              child: Text(
+                _getBedtimeAdvice(avgBedtime),
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  double? _calculateAverageBedtime(List<double?> hours) {
+    final validHours = hours.where((h) => h != null).map((h) => h!).toList();
+    if (validHours.isEmpty) return null;
+    return validHours.reduce((a, b) => a + b) / validHours.length;
+  }
+
+  String _formatHourDouble(double h) {
+    final hour = h.floor();
+    final minute = ((h - hour) * 60).round();
+    return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+  }
+
+  String _getBedtimeAdvice(double hour) {
+    if (hour >= 22 && hour <= 23) {
+      return 'Đây là khung giờ đi ngủ lý tưởng!';
+    } else if (hour >= 21 && hour < 22) {
+      return 'Rất tốt! Bạn đi ngủ sớm.';
+    } else if (hour > 23 || hour < 6) {
+      return 'Nên đi ngủ sớm hơn để cải thiện sức khỏe.';
+    } else {
+      return 'Tiếp tục duy trì thói quen tốt này!';
+    }
   }
 }

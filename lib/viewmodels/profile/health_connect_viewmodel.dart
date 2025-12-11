@@ -117,7 +117,9 @@ class HealthConnectViewModel extends StateNotifier<AsyncValue<void>> {
     // Window: 18:00 yesterday -> now (covers last night + today's naps/sleep)
     try {
       final today = DateTime(now.year, now.month, now.day);
-      final yesterday18 = today.subtract(const Duration(hours: 6)); // 18:00 yesterday
+      final yesterday18 = today.subtract(
+        const Duration(hours: 6),
+      ); // 18:00 yesterday
       Duration total = Duration.zero;
       var sleep = await svc.getData(
         types: const [HealthDataType.SLEEP_SESSION],
