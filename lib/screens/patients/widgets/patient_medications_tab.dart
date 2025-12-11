@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import '../../../data/models/medication_model.dart';
 import '../../../data/services/medication_service.dart';
+import '../../../components/medication/medication_card.dart';
 
 class PatientMedicationsTab extends ConsumerWidget {
   final String patientId;
@@ -53,7 +53,7 @@ class PatientMedicationsTab extends ConsumerWidget {
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
             final medication = medications[index];
-            return _MedicationCard(medication: medication);
+            return MedicationCard(medication: medication);
           },
         );
       },
@@ -74,124 +74,6 @@ class PatientMedicationsTab extends ConsumerWidget {
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MedicationCard extends StatelessWidget {
-  final Medication medication;
-
-  const _MedicationCard({required this.medication});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: medication.isActive
-                        ? Colors.orange.withOpacity(0.1)
-                        : Colors.grey.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.medication,
-                    color: medication.isActive ? Colors.orange : Colors.grey,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        medication.name,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      if (medication.dosage != null)
-                        Text(
-                          medication.dosage!,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                if (!medication.isActive)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Text(
-                      'Đã ngưng',
-                      style: TextStyle(fontSize: 11, color: Colors.black54),
-                    ),
-                  ),
-              ],
-            ),
-            if (medication.frequency != null) ...[
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  const Icon(Icons.schedule, size: 16, color: Colors.grey),
-                  const SizedBox(width: 6),
-                  Text(
-                    medication.frequency!,
-                    style: const TextStyle(fontSize: 13, color: Colors.grey),
-                  ),
-                ],
-              ),
-            ],
-            if (medication.instructions != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                medication.instructions!,
-                style: const TextStyle(fontSize: 13, color: Colors.grey),
-              ),
-            ],
-            if (medication.startDate != null) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Icon(
-                    Icons.calendar_today,
-                    size: 16,
-                    color: Colors.grey,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Từ ${DateFormat('dd/MM/yyyy').format(medication.startDate!)}',
-                    style: const TextStyle(fontSize: 13, color: Colors.grey),
-                  ),
-                  if (medication.endDate != null)
-                    Text(
-                      ' đến ${DateFormat('dd/MM/yyyy').format(medication.endDate!)}',
-                      style: const TextStyle(fontSize: 13, color: Colors.grey),
-                    ),
-                ],
-              ),
-            ],
           ],
         ),
       ),

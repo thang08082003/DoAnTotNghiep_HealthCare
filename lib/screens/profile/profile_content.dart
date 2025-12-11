@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../components/buttons/logout_button.dart';
 import '../../components/loading/loading_widget.dart';
+import '../../components/avatar/user_avatar.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../data/resources/gene/app_text_styles.dart';
 import '../../data/resources/gene/app_dimensions.dart';
 import '../../providers/auth_provider.dart';
 import '../../viewmodels/profile/patient_profile_view_model.dart';
 import '../../viewmodels/profile/doctor_profile_view_model.dart';
-import '../../viewmodels/profile/avatar_view_model.dart';
 import '../../providers/user_provider.dart';
 import '../../router/app_router.dart';
 import 'health_connect_screen.dart';
@@ -46,10 +45,11 @@ class ProfileContent extends ConsumerWidget {
               ),
               child: Column(
                 children: [
-                  _AvatarPicker(
+                  AvatarPicker(
                     avatarUrl: user?.avatarUrl,
-                    uid: user?.uid,
+                    userId: user?.uid ?? '',
                     onUpdated: () => ref.invalidate(currentUserProvider),
+                    size: AvatarSize.large,
                   ),
                   SizedBox(height: AppDimensions.spacingMedium),
                   Text(
@@ -789,130 +789,3 @@ Widget _editableRow(
 }
 
 // (Top-level gender row helper removed to avoid duplicate; using the one inside _PatientInfoCard)
-
-// ===== Avatar Picker Widget =====
-class _AvatarPicker extends ConsumerStatefulWidget {
-  final String? avatarUrl;
-  final String? uid;
-  final VoidCallback onUpdated;
-
-  const _AvatarPicker({
-    required this.avatarUrl,
-    required this.uid,
-    required this.onUpdated,
-  });
-
-  @override
-  ConsumerState<_AvatarPicker> createState() => _AvatarPickerState();
-}
-
-class _AvatarPickerState extends ConsumerState<_AvatarPicker> {
-  bool _uploading = false;
-  String? _overrideUrl; // Hiển thị tạm thời avatar mới ngay lập tức
-
-  Future<void> _pickAndUpload() async {
-    if (widget.uid == null) return;
-    try {
-      final picker = ImagePicker();
-      final picked = await picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1024,
-        imageQuality: 85,
-      );
-      if (picked == null) return;
-
-      setState(() => _uploading = true);
-      final ext = picked.name.split('.').last.toLowerCase();
-      final bytes = await picked.readAsBytes();
-
-      final vm = ref.read(avatarViewModelProvider);
-      final url = await vm.uploadAndSetAvatar(
-        uid: widget.uid!,
-        bytes: bytes,
-        fileExt: ext,
-      );
-
-      if (mounted) {
-        setState(() {
-          _uploading = false;
-          if (url != null) _overrideUrl = url;
-        });
-        if (url != null) {
-          widget.onUpdated();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Ảnh đại diện đã được cập nhật')),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _uploading = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Lỗi cập nhật ảnh: $e')));
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final effectiveUrl = _overrideUrl ?? widget.avatarUrl;
-    final hasAvatar = (effectiveUrl != null && effectiveUrl.isNotEmpty);
-    return GestureDetector(
-      onTap: _uploading ? null : _pickAndUpload,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          CircleAvatar(
-            radius: 40,
-            backgroundColor: AppColors.primaryColor.withValues(alpha: 0.1),
-            // Thêm query tạm thời để chắc chắn bypass cache nếu vẫn cùng URL
-            backgroundImage: hasAvatar
-                ? NetworkImage(
-                    hasAvatar
-                        ? '$effectiveUrl?v=${DateTime.now().millisecondsSinceEpoch}'
-                        : effectiveUrl,
-                  )
-                : null,
-            child: !hasAvatar
-                ? const Icon(
-                    Icons.person,
-                    size: 40,
-                    color: AppColors.primaryColor,
-                  )
-                : null,
-          ),
-          if (_uploading)
-            const SizedBox(
-              width: 80,
-              height: 80,
-              child: CircularProgressIndicator(),
-            )
-          else
-            Positioned(
-              bottom: 0,
-              right: 0,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 6,
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.all(4),
-                child: const Icon(
-                  Icons.camera_alt,
-                  size: 18,
-                  color: AppColors.primaryColor,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}

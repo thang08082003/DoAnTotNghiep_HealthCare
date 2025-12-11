@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
+import '../../../components/care_plan/goal_card.dart';
 import '../../../data/models/care_plan_model.dart';
-import '../../../data/resources/gene/app_colors.dart';
 import '../../../data/services/care_plan_service.dart';
 
 class PatientCarePlanTab extends ConsumerWidget {
@@ -54,7 +53,7 @@ class PatientCarePlanTab extends ConsumerWidget {
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
             final goal = goals[index];
-            return _GoalCard(goal: goal);
+            return GoalCard(goal: goal);
           },
         );
       },
@@ -75,79 +74,6 @@ class PatientCarePlanTab extends ConsumerWidget {
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GoalCard extends StatelessWidget {
-  final HealthGoal goal;
-
-  const _GoalCard({required this.goal});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  goal.isCompleted ? Icons.check_circle : Icons.circle_outlined,
-                  color: goal.isCompleted
-                      ? Colors.green
-                      : AppColors.primaryColor,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    goal.title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      decoration: goal.isCompleted
-                          ? TextDecoration.lineThrough
-                          : null,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            if (goal.description != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                goal.description!,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey.shade600,
-                  decoration: goal.isCompleted
-                      ? TextDecoration.lineThrough
-                      : null,
-                ),
-              ),
-            ],
-            if (goal.targetDate != null) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(
-                    Icons.calendar_today,
-                    size: 14,
-                    color: Colors.grey.shade600,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Mục tiêu: ${DateFormat('dd/MM/yyyy').format(goal.targetDate!)}',
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-                  ),
-                ],
-              ),
-            ],
           ],
         ),
       ),

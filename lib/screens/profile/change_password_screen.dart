@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../components/auth/password_field.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../viewmodels/auth/change_password_view_model.dart';
 import '../../viewmodels/auth/change_password_state.dart';
@@ -88,7 +89,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      _PasswordField(
+                      PasswordField(
                         label: 'Mật khẩu hiện tại',
                         controller: _currentCtl,
                         obscure: _obscureCurrent,
@@ -99,7 +100,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                             : null,
                       ),
                       const SizedBox(height: 12),
-                      _PasswordField(
+                      PasswordField(
                         label: 'Mật khẩu mới',
                         controller: _newCtl,
                         obscure: _obscureNew,
@@ -116,7 +117,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                         },
                       ),
                       const SizedBox(height: 12),
-                      _PasswordField(
+                      PasswordField(
                         label: 'Xác nhận mật khẩu mới',
                         controller: _confirmCtl,
                         obscure: _obscureConfirm,
@@ -275,39 +276,6 @@ class _EmailVerifyCard extends StatelessWidget {
                 ),
             ],
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PasswordField extends StatelessWidget {
-  final String label;
-  final TextEditingController controller;
-  final bool obscure;
-  final VoidCallback onToggle;
-  final String? Function(String?)? validator;
-
-  const _PasswordField({
-    required this.label,
-    required this.controller,
-    required this.obscure,
-    required this.onToggle,
-    this.validator,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      obscureText: obscure,
-      validator: validator,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-        suffixIcon: IconButton(
-          icon: Icon(obscure ? Icons.visibility_off : Icons.visibility),
-          onPressed: onToggle,
         ),
       ),
     );

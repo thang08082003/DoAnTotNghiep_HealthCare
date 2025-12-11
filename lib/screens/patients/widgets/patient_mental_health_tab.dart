@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import '../../../data/models/anxiety_risk_model.dart';
 import '../../../data/models/depression_risk_model.dart';
 import '../../../data/resources/gene/app_colors.dart';
 import '../../../data/services/anxiety_risk_service.dart';
 import '../../../data/services/depression_risk_service.dart';
+import '../../../components/cards/mental_health_card.dart';
 
 class PatientMentalHealthTab extends ConsumerWidget {
   final String patientId;
@@ -107,106 +107,15 @@ class _AnxietyListView extends ConsumerWidget {
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
             final assessment = assessments[index];
-            return _AnxietyCard(assessment: assessment);
+            return MentalHealthCard.anxiety(
+              score: assessment.score,
+              levelDescription: assessment.levelDescription,
+              recommendation: assessment.recommendation,
+              createdAt: assessment.createdAt,
+            );
           },
         );
       },
-    );
-  }
-}
-
-class _AnxietyCard extends StatelessWidget {
-  final AnxietyRisk assessment;
-
-  const _AnxietyCard({required this.assessment});
-
-  @override
-  Widget build(BuildContext context) {
-    Color levelColor;
-    IconData levelIcon;
-
-    if (assessment.score <= 4) {
-      levelColor = Colors.green;
-      levelIcon = Icons.sentiment_satisfied;
-    } else if (assessment.score <= 9) {
-      levelColor = Colors.orange;
-      levelIcon = Icons.sentiment_neutral;
-    } else if (assessment.score <= 14) {
-      levelColor = Colors.deepOrange;
-      levelIcon = Icons.sentiment_dissatisfied;
-    } else {
-      levelColor = Colors.red;
-      levelIcon = Icons.sentiment_very_dissatisfied;
-    }
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ExpansionTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: levelColor.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(levelIcon, color: levelColor, size: 24),
-        ),
-        title: Row(
-          children: [
-            Text(
-              '${assessment.score}/21 điểm',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: levelColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                assessment.levelDescription,
-                style: TextStyle(
-                  color: levelColor,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-        subtitle: Text(
-          DateFormat('dd/MM/yyyy HH:mm').format(assessment.createdAt),
-        ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.lightbulb_outline,
-                    color: Colors.blue,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      assessment.recommendation,
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -250,109 +159,15 @@ class _DepressionListView extends ConsumerWidget {
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
             final assessment = assessments[index];
-            return _DepressionCard(assessment: assessment);
+            return MentalHealthCard.depression(
+              score: assessment.score,
+              levelDescription: assessment.levelDescription,
+              recommendation: assessment.recommendation,
+              createdAt: assessment.createdAt,
+            );
           },
         );
       },
-    );
-  }
-}
-
-class _DepressionCard extends StatelessWidget {
-  final DepressionRisk assessment;
-
-  const _DepressionCard({required this.assessment});
-
-  @override
-  Widget build(BuildContext context) {
-    Color levelColor;
-    IconData levelIcon;
-
-    if (assessment.score <= 4) {
-      levelColor = Colors.green;
-      levelIcon = Icons.sentiment_satisfied;
-    } else if (assessment.score <= 9) {
-      levelColor = Colors.orange;
-      levelIcon = Icons.sentiment_neutral;
-    } else if (assessment.score <= 14) {
-      levelColor = Colors.deepOrange;
-      levelIcon = Icons.sentiment_dissatisfied;
-    } else if (assessment.score <= 19) {
-      levelColor = Colors.red;
-      levelIcon = Icons.sentiment_very_dissatisfied;
-    } else {
-      levelColor = Colors.red.shade900;
-      levelIcon = Icons.sentiment_very_dissatisfied;
-    }
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ExpansionTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: levelColor.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(levelIcon, color: levelColor, size: 24),
-        ),
-        title: Row(
-          children: [
-            Text(
-              '${assessment.score}/27 điểm',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: levelColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                assessment.levelDescription,
-                style: TextStyle(
-                  color: levelColor,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-        subtitle: Text(
-          DateFormat('dd/MM/yyyy HH:mm').format(assessment.createdAt),
-        ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.lightbulb_outline,
-                    color: Colors.blue,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      assessment.recommendation,
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

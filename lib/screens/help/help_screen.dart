@@ -4,6 +4,7 @@ import 'package:healthcare/data/models/help_guide_model.dart';
 import 'package:healthcare/data/resources/gene/app_colors.dart';
 import 'package:healthcare/providers/user_provider.dart';
 import 'package:healthcare/viewmodels/help/help_view_model.dart';
+import '../../components/info_section/section_card.dart';
 
 class HelpScreen extends ConsumerWidget {
   const HelpScreen({super.key});
@@ -63,73 +64,10 @@ class _GuideView extends StatelessWidget {
           );
         }
         final section = guide.sections[index - 1];
-        return _SectionCard(section: section);
+        return SectionCard(section: section);
       },
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemCount: guide.sections.length + 1,
-    );
-  }
-}
-
-class _SectionCard extends StatelessWidget {
-  final HelpSection section;
-  const _SectionCard({required this.section});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            section.title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          ...section.steps.map((s) => _StepRow(text: s)),
-        ],
-      ),
-    );
-  }
-}
-
-class _StepRow extends StatelessWidget {
-  final String text;
-  const _StepRow({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('• ', style: TextStyle(color: AppColors.textPrimary)),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(color: AppColors.textSecondary),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

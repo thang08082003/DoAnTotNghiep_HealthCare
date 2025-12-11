@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../../components/permissions/permission_card.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../data/services/permission_service.dart';
 
@@ -19,22 +20,22 @@ class PermissionsRequestScreen extends StatefulWidget {
 class _PermissionsRequestScreenState extends State<PermissionsRequestScreen> {
   bool _isRequesting = false;
 
-  final List<_PermissionItem> _permissions = [
-    _PermissionItem(
+  final List<PermissionItem> _permissions = [
+    PermissionItem(
       permission: Permission.camera,
       title: 'Camera',
       description: 'Cần thiết để thực hiện video call với bác sĩ',
       icon: Icons.videocam,
       isRequired: true,
     ),
-    _PermissionItem(
+    PermissionItem(
       permission: Permission.microphone,
       title: 'Microphone',
       description: 'Cần thiết để thực hiện video call với bác sĩ',
       icon: Icons.mic,
       isRequired: true,
     ),
-    _PermissionItem(
+    PermissionItem(
       permission: Permission.phone,
       title: 'Điện thoại',
       description:
@@ -42,21 +43,21 @@ class _PermissionsRequestScreenState extends State<PermissionsRequestScreen> {
       icon: Icons.phone,
       isRequired: false,
     ),
-    _PermissionItem(
+    PermissionItem(
       permission: Permission.notification,
       title: 'Thông báo',
       description: 'Nhận thông báo về cuộc gọi, tin nhắn và chỉ định từ bác sĩ',
       icon: Icons.notifications,
       isRequired: false,
     ),
-    _PermissionItem(
+    PermissionItem(
       permission: Permission.sensors,
       title: 'Cảm biến cơ thể',
       description: 'Đo nhịp tim và các chỉ số sức khỏe',
       icon: Icons.favorite,
       isRequired: false,
     ),
-    _PermissionItem(
+    PermissionItem(
       permission: Permission.activityRecognition,
       title: 'Hoạt động thể chất',
       description: 'Theo dõi bước đi và hoạt động hàng ngày',
@@ -193,7 +194,7 @@ class _PermissionsRequestScreenState extends State<PermissionsRequestScreen> {
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final item = _permissions[index];
-                    return _PermissionCard(item: item);
+                    return PermissionCard(item: item);
                   },
                 ),
               ),
@@ -239,102 +240,6 @@ class _PermissionsRequestScreenState extends State<PermissionsRequestScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _PermissionItem {
-  final Permission permission;
-  final String title;
-  final String description;
-  final IconData icon;
-  final bool isRequired;
-
-  _PermissionItem({
-    required this.permission,
-    required this.title,
-    required this.description,
-    required this.icon,
-    required this.isRequired,
-  });
-}
-
-class _PermissionCard extends StatelessWidget {
-  final _PermissionItem item;
-
-  const _PermissionCard({required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppColors.primaryColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(item.icon, color: AppColors.primaryColor, size: 28),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      item.title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    if (item.isRequired) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text(
-                          'Bắt buộc',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.red,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  item.description,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
