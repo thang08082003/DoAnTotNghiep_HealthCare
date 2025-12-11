@@ -40,7 +40,6 @@ class HealthGoalItemWidget extends ConsumerWidget {
           title: 'Xác nhận xóa',
           message: 'Bạn có chắc muốn xóa mục tiêu "${goal.title}"?',
           confirmText: 'Xóa',
-          cancelText: 'Hủy',
         );
       },
       onDismissed: (direction) => onDelete(),

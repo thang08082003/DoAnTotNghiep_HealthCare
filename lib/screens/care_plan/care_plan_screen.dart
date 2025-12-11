@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../components/care_plan/care_plan_calendar_widget.dart';
-import '../../components/care_plan/create_goal_with_dates_bottom_sheet.dart';
+import '../../components/care_plan/create_goal_bottom_sheet.dart';
 import '../../components/care_plan/health_goals_list_widget.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
@@ -51,7 +51,7 @@ class CarePlanScreen extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'Mục tiêu tổng',
+                      'Mục tiêu',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
