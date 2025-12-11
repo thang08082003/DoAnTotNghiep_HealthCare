@@ -6,6 +6,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/services.dart';
 import '../../providers/user_provider.dart';
 import '../../viewmodels/profile/health_connect_viewmodel.dart';
+import '../../providers/health_monitoring_provider.dart';
 
 class GoogleFitConnectScreen extends ConsumerStatefulWidget {
   const GoogleFitConnectScreen({super.key});
@@ -194,6 +195,30 @@ class _GoogleFitConnectScreenState
               onPressed: _loading ? null : () => _dumpHealthLog(days: 7),
               icon: const Icon(Icons.bug_report),
               label: const Text('Xuất log dữ liệu (7 ngày)'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _loading
+                  ? null
+                  : () async {
+                      final user = await ref.read(currentUserProvider.future);
+                      if (user?.uid == null) return;
+                      await createTestAlert(user!.uid);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('✅ Đã tạo cảnh báo test!'),
+                            backgroundColor: AppColors.success,
+                          ),
+                        );
+                      }
+                    },
+              icon: const Icon(Icons.notification_add),
+              label: const Text('Tạo cảnh báo test (DEBUG)'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.orange,
+                side: const BorderSide(color: Colors.orange),
+              ),
             ),
             const SizedBox(height: 24),
             if (_error != null)

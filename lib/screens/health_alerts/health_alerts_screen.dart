@@ -220,34 +220,6 @@ class _HealthAlertsScreenState extends ConsumerState<HealthAlertsScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                // Test data button (DEBUG ONLY)
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      await createTestAlert(widget.userId);
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('✅ Đã tạo cảnh báo test!'),
-                            backgroundColor: AppColors.success,
-                          ),
-                        );
-                      }
-                    },
-                    icon: const Icon(Icons.bug_report),
-                    label: const Text('Tạo cảnh báo test (DEBUG)'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.orange,
-                      side: const BorderSide(color: Colors.orange),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
