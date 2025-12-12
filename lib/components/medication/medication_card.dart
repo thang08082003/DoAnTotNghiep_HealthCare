@@ -129,7 +129,7 @@ class MedicationCard extends ConsumerWidget {
           ),
           child: Icon(
             Icons.medication,
-            color: medication.isActive ? Colors.orange : Colors.grey,
+            color: medication.isActive ? Colors.blue : Colors.grey,
             size: 24,
           ),
         ),
@@ -214,14 +214,14 @@ class MedicationCard extends ConsumerWidget {
           padding: const EdgeInsets.only(top: 8),
           child: Row(
             children: [
-              const Icon(Icons.alarm, size: 16, color: Colors.orange),
+              const Icon(Icons.alarm, size: 16, color: Colors.blue),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   'Nhắc lúc: $times',
                   style: const TextStyle(
                     fontSize: 13,
-                    color: Colors.orange,
+                    color: Colors.blue,
                     fontWeight: FontWeight.w500,
                   ),
                   maxLines: 1,

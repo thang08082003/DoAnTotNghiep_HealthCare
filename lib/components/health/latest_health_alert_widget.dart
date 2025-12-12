@@ -127,7 +127,7 @@ class LatestHealthAlertWidget extends ConsumerWidget {
         elevation: 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: color.withValues(alpha: 0.3), width: 1),
+
         ),
         child: Padding(
           padding: const EdgeInsets.all(16.0),

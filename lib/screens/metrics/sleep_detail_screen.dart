@@ -750,7 +750,7 @@ class _AverageBedtimeCard extends StatelessWidget {
     final avgBedtime = _calculateAverageBedtime(bedtimeHours);
     final bedtimeText = avgBedtime != null
         ? _formatHourDouble(avgBedtime)
-        : 'Không có dữ liệu';
+        : 'Chưa có dữ liệu';
 
     return Container(
       width: double.infinity,
@@ -787,7 +787,7 @@ class _AverageBedtimeCard extends StatelessWidget {
             child: Text(
               bedtimeText,
               style: TextStyle(
-                fontSize: 48,
+                fontSize: 30,
                 fontWeight: FontWeight.bold,
                 color: AppColors.primaryColor,
               ),

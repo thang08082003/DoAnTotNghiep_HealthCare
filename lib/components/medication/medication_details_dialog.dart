@@ -51,7 +51,7 @@ class MedicationDetailsDialog extends ConsumerWidget {
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.orange,
+                  color: Colors.blue,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -149,7 +149,7 @@ class MedicationDetailsDialog extends ConsumerWidget {
                       icon: Icons.alarm,
                       label: 'Lịch nhắc',
                       value: times,
-                      valueColor: Colors.orange,
+                      valueColor: Colors.blue,
                     ),
                   ],
                 );
@@ -199,7 +199,7 @@ class MedicationDetailsDialog extends ConsumerWidget {
               Navigator.pop(context);
               await viewModel.deactivateMedication(medication.id);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
             icon: const Icon(Icons.pause_circle_outline, size: 20),
             label: const Text('Ngưng sử dụng'),
           )
@@ -209,7 +209,7 @@ class MedicationDetailsDialog extends ConsumerWidget {
               Navigator.pop(context);
               await viewModel.activateMedication(medication.id);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
             icon: const Icon(Icons.play_circle_outline, size: 20),
             label: const Text('Sử dụng lại'),
           ),

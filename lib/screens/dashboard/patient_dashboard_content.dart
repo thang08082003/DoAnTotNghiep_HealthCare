@@ -7,6 +7,7 @@ import '../../components/health/latest_health_alert_widget.dart';
 import '../../components/quick_access/care_plan_quick_access_widget.dart';
 import '../medication/medication_screen.dart';
 import '../mental_health/mental_health_screen.dart';
+import '../chat/medical_chat_screen.dart';
 
 class PatientDashboardContent extends ConsumerWidget {
   const PatientDashboardContent({super.key});
@@ -120,10 +121,16 @@ class PatientDashboardContent extends ConsumerWidget {
               _buildQuickAccessCard(
                 icon: Icons.health_and_safety,
                 title: 'Phát hiện sớm',
-                subtitle: 'Rủi ro sức khỏe',
+                subtitle: 'Chat với AI trợ lý y tế',
                 color: Colors.green.withValues(alpha: 0.08),
                 iconColor: Colors.green,
-                onTap: () {},
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const MedicalChatScreen(),
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 12),
               _buildQuickAccessCard(
