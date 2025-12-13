@@ -185,7 +185,11 @@ class MetricsUsecase {
     // Fetch sessions (now contains embedded stages)
     final daySessions = await repo.sleepStream(userId, from: dayStart).first;
     final dedupedDaySessions = _dedupeOverlappingSessions(daySessions);
-    dayTotals = _sumSleepStagesFromSessions(dedupedDaySessions, dayStart, tsNow);
+    dayTotals = _sumSleepStagesFromSessions(
+      dedupedDaySessions,
+      dayStart,
+      tsNow,
+    );
 
     final weekSessions = await repo.sleepStream(userId, from: monday).first;
     final dedupedWeekSessions = _dedupeOverlappingSessions(weekSessions);
@@ -194,8 +198,16 @@ class MetricsUsecase {
 
     final monthSessions = await repo.sleepStream(userId, from: firstDay).first;
     final dedupedMonthSessions = _dedupeOverlappingSessions(monthSessions);
-    monthDaily = _dailyFromSessions(dedupedMonthSessions, firstDay, firstNextMonth);
-    monthBedtime = _bedtimeFromFs(dedupedMonthSessions, firstDay, firstNextMonth);
+    monthDaily = _dailyFromSessions(
+      dedupedMonthSessions,
+      firstDay,
+      firstNextMonth,
+    );
+    monthBedtime = _bedtimeFromFs(
+      dedupedMonthSessions,
+      firstDay,
+      firstNextMonth,
+    );
 
     return SleepAggregate(
       dayTotals: dayTotals,
@@ -332,26 +344,26 @@ class MetricsUsecase {
   // Remove overlapping sleep sessions (keep the longest one for each overlap)
   List<SleepSession> _dedupeOverlappingSessions(List<SleepSession> sessions) {
     if (sessions.isEmpty) return sessions;
-    
+
     // Sort by start time
     final sorted = List<SleepSession>.from(sessions)
       ..sort((a, b) => a.start.compareTo(b.start));
-    
+
     final result = <SleepSession>[];
     SleepSession? current;
-    
+
     for (final session in sorted) {
       if (current == null) {
         current = session;
         continue;
       }
-      
+
       // Check if sessions overlap
       if (session.start.isBefore(current.end)) {
         // Overlap detected - keep the longer session
         final currentDuration = current.end.difference(current.start);
         final sessionDuration = session.end.difference(session.start);
-        
+
         if (sessionDuration > currentDuration) {
           current = session; // Replace with longer session
         }
@@ -362,12 +374,12 @@ class MetricsUsecase {
         current = session;
       }
     }
-    
+
     // Add the last session
     if (current != null) {
       result.add(current);
     }
-    
+
     return result;
   }
 
