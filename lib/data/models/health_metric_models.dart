@@ -143,7 +143,7 @@ class SleepSession {
       final stagesData = data['stages'];
       if (stagesData is List) {
         // New format: array of stage objects
-        stagesList = (stagesData as List)
+        stagesList = (stagesData)
             .map((s) => SleepStageDetail.fromMap(s as Map<String, dynamic>))
             .toList();
       }

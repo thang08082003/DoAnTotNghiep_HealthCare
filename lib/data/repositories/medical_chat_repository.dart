@@ -3,8 +3,7 @@ import 'package:http/http.dart' as http;
 import '../models/medical_chat_model.dart';
 
 class MedicalChatRepository {
-  static const String _baseUrl =
-      'https://tungdk-vietnamese-medical-chatbot.hf.space/api/chat';
+  static const String _baseUrl = 'https://tungdk-medbot.hf.space/api/chat';
 
   static const Duration _timeout = Duration(seconds: 30);
 
