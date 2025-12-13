@@ -163,6 +163,27 @@ class HealthMetricsService {
     );
   }
 
+  Stream<List<SleepStage>> sleepStagesStream(
+    String uid, {
+    DateTime? from,
+    int? limit,
+  }) {
+    Query<Map<String, dynamic>> q = _userCol(
+      uid,
+      'sleep_stages',
+    ).orderBy('start', descending: true);
+    if (from != null) {
+      q = q.where(
+        'start',
+        isGreaterThanOrEqualTo: Timestamp.fromDate(from.toUtc()),
+      );
+    }
+    if (limit != null) q = q.limit(limit);
+    return q.snapshots().map(
+      (s) => s.docs.map((d) => SleepStage.fromFirestore(d)).toList(),
+    );
+  }
+
   // ---- Migration: consolidate legacy 'hrv_measure' -> canonical 'hrv' ----
   // Some older builds may have saved manual HRV into 'hrv_measure'.
   // This moves all documents to 'hrv' (same document IDs, fields preserved).

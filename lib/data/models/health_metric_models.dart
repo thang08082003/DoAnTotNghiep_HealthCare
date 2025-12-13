@@ -118,12 +118,12 @@ class HrvSample {
   String docId() => _epochMsUtc(ts).toString();
 }
 
-// Sleep Session
+// Sleep Session with embedded stages
 class SleepSession {
   final DateTime start;
   final DateTime end;
-  final int durationMinutes; // computed client side
-  final Map<String, int>? stages; // deep/light/rem/awake minutes
+  final int durationMinutes;
+  final List<SleepStageDetail>? stages; // Detailed stage list
   final String? source;
 
   SleepSession({
@@ -138,13 +138,22 @@ class SleepSession {
     DocumentSnapshot<Map<String, dynamic>> doc,
   ) {
     final data = doc.data()!;
+    List<SleepStageDetail>? stagesList;
+    if (data['stages'] != null) {
+      final stagesData = data['stages'];
+      if (stagesData is List) {
+        // New format: array of stage objects
+        stagesList = (stagesData as List)
+            .map((s) => SleepStageDetail.fromMap(s as Map<String, dynamic>))
+            .toList();
+      }
+    }
+
     return SleepSession(
       start: _fromTs(data['start']),
       end: _fromTs(data['end']),
       durationMinutes: data['durationMinutes'] as int,
-      stages: (data['stages'] as Map?)?.map(
-        (k, v) => MapEntry(k.toString(), (v as num).toInt()),
-      ),
+      stages: stagesList,
       source: data['source'] as String?,
     );
   }
@@ -153,7 +162,81 @@ class SleepSession {
     'start': Timestamp.fromMillisecondsSinceEpoch(_epochMsUtc(start)),
     'end': Timestamp.fromMillisecondsSinceEpoch(_epochMsUtc(end)),
     'durationMinutes': durationMinutes,
-    if (stages != null) 'stages': stages,
+    if (stages != null) 'stages': stages!.map((s) => s.toMap()).toList(),
+    if (source != null) 'source': source,
+  };
+
+  String docId() => _epochMsUtc(start).toString();
+}
+
+// Sleep stage detail (embedded in session)
+class SleepStageDetail {
+  final DateTime start;
+  final DateTime end;
+  final int durationMinutes;
+  final String stage;
+
+  SleepStageDetail({
+    required this.start,
+    required this.end,
+    required this.durationMinutes,
+    required this.stage,
+  });
+
+  factory SleepStageDetail.fromMap(Map<String, dynamic> data) {
+    return SleepStageDetail(
+      start: _fromTs(data['start']),
+      end: _fromTs(data['end']),
+      durationMinutes: data['durationMinutes'] as int,
+      stage: data['stage'] as String,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+    'start': Timestamp.fromMillisecondsSinceEpoch(_epochMsUtc(start)),
+    'end': Timestamp.fromMillisecondsSinceEpoch(_epochMsUtc(end)),
+    'durationMinutes': durationMinutes,
+    'stage': stage,
+  };
+}
+
+// Sleep Stage (individual stage within a session)
+class SleepStage {
+  final DateTime start;
+  final DateTime end;
+  final int durationMinutes;
+  final String
+  stage; // "light", "deep", "rem", "awake", "sleeping", "out_of_bed", "unknown"
+  final String? sessionMetaId;
+  final String? source;
+
+  SleepStage({
+    required this.start,
+    required this.end,
+    required this.durationMinutes,
+    required this.stage,
+    this.sessionMetaId,
+    this.source,
+  });
+
+  factory SleepStage.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data()!;
+    return SleepStage(
+      start: _fromTs(data['start']),
+      end: _fromTs(data['end']),
+      durationMinutes: data['durationMinutes'] as int,
+      stage: data['stage'] as String,
+      sessionMetaId: data['sessionMetaId'] as String?,
+      source: data['source'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+    'start': Timestamp.fromMillisecondsSinceEpoch(_epochMsUtc(start)),
+    'end': Timestamp.fromMillisecondsSinceEpoch(_epochMsUtc(end)),
+    'durationMinutes': durationMinutes,
+    'stage': stage,
+    if (sessionMetaId != null) 'sessionMetaId': sessionMetaId,
     if (source != null) 'source': source,
   };
 

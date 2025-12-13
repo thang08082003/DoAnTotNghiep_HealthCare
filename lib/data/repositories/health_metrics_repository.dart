@@ -45,6 +45,12 @@ class HealthMetricsRepository {
     int? limit,
   }) => _service.sleepStream(uid, from: from, limit: limit);
 
+  Stream<List<SleepStage>> sleepStagesStream(
+    String uid, {
+    DateTime? from,
+    int? limit,
+  }) => _service.sleepStagesStream(uid, from: from, limit: limit);
+
   Future<PatientMetricsOverview> overview(
     String uid, {
     Duration range = const Duration(days: 7),

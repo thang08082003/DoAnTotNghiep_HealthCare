@@ -182,17 +182,20 @@ class MetricsUsecase {
     late final List<double?> weekBedtime;
     late final List<double?> monthBedtime;
 
-    // Firestore source (all data)
+    // Fetch sessions (now contains embedded stages)
     final daySessions = await repo.sleepStream(userId, from: dayStart).first;
-    dayTotals = _sumSleepStagesFromFs(daySessions, dayStart, tsNow);
+    final dedupedDaySessions = _dedupeOverlappingSessions(daySessions);
+    dayTotals = _sumSleepStagesFromSessions(dedupedDaySessions, dayStart, tsNow);
 
     final weekSessions = await repo.sleepStream(userId, from: monday).first;
-    weekDaily = _dailyFromFs(weekSessions, monday, sunday);
-    weekBedtime = _bedtimeFromFs(weekSessions, monday, sunday);
+    final dedupedWeekSessions = _dedupeOverlappingSessions(weekSessions);
+    weekDaily = _dailyFromSessions(dedupedWeekSessions, monday, sunday);
+    weekBedtime = _bedtimeFromFs(dedupedWeekSessions, monday, sunday);
 
     final monthSessions = await repo.sleepStream(userId, from: firstDay).first;
-    monthDaily = _dailyFromFs(monthSessions, firstDay, firstNextMonth);
-    monthBedtime = _bedtimeFromFs(monthSessions, firstDay, firstNextMonth);
+    final dedupedMonthSessions = _dedupeOverlappingSessions(monthSessions);
+    monthDaily = _dailyFromSessions(dedupedMonthSessions, firstDay, firstNextMonth);
+    monthBedtime = _bedtimeFromFs(dedupedMonthSessions, firstDay, firstNextMonth);
 
     return SleepAggregate(
       dayTotals: dayTotals,
@@ -325,54 +328,179 @@ class MetricsUsecase {
   }
 
   // ----- Sleep helpers (Firestore) -----
-  StageTotalsAgg _sumSleepStagesFromFs(
+
+  // Remove overlapping sleep sessions (keep the longest one for each overlap)
+  List<SleepSession> _dedupeOverlappingSessions(List<SleepSession> sessions) {
+    if (sessions.isEmpty) return sessions;
+    
+    // Sort by start time
+    final sorted = List<SleepSession>.from(sessions)
+      ..sort((a, b) => a.start.compareTo(b.start));
+    
+    final result = <SleepSession>[];
+    SleepSession? current;
+    
+    for (final session in sorted) {
+      if (current == null) {
+        current = session;
+        continue;
+      }
+      
+      // Check if sessions overlap
+      if (session.start.isBefore(current.end)) {
+        // Overlap detected - keep the longer session
+        final currentDuration = current.end.difference(current.start);
+        final sessionDuration = session.end.difference(session.start);
+        
+        if (sessionDuration > currentDuration) {
+          current = session; // Replace with longer session
+        }
+        // else keep current (it's longer or equal)
+      } else {
+        // No overlap - add current to result and move to next
+        result.add(current);
+        current = session;
+      }
+    }
+    
+    // Add the last session
+    if (current != null) {
+      result.add(current);
+    }
+    
+    return result;
+  }
+
+  // Calculate stage totals from sessions (stages embedded in session)
+  StageTotalsAgg _sumSleepStagesFromSessions(
     List<SleepSession> sessions,
     DateTime start,
     DateTime end,
   ) {
     int light = 0, deep = 0, rem = 0;
-    for (final s in sessions) {
-      DateTime from = s.start.isBefore(start) ? start : s.start;
-      DateTime to = s.end.isAfter(end) ? end : s.end;
-      if (!to.isAfter(from)) continue;
-      final mins = to.difference(from).inMinutes;
-      // Without per-stage details, assign to Light for display
-      light += mins;
+
+    for (final session in sessions) {
+      if (session.stages != null && session.stages!.isNotEmpty) {
+        // New format: has embedded stages
+        for (final stage in session.stages!) {
+          DateTime from = stage.start.isBefore(start) ? start : stage.start;
+          DateTime to = stage.end.isAfter(end) ? end : stage.end;
+          if (!to.isAfter(from)) continue;
+          final mins = to.difference(from).inMinutes;
+
+          switch (stage.stage.toLowerCase()) {
+            case 'light':
+              light += mins;
+              break;
+            case 'deep':
+              deep += mins;
+              break;
+            case 'rem':
+              rem += mins;
+              break;
+            case 'sleeping':
+              light += mins;
+              break;
+            default:
+              break;
+          }
+        }
+      } else {
+        // Legacy format: no stages, assign all to light
+        DateTime from = session.start.isBefore(start) ? start : session.start;
+        DateTime to = session.end.isAfter(end) ? end : session.end;
+        if (!to.isAfter(from)) continue;
+        final mins = to.difference(from).inMinutes;
+        light += mins;
+      }
     }
+
     return StageTotalsAgg(light: light, deep: deep, rem: rem);
   }
 
-  List<StageDailyAgg> _dailyFromFs(
+  // Calculate daily aggregates from sessions (stages embedded)
+  List<StageDailyAgg> _dailyFromSessions(
     List<SleepSession> sessions,
     DateTime start,
     DateTime end,
   ) {
     final days = end.difference(start).inDays;
-    final totals = List<int>.filled(days, 0);
-    for (final s in sessions) {
-      DateTime from = s.start.isBefore(start) ? start : s.start;
-      DateTime to = s.end.isAfter(end) ? end : s.end;
-      if (!to.isAfter(from)) continue;
-      while (from.isBefore(to)) {
-        final idx = from.difference(start).inDays;
-        final nextDay = DateTime(
-          from.year,
-          from.month,
-          from.day,
-        ).add(const Duration(days: 1));
-        final segEnd = to.isBefore(nextDay) ? to : nextDay;
-        final mins = segEnd.difference(from).inMinutes;
-        if (idx >= 0 && idx < days) totals[idx] += mins;
-        from = segEnd;
+    final lightMins = List<int>.filled(days, 0);
+    final deepMins = List<int>.filled(days, 0);
+    final remMins = List<int>.filled(days, 0);
+
+    for (final session in sessions) {
+      if (session.stages != null && session.stages!.isNotEmpty) {
+        // New format: process embedded stages
+        for (final stage in session.stages!) {
+          DateTime from = stage.start.isBefore(start) ? start : stage.start;
+          DateTime to = stage.end.isAfter(end) ? end : stage.end;
+          if (!to.isAfter(from)) continue;
+
+          // Split stage across days if it spans midnight
+          while (from.isBefore(to)) {
+            final idx = from.difference(start).inDays;
+            final nextDay = DateTime(
+              from.year,
+              from.month,
+              from.day,
+            ).add(const Duration(days: 1));
+            final segEnd = to.isBefore(nextDay) ? to : nextDay;
+            final mins = segEnd.difference(from).inMinutes;
+
+            if (idx >= 0 && idx < days) {
+              switch (stage.stage.toLowerCase()) {
+                case 'light':
+                case 'sleeping':
+                  lightMins[idx] += mins;
+                  break;
+                case 'deep':
+                  deepMins[idx] += mins;
+                  break;
+                case 'rem':
+                  remMins[idx] += mins;
+                  break;
+              }
+            }
+            from = segEnd;
+          }
+        }
+      } else {
+        // Legacy format: no stages, assign to light
+        DateTime from = session.start.isBefore(start) ? start : session.start;
+        DateTime to = session.end.isAfter(end) ? end : session.end;
+        if (!to.isAfter(from)) continue;
+
+        while (from.isBefore(to)) {
+          final idx = from.difference(start).inDays;
+          final nextDay = DateTime(
+            from.year,
+            from.month,
+            from.day,
+          ).add(const Duration(days: 1));
+          final segEnd = to.isBefore(nextDay) ? to : nextDay;
+          final mins = segEnd.difference(from).inMinutes;
+          if (idx >= 0 && idx < days) lightMins[idx] += mins;
+          from = segEnd;
+        }
       }
     }
+
     final out = <StageDailyAgg>[];
     for (int i = 0; i < days; i++) {
-      final t = StageTotalsAgg(light: totals[i], deep: 0, rem: 0);
+      final t = StageTotalsAgg(
+        light: lightMins[i],
+        deep: deepMins[i],
+        rem: remMins[i],
+      );
       final total = t.totalMinutes;
       final pct = total == 0
           ? const StagePctAgg.zero()
-          : const StagePctAgg(light: 100.0, deep: 0.0, rem: 0.0);
+          : StagePctAgg(
+              light: (lightMins[i] / total) * 100.0,
+              deep: (deepMins[i] / total) * 100.0,
+              rem: (remMins[i] / total) * 100.0,
+            );
       out.add(StageDailyAgg(totals: t, percentages: pct));
     }
     return out;

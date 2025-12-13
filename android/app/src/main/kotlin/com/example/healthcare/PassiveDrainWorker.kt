@@ -72,7 +72,8 @@ class PassiveDrainWorker(appContext: Context, params: WorkerParameters) : Corout
                         "source" to (r.metadata.dataOrigin.packageName ?: "health_connect"),
                         "metaId" to metaId
                     )
-                    db.collection("users").document(uid).collection("heart_rate").add(map)
+                    // Use metaId as document ID to prevent duplicates
+                    db.collection("users").document(uid).collection("heart_rate").document(metaId).set(map)
                 }
             } catch (_: Exception) {}
 
@@ -89,30 +90,83 @@ class PassiveDrainWorker(appContext: Context, params: WorkerParameters) : Corout
                         "source" to (r.metadata.dataOrigin.packageName ?: "health_connect"),
                         "metaId" to metaId
                     )
-                    db.collection("users").document(uid).collection("spo2").add(map)
+                    // Use metaId as document ID to prevent duplicates
+                    db.collection("users").document(uid).collection("spo2").document(metaId).set(map)
                 }
             } catch (_: Exception) {}
 
-            // Sleep sessions (auto-ID docs)
+            // Sleep sessions with stages (compact format)
             try {
                 val sleep = client.readRecords(ReadRecordsRequest(SleepSessionRecord::class, timeRangeFilter = TimeRangeFilter.between(start, now))).records
                 Log.i(TAG, "doWork(): sleep sessions=${sleep.size}")
+                
+                // Use batch write to reduce operations
+                var batch = db.batch()
+                var batchCount = 0
+                
                 for (r in sleep) {
                     val startTs = r.startTime.toEpochMilli()
                     val endTs = r.endTime.toEpochMilli()
                     val durationMinutes = ((endTs - startTs) / 60000L).toInt()
                     val metaId = r.metadata.id ?: ""
-                    val map = hashMapOf(
+                    
+                    // Build stages array
+                    val stagesArray = r.stages.map { stage ->
+                        val stageStartTs = stage.startTime.toEpochMilli()
+                        val stageEndTs = stage.endTime.toEpochMilli()
+                        val stageDurationMin = ((stageEndTs - stageStartTs) / 60000L).toInt()
+                        
+                        val stageType = when (stage.stage) {
+                            1 -> "awake"
+                            2 -> "sleeping"
+                            3 -> "out_of_bed"
+                            4 -> "light"
+                            5 -> "deep"
+                            6 -> "rem"
+                            else -> "unknown"
+                        }
+                        
+                        hashMapOf(
+                            "start" to Timestamp(Date(stageStartTs)),
+                            "end" to Timestamp(Date(stageEndTs)),
+                            "durationMinutes" to stageDurationMin,
+                            "stage" to stageType
+                        )
+                    }
+                    
+                    // Upload session with embedded stages
+                    val sessionMap = hashMapOf(
                         "start" to Timestamp(Date(startTs)),
                         "end" to Timestamp(Date(endTs)),
                         "durationMinutes" to durationMinutes,
                         "title" to (r.title ?: ""),
                         "source" to (r.metadata.dataOrigin.packageName ?: "health_connect"),
-                        "metaId" to metaId
+                        "metaId" to metaId,
+                        "stages" to stagesArray
                     )
-                    db.collection("users").document(uid).collection("sleep_sessions").add(map)
+                    
+                    // Use metaId as document ID to prevent duplicates
+                    val docRef = db.collection("users").document(uid).collection("sleep_sessions").document(metaId)
+                    batch.set(docRef, sessionMap)
+                    batchCount++
+                    
+                    // Firestore batch limit is 500 operations
+                    if (batchCount >= 400) {
+                        batch.commit().await()
+                        batch = db.batch()
+                        batchCount = 0
+                    }
                 }
-            } catch (_: Exception) {}
+                
+                // Commit remaining batch
+                if (batchCount > 0) {
+                    batch.commit().await()
+                }
+                
+                Log.i(TAG, "doWork(): uploaded ${sleep.size} sessions with stages")
+            } catch (e: Exception) {
+                Log.e(TAG, "doWork(): sleep error", e)
+            }
 
             // After uploading data, trigger AI health monitoring if conditions met
             try {
