@@ -1,9 +1,16 @@
 import 'user_model.dart';
 
 enum Specialty {
-  stress('Stress', 'Stress'),
+  diabetes('Diabetes', 'Nội tiết - Tiểu đường'),
+  hypertension('Hypertension', 'Nội khoa - Huyết áp'),
   cardiology('Cardiology', 'Tim mạch'),
-  diagnosis('Diagnosis', 'Chuẩn đoán bệnh');
+  respiratory('Respiratory', 'Hô hấp'),
+  gastroenterology('Gastroenterology', 'Tiêu hóa'),
+  neurology('Neurology', 'Thần kinh'),
+  orthopedics('Orthopedics', 'Cơ xương khớp'),
+  dermatology('Dermatology', 'Da liễu'),
+  mentalHealth('Mental Health', 'Tâm thần'),
+  obesity('Obesity', 'Dinh dưỡng - Béo phì');
 
   const Specialty(this.englishName, this.vietnameseName);
 
@@ -17,7 +24,7 @@ enum Specialty {
       (s) =>
           s.englishName.toLowerCase() == specialty.toLowerCase() ||
           s.vietnameseName.toLowerCase() == specialty.toLowerCase(),
-      orElse: () => Specialty.stress,
+      orElse: () => Specialty.diabetes,
     );
   }
 
@@ -25,12 +32,26 @@ enum Specialty {
 
   DiseaseFocus toDiseaseFocus() {
     switch (this) {
-      case Specialty.stress:
-        return DiseaseFocus.stress;
+      case Specialty.diabetes:
+        return DiseaseFocus.diabetes;
+      case Specialty.hypertension:
+        return DiseaseFocus.hypertension;
       case Specialty.cardiology:
         return DiseaseFocus.cardiology;
-      case Specialty.diagnosis:
-        return DiseaseFocus.diagnosis;
+      case Specialty.respiratory:
+        return DiseaseFocus.respiratory;
+      case Specialty.gastroenterology:
+        return DiseaseFocus.gastroenterology;
+      case Specialty.neurology:
+        return DiseaseFocus.neurology;
+      case Specialty.orthopedics:
+        return DiseaseFocus.orthopedics;
+      case Specialty.dermatology:
+        return DiseaseFocus.dermatology;
+      case Specialty.mentalHealth:
+        return DiseaseFocus.mentalHealth;
+      case Specialty.obesity:
+        return DiseaseFocus.obesity;
     }
   }
 }
@@ -87,7 +108,7 @@ class DoctorModel extends UserModel {
   // Factory constructor from UserModel
   factory DoctorModel.fromUserModel(UserModel user) {
     // Map diseaseFocus to specialty
-    Specialty mappedSpecialty = Specialty.stress; // default
+    Specialty mappedSpecialty = Specialty.diabetes; // default
     if (user.diseaseFocus != null) {
       final diseaseFocusEnum = DiseaseFocus.fromString(user.diseaseFocus!);
       if (diseaseFocusEnum != null) {

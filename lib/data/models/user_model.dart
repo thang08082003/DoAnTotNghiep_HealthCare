@@ -181,11 +181,18 @@ enum UserRole {
   }
 }
 
-// Enum cho các chuyên khoa (disease focus) - chỉ 3 loại
+// Enum cho các bệnh cần theo dõi - 10 loại bệnh thực tế
 enum DiseaseFocus {
-  stress('stress', 'Stress'),
+  diabetes('diabetes', 'Tiểu đường'),
+  hypertension('hypertension', 'Cao huyết áp'),
   cardiology('cardiology', 'Tim mạch'),
-  diagnosis('diagnosis', 'Chuẩn đoán bệnh');
+  respiratory('respiratory', 'Hô hấp'),
+  gastroenterology('gastroenterology', 'Tiêu hóa'),
+  neurology('neurology', 'Thần kinh'),
+  orthopedics('orthopedics', 'Cơ xương khớp'),
+  dermatology('dermatology', 'Da liễu'),
+  mentalHealth('mental_health', 'Sức khỏe tâm thần'),
+  obesity('obesity', 'Béo phì');
 
   const DiseaseFocus(this.value, this.displayName);
   final String value;
@@ -207,12 +214,26 @@ enum DiseaseFocus {
   // Convert to Specialty enum (for doctor model compatibility)
   Specialty toSpecialty() {
     switch (this) {
-      case DiseaseFocus.stress:
-        return Specialty.stress;
+      case DiseaseFocus.diabetes:
+        return Specialty.diabetes;
+      case DiseaseFocus.hypertension:
+        return Specialty.hypertension;
       case DiseaseFocus.cardiology:
         return Specialty.cardiology;
-      case DiseaseFocus.diagnosis:
-        return Specialty.diagnosis;
+      case DiseaseFocus.respiratory:
+        return Specialty.respiratory;
+      case DiseaseFocus.gastroenterology:
+        return Specialty.gastroenterology;
+      case DiseaseFocus.neurology:
+        return Specialty.neurology;
+      case DiseaseFocus.orthopedics:
+        return Specialty.orthopedics;
+      case DiseaseFocus.dermatology:
+        return Specialty.dermatology;
+      case DiseaseFocus.mentalHealth:
+        return Specialty.mentalHealth;
+      case DiseaseFocus.obesity:
+        return Specialty.obesity;
     }
   }
 }
