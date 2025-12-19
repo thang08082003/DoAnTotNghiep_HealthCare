@@ -77,6 +77,10 @@ class AuthViewModel extends StateNotifier<AuthViewState> {
         );
         return;
       }
+
+      // Create session immediately for new user to prevent "kicked" dialog
+      await SessionService.createSession(user.uid);
+
       // Newly registered users won't have a profile yet -> needsSetup = true
       state = state.copyWith(
         isLoading: false,

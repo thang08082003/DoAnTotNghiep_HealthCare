@@ -14,7 +14,8 @@ class ChestXrayScreen extends StatefulWidget {
 
 class _ChestXrayScreenState extends State<ChestXrayScreen> {
   final TextEditingController _apiUrlController = TextEditingController(
-    text: 'http://10.0.2.2:5000', // Android Emulator: 10.0.2.2 = localhost của máy host
+    text:
+        'http://10.0.2.2:5000', // Android Emulator: 10.0.2.2 = localhost của máy host
   );
   final ChestXrayService _service = ChestXrayService();
 
@@ -22,7 +23,7 @@ class _ChestXrayScreenState extends State<ChestXrayScreen> {
   double _overlayTransparency = 0.5;
   bool _useLungSegmentation = true;
   bool _showLungMask = true; // Hiển thị lung mask mặc định
-  int _maxImageSize = 800; // Max size để giảm response từ server
+  // Max size để giảm response từ server
   File? _selectedImage;
   bool _isProcessing = false;
 
@@ -179,11 +180,50 @@ class _ChestXrayScreenState extends State<ChestXrayScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (_resultImageBase64 != null)
-                Image.memory(
-                  base64Decode(_resultImageBase64!),
-                  fit: BoxFit.contain,
+              if (_resultImageBase64 != null) ...[
+                GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => Scaffold(
+                          backgroundColor: Colors.black,
+                          appBar: AppBar(
+                            backgroundColor: Colors.black,
+                            foregroundColor: Colors.white,
+                            title: const Text('Kết quả X-quang'),
+                          ),
+                          body: InteractiveViewer(
+                            minScale: 0.5,
+                            maxScale: 5.0,
+                            child: Center(
+                              child: Image.memory(
+                                base64Decode(_resultImageBase64!),
+                                fit: BoxFit.contain,
+                                filterQuality: FilterQuality.high,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  child: Image.memory(
+                    base64Decode(_resultImageBase64!),
+                    fit: BoxFit.contain,
+                  ),
                 ),
+                const SizedBox(height: 8),
+                const Center(
+                  child: Text(
+                    '👆 Nhấn vào ảnh để xem phóng to',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               Text('Số vùng phát hiện: $_numDetections'),
               Text('Độ phủ phổi: ${_lungCoverage.toStringAsFixed(1)}%'),
@@ -459,10 +499,7 @@ class _ChestXrayScreenState extends State<ChestXrayScreen> {
 
   Widget _buildUrlChip(String label, String url) {
     return ActionChip(
-      label: Text(
-        label,
-        style: const TextStyle(fontSize: 11),
-      ),
+      label: Text(label, style: const TextStyle(fontSize: 11)),
       onPressed: () {
         setState(() {
           _apiUrlController.text = url;

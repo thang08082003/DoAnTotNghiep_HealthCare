@@ -12,6 +12,7 @@ import 'dart:io' show Platform;
 import 'package:healthcare/data/services/android_passive_listener_service.dart';
 import 'package:healthcare/data/services/health_monitoring_trigger.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:healthcare/data/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -51,8 +52,24 @@ void main() async {
     },
   );
 
+  // Initialize NotificationService with the configured plugin
+  NotificationService.initialize(flutterLocalNotificationsPlugin);
+  debugPrint('✅ NotificationService initialized successfully');
+
   // Create notification channels for Android
   if (Platform.isAndroid) {
+    // Healthcare notifications channel (for follow requests, chat, reviews, etc.)
+    const AndroidNotificationChannel healthcareChannel =
+        AndroidNotificationChannel(
+          'healthcare_channel', // id
+          'Healthcare Notifications', // name
+          description: 'Thông báo về yêu cầu theo dõi, tin nhắn, nhận xét',
+          importance: Importance.high,
+          playSound: true,
+          enableVibration: true,
+          showBadge: true,
+        );
+
     // Medication reminders channel
     const AndroidNotificationChannel medicationChannel =
         AndroidNotificationChannel(
@@ -81,6 +98,7 @@ void main() async {
           AndroidFlutterLocalNotificationsPlugin
         >();
 
+    await androidPlugin?.createNotificationChannel(healthcareChannel);
     await androidPlugin?.createNotificationChannel(medicationChannel);
     await androidPlugin?.createNotificationChannel(goalChannel);
   }

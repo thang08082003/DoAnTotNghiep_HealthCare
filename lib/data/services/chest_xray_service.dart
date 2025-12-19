@@ -34,9 +34,16 @@ class ChestXrayService {
     try {
       var request = http.MultipartRequest('POST', Uri.parse('$apiUrl/detect'));
 
-      // Add image file
+      // Read file as bytes first để đảm bảo data đúng
+      final imageBytes = await imageFile.readAsBytes();
+
+      // Add image file from bytes instead of path
       request.files.add(
-        await http.MultipartFile.fromPath('image', imageFile.path),
+        http.MultipartFile.fromBytes(
+          'image',
+          imageBytes,
+          filename: imageFile.path.split('/').last,
+        ),
       );
 
       // Add parameters
@@ -47,13 +54,13 @@ class ChestXrayService {
       request.fields['return_format'] = 'json';
 
       print('📤 Sending request to $apiUrl/detect...');
-      
+      print('📦 Image size: ${imageBytes.length} bytes');
+
       // Use Response.fromStream instead of manual stream handling
-      final response = await http.Response.fromStream(
-        await request.send()
-      ).timeout(
-        const Duration(minutes: 10), // Timeout rất dài cho emulator
-      );
+      final response = await http.Response.fromStream(await request.send())
+          .timeout(
+            const Duration(minutes: 10), // Timeout rất dài cho emulator
+          );
 
       print('✅ Server responded with status: ${response.statusCode}');
       print('📦 Response size: ${response.body.length} bytes');
@@ -61,7 +68,9 @@ class ChestXrayService {
       if (response.statusCode == 200) {
         print('🔍 Parsing JSON response...');
         final data = json.decode(response.body);
-        print('✅ Successfully parsed JSON - ${data['num_detections']} detections');
+        print(
+          '✅ Successfully parsed JSON - ${data['num_detections']} detections',
+        );
         return {'success': true, 'data': data};
       } else {
         return {
@@ -72,17 +81,20 @@ class ChestXrayService {
     } on SocketException catch (e) {
       return {
         'success': false,
-        'error': 'Network error: Cannot connect to server. Make sure server is running at $apiUrl',
+        'error':
+            'Network error: Cannot connect to server. Make sure server is running at $apiUrl',
       };
     } on http.ClientException catch (e) {
       return {
         'success': false,
-        'error': 'Connection error: ${e.message}. Try checking server status first.',
+        'error':
+            'Connection error: ${e.message}. Try checking server status first.',
       };
     } on TimeoutException catch (e) {
       return {
         'success': false,
-        'error': 'Timeout: ${e.message ?? "Request took too long"}. AI processing may need more time or image is too large.',
+        'error':
+            'Timeout: ${e.message ?? "Request took too long"}. AI processing may need more time or image is too large.',
       };
     } catch (e) {
       return {'success': false, 'error': 'Unexpected error: $e'};

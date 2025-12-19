@@ -58,14 +58,18 @@ service cloud.firestore {
       allow create: if request.auth != null;
     }
     
-    // Notifications - users can read/write their own notifications
+    // Notifications - users can read their own notifications
+    // But ANYONE authenticated can CREATE notifications for others (e.g., patient → doctor)
     match /notifications/{notificationId} {
+      // Read only your own notifications
       allow read: if request.auth != null && 
         resource.data.userId == request.auth.uid;
-      allow write: if request.auth != null && 
+      // Update/delete only your own notifications
+      allow update, delete: if request.auth != null && 
         resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null && 
-        request.resource.data.userId == request.auth.uid;
+      // ✅ CREATE: Allow authenticated users to send notifications to anyone
+      // (e.g., patient sends follow request to doctor)
+      allow create: if request.auth != null;
       // Allow query with where userId == currentUser
       allow list: if request.auth != null && 
         request.query.limit <= 100;

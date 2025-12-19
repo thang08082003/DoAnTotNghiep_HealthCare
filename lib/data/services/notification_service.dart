@@ -1,9 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../models/notification_model.dart';
 
 class NotificationService {
   static final _firestore = FirebaseFirestore.instance;
   static const _collection = 'notifications';
+
+  // Use a singleton instance that will be initialized in main.dart
+  static FlutterLocalNotificationsPlugin? _localNotifications;
+
+  /// Initialize the notification plugin (call this from main.dart)
+  static void initialize(FlutterLocalNotificationsPlugin plugin) {
+    _localNotifications = plugin;
+  }
 
   static Stream<List<AppNotification>> watchUserNotifications(String userId) {
     return _firestore
@@ -112,6 +121,66 @@ class NotificationService {
       'isRead': false,
       'createdAt': FieldValue.serverTimestamp(),
     });
+
+    // Show local notification popup
+    try {
+      await _showLocalNotification(
+        type: type,
+        title: title,
+        body: body,
+        data: data,
+      );
+    } catch (_) {
+      // Ignore errors in local notification
+    }
+  }
+
+  /// Show local notification popup
+  static Future<void> _showLocalNotification({
+    required NotificationType type,
+    required String title,
+    required String body,
+    Map<String, dynamic>? data,
+  }) async {
+    // Check if plugin is initialized
+    if (_localNotifications == null) {
+      print('⚠️ NotificationService: Plugin not initialized!');
+      return;
+    }
+
+    const androidDetails = AndroidNotificationDetails(
+      'healthcare_channel',
+      'Healthcare Notifications',
+      channelDescription: 'Notifications from Healthcare app',
+      importance: Importance.high,
+      priority: Priority.high,
+      showWhen: true,
+      enableVibration: true,
+      playSound: true,
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    // Generate unique notification ID based on type and timestamp
+    final notificationId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+    try {
+      print('📲 Showing notification: $title');
+      await _localNotifications!.show(notificationId, title, body, details);
+      print('✅ Notification shown successfully');
+    } catch (e) {
+      print('❌ Error showing notification: $e');
+      rethrow;
+    }
   }
 
   /// Create medication reminder notification
