@@ -50,7 +50,7 @@ class _MedicalChatScreenState extends ConsumerState<MedicalChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Phát hiện sớm - AI Chat'),
+        title: const Text('Trợ lý Y tế AI'),
         centerTitle: true,
         actions: [
           PopupMenuButton<String>(
@@ -77,10 +77,6 @@ class _MedicalChatScreenState extends ConsumerState<MedicalChatScreen> {
       ),
       body: Column(
         children: [
-          // Mode selector
-          _buildModeSelector(state.currentMode),
-          const Divider(height: 1),
-
           // Messages list
           Expanded(
             child: state.messages.isEmpty
@@ -127,49 +123,6 @@ class _MedicalChatScreenState extends ConsumerState<MedicalChatScreen> {
     );
   }
 
-  Widget _buildModeSelector(ChatMode currentMode) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      color: Colors.grey[50],
-      child: Row(
-        children: [
-          const Icon(Icons.smart_toy, size: 20, color: AppColors.primaryColor),
-          const SizedBox(width: 8),
-          const Text('Chế độ:', style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: SegmentedButton<ChatMode>(
-              segments: const [
-                ButtonSegment(
-                  value: ChatMode.thongtin,
-                  label: Text('Tìm hiểu'),
-                  icon: Icon(Icons.info_outline, size: 18),
-                ),
-                ButtonSegment(
-                  value: ChatMode.problem,
-                  label: Text('Phân tích'),
-                  icon: Icon(Icons.search, size: 18),
-                ),
-              ],
-              selected: {currentMode},
-              onSelectionChanged: (Set<ChatMode> selected) {
-                ref
-                    .read(medicalChatViewModelProvider.notifier)
-                    .changeMode(selected.first);
-              },
-              style: ButtonStyle(
-                visualDensity: VisualDensity.compact,
-                textStyle: WidgetStateProperty.all(
-                  const TextStyle(fontSize: 13),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildMessageBubble(ChatMessage message) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -179,18 +132,7 @@ class _MedicalChatScreenState extends ConsumerState<MedicalChatScreen> {
             ? MainAxisAlignment.end
             : MainAxisAlignment.start,
         children: [
-          if (!message.isUser) ...[
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: AppColors.primaryColor.withValues(alpha: 0.1),
-              child: const Icon(
-                Icons.smart_toy,
-                size: 18,
-                color: AppColors.primaryColor,
-              ),
-            ),
-            const SizedBox(width: 8),
-          ],
+          if (!message.isUser) ...[const SizedBox(width: 8)],
           Flexible(
             child: Column(
               crossAxisAlignment: message.isUser
@@ -232,12 +174,6 @@ class _MedicalChatScreenState extends ConsumerState<MedicalChatScreen> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
-                                Icons.psychology,
-                                size: 14,
-                                color: _getConfidenceColor(message.confidence!),
-                              ),
-                              const SizedBox(width: 4),
                               Text(
                                 'Độ tin cậy: ${(message.confidence! * 100).toStringAsFixed(1)}%',
                                 style: TextStyle(

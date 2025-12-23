@@ -22,28 +22,12 @@ class MedicalChatViewModel extends StateNotifier<MedicalChatState> {
 
   void _addWelcomeMessage() {
     final welcomeMessage = ChatMessage.bot(
-      'Xin chào! Tôi là trợ lý y tế AI. Tôi có thể giúp bạn:\n\n'
-      '📚 Tìm hiểu thông tin về bệnh lý\n'
-      '🔍 Phân tích triệu chứng\n\n'
-      'Bạn có thể chọn chế độ chat và bắt đầu hỏi tôi nhé!',
+      'Xin chào! Tôi là trợ lý y tế AI.\n\n'
+      'Tôi có thể giúp bạn tư vấn về sức khỏe, giải đáp thắc mắc về các triệu chứng và bệnh lý.\n\n'
+      'Hãy mô tả tình trạng sức khỏe của bạn để tôi có thể hỗ trợ tốt nhất!',
     );
 
     state = state.copyWith(messages: [welcomeMessage]);
-  }
-
-  /// Change chat mode
-  void changeMode(ChatMode mode) {
-    if (state.currentMode != mode) {
-      state = state.copyWith(currentMode: mode);
-
-      final modeMessage = ChatMessage.bot(
-        mode == ChatMode.thongtin
-            ? '✅ Đã chuyển sang chế độ "Tìm hiểu thông tin". Bạn có thể hỏi về bệnh lý, triệu chứng, cách điều trị...'
-            : '✅ Đã chuyển sang chế độ "Phân tích vấn đề". Hãy mô tả các triệu chứng bạn đang gặp phải.',
-      );
-
-      state = state.copyWith(messages: [...state.messages, modeMessage]);
-    }
   }
 
   /// Send a message to the chatbot
@@ -65,11 +49,10 @@ class MedicalChatViewModel extends StateNotifier<MedicalChatState> {
         mode: state.currentMode,
       );
 
-      // Add bot response
+      // Add bot response - chỉ hiển thị answer
       final botMessage = ChatMessage.bot(
-        response.response,
-        confidence: response.confidence,
-        intent: response.intent,
+        response.answer,
+        confidence: response.confidenceScore,
       );
 
       state = state.copyWith(

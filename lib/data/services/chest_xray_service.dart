@@ -30,6 +30,7 @@ class ChestXrayService {
     required bool useSegmentation,
     required bool showLungMask,
     required double overlayAlpha,
+    int boxThickness = 2,
   }) async {
     try {
       var request = http.MultipartRequest('POST', Uri.parse('$apiUrl/detect'));
@@ -40,7 +41,7 @@ class ChestXrayService {
       // Add image file from bytes instead of path
       request.files.add(
         http.MultipartFile.fromBytes(
-          'image',
+          'file',
           imageBytes,
           filename: imageFile.path.split('/').last,
         ),
@@ -52,6 +53,10 @@ class ChestXrayService {
       request.fields['show_lung_mask'] = showLungMask.toString();
       request.fields['overlay_alpha'] = overlayAlpha.toString();
       request.fields['return_format'] = 'json';
+      request.fields['quality'] = '100'; // Chất lượng tối đa
+      request.fields['box_thickness'] = boxThickness.toString();
+      request.fields['preserve_size'] = 'true'; // Giữ nguyên kích thước
+      request.fields['max_size'] = '4096'; // Cho phép ảnh lớn hơn
 
       print('📤 Sending request to $apiUrl/detect...');
       print('📦 Image size: ${imageBytes.length} bytes');
@@ -73,9 +78,11 @@ class ChestXrayService {
         );
         return {'success': true, 'data': data};
       } else {
+        print('❌ Error response body: ${response.body}');
         return {
           'success': false,
-          'error': 'Server returned status ${response.statusCode}',
+          'error':
+              'Server returned status ${response.statusCode}: ${response.body}',
         };
       }
     } on SocketException catch (e) {

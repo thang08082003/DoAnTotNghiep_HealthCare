@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import '../models/medical_chat_model.dart';
 
 class MedicalChatRepository {
-  static const String _baseUrl = 'https://tungdk-medbot.hf.space/api/chat';
+  static const String _baseUrl = 'https://tungdk-medbot10.hf.space/api/chat';
 
   static const Duration _timeout = Duration(seconds: 30);
 
@@ -13,8 +13,7 @@ class MedicalChatRepository {
     required ChatMode mode,
   }) async {
     try {
-      final request = MedicalChatRequest(message: message, mode: mode);
-
+      // Chỉ gửi message, không gửi mode
       final response = await http
           .post(
             Uri.parse(_baseUrl),
@@ -22,7 +21,7 @@ class MedicalChatRepository {
               'Content-Type': 'application/json',
               'Accept': 'application/json',
             },
-            body: jsonEncode(request.toJson()),
+            body: jsonEncode({'message': message}),
           )
           .timeout(_timeout);
 

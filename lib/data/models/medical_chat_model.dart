@@ -27,34 +27,56 @@ class MedicalChatRequest {
 }
 
 class MedicalChatResponse {
-  final double confidence;
-  final String intent;
-  final ChatMode mode;
-  final String response;
+  final String answer;
+  final String? confidence; // "high", "medium", "low"
+  final List<Map<String, String>>? citations;
+  final List<String>? followupQuestions;
+  final List<String>? possibleConditions;
+  final String? disclaimer;
 
   const MedicalChatResponse({
-    required this.confidence,
-    required this.intent,
-    required this.mode,
-    required this.response,
+    required this.answer,
+    this.confidence,
+    this.citations,
+    this.followupQuestions,
+    this.possibleConditions,
+    this.disclaimer,
   });
 
   factory MedicalChatResponse.fromJson(Map<String, dynamic> json) {
+    final data = json['data'] as Map<String, dynamic>?;
+    if (data == null) {
+      throw Exception('Invalid response format: missing data field');
+    }
+
     return MedicalChatResponse(
-      confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
-      intent: json['intent'] as String? ?? '',
-      mode: ChatMode.fromString(json['mode'] as String? ?? 'thongtin'),
-      response: json['response'] as String? ?? '',
+      answer: data['answer'] as String? ?? '',
+      confidence: data['confidence'] as String?,
+      citations: (data['citations'] as List<dynamic>?)
+          ?.map((e) => Map<String, String>.from(e as Map))
+          .toList(),
+      followupQuestions: (data['followup_questions'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList(),
+      possibleConditions: (data['possible_conditions'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList(),
+      disclaimer: data['disclaimer'] as String?,
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'confidence': confidence,
-      'intent': intent,
-      'mode': mode.value,
-      'response': response,
-    };
+  // Convert confidence string to number for UI
+  double? get confidenceScore {
+    switch (confidence?.toLowerCase()) {
+      case 'high':
+        return 0.9;
+      case 'medium':
+        return 0.7;
+      case 'low':
+        return 0.5;
+      default:
+        return null;
+    }
   }
 }
 
