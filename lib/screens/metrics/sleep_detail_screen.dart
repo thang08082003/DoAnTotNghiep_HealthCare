@@ -661,64 +661,54 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
     final sum = (light != null && deep != null && rem != null)
         ? (l + d + r)
         : null;
-    String fmtMin(int m) {
+
+    String fmtTime(int m) {
       final h = m ~/ 60;
       final min = m % 60;
-      if (h > 0) return '${h}h ${min}m';
-      return '${min}m';
+      if (h > 0 && min > 0) return '$h hr ${min} mins';
+      if (h > 0) return '$h hr';
+      return '$min mins';
     }
 
-    Widget chip(Color c, String label) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
+    Widget stageBar(String label, int minutes, Color color) {
+      final percentage = (sum != null && sum > 0) ? (minutes * 100 / sum) : 0.0;
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(
-              color: c,
-              borderRadius: BorderRadius.circular(2),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '$label ${fmtTime(minutes)}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                '${percentage.toStringAsFixed(2)}%',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: percentage / 100,
+              backgroundColor: Colors.grey[200],
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+              minHeight: 8,
             ),
           ),
-          const SizedBox(width: 6),
-          Text(label),
         ],
       );
-    }
-
-    List<Widget> lines = [
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          chip(const Color(0xFF90CAF9), 'Light'),
-          chip(const Color(0xFF80CBC4), 'Deep'),
-          chip(const Color(0xFFFFCC80), 'REM'),
-        ],
-      ),
-    ];
-    if (sum != null && sum > 0) {
-      final lp = (l * 100 / sum).toStringAsFixed(0);
-      final dp = (d * 100 / sum).toStringAsFixed(0);
-      final rp = (r * 100 / sum).toStringAsFixed(0);
-      lines.add(const SizedBox(height: 8));
-      lines.add(
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            Text('Light: ${fmtMin(l)} ($lp%)'),
-            Text('Deep: ${fmtMin(d)} ($dp%)'),
-            Text('REM: ${fmtMin(r)} ($rp%)'),
-          ],
-        ),
-      );
-    } else if (total > 0) {
-      lines.add(const SizedBox(height: 8));
-      lines.add(Text('Tổng thời gian ngủ: ${fmtMin(total)}'));
     }
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -731,8 +721,24 @@ class _SleepDetailScreenState extends ConsumerState<SleepDetailScreen>
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: lines,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Sleep stages',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 16),
+          if (sum != null && sum > 0) ...[
+            stageBar('Deep', d, const Color(0xFF80CBC4)),
+            const SizedBox(height: 16),
+            stageBar('Light', l, const Color(0xFF90CAF9)),
+            const SizedBox(height: 16),
+            stageBar('REM', r, const Color(0xFFFFCC80)),
+          ] else if (total > 0)
+            Text('Tổng thời gian ngủ: ${fmtTime(total)}')
+          else
+            const Text('Chưa có dữ liệu'),
+        ],
       ),
     );
   }
