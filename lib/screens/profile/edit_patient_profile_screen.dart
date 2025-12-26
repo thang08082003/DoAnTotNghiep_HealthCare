@@ -4,6 +4,8 @@ import '../../components/loading/loading_widget.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
 import '../../viewmodels/profile/patient_profile_view_model.dart';
+import '../../components/allergic_medication_selector.dart';
+import '../../data/repositories/patient_profile_repository.dart';
 
 class EditPatientProfileScreen extends ConsumerStatefulWidget {
   const EditPatientProfileScreen({super.key});
@@ -20,6 +22,7 @@ class _EditPatientProfileScreenState
   final _ageCtrl = TextEditingController();
   String _gender = 'Khác';
   final _historyCtrl = TextEditingController();
+  List<String> _allergicMedications = [];
   bool _loading = true;
   String? _error;
 
@@ -48,6 +51,12 @@ class _EditPatientProfileScreenState
       _ageCtrl.text = state.ageText;
       _gender = state.gender;
       _historyCtrl.text = state.medicalHistory;
+
+      // Load allergic medications
+      if (user.allergicMedications != null) {
+        _allergicMedications = List<String>.from(user.allergicMedications!);
+      }
+
       setState(() {
         _loading = false;
       });
@@ -71,6 +80,13 @@ class _EditPatientProfileScreenState
       vm.setGender(_gender);
       vm.setHistory(_historyCtrl.text);
       await vm.save();
+
+      // Save allergic medications
+      await PatientProfileRepository().updateAllergicMedications(
+        user.uid,
+        _allergicMedications,
+      );
+
       if (mounted) {
         Navigator.of(context).pop(true);
       }
@@ -154,6 +170,23 @@ class _EditPatientProfileScreenState
                         labelText: 'Tiền sử bệnh',
                         alignLabelWithHint: true,
                       ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Thuốc dị ứng',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    AllergicMedicationSelector(
+                      selectedMedications: _allergicMedications,
+                      onChanged: (medications) {
+                        setState(() {
+                          _allergicMedications = medications;
+                        });
+                      },
                     ),
                     const SizedBox(height: 20),
                     SizedBox(

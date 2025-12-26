@@ -50,4 +50,10 @@ class PatientProfileRepository {
           : focusValue,
     });
   }
+
+  Future<void> updateAllergicMedications(String uid, List<String> medications) {
+    return _userService.updateUserFields(uid, {
+      'allergicMedications': medications,
+    });
+  }
 }

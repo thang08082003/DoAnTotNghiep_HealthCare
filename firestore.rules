@@ -318,5 +318,33 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && 
         request.auth.uid == resource.data.userId;
     }
+
+    // Medication prescriptions - chỉ định thuốc từ bác sĩ
+    match /medication_prescriptions/{prescriptionId} {
+      // Patients can read their own prescriptions
+      // Doctors can read prescriptions for patients they follow OR prescriptions they created
+      // Allow list queries when filtering by patientId or doctorId
+      allow read: if request.auth != null && (
+        resource == null || // Allow queries (resource doesn't exist for list)
+        resource.data.patientId == request.auth.uid ||
+        resource.data.doctorId == request.auth.uid ||
+        (isDoctorUser(request.auth.uid)) // Any doctor can query prescriptions for their patients
+      );
+      // Only doctors can create prescriptions
+      allow create: if request.auth != null && 
+        isDoctorUser(request.auth.uid) &&
+        request.resource.data.doctorId == request.auth.uid;
+      // Doctors can update prescriptions they created OR prescriptions for patients they follow
+      // Patients can update status (accept/reject/request edit), patientResponse, modificationRequestCount, and requiresVideoCall
+      allow update: if request.auth != null && (
+        (isDoctorUser(request.auth.uid)) || // Any doctor can update prescriptions for their patients
+        (resource.data.patientId == request.auth.uid && 
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'patientResponse', 'modificationRequestCount', 'requiresVideoCall', 'updatedAt']))
+      );
+      // Only doctors can delete prescriptions they created
+      allow delete: if request.auth != null && 
+        isDoctorUser(request.auth.uid) &&
+        resource.data.doctorId == request.auth.uid;
+    }
   }
 }

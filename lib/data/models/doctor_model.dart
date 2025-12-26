@@ -155,8 +155,9 @@ class DoctorModel extends UserModel {
     int? age,
     String? gender,
     String? medicalHistory,
+    List<String>? allergicMedications,
     DateTime? createdAt,
-    UserRole? role, // Keep this for compatibility
+    UserRole? role,
     Specialty? specialty,
     int? yearsExperience,
     String? description,

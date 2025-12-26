@@ -4,6 +4,7 @@ import 'package:healthcare/components/buttons/primary_button.dart';
 import 'package:healthcare/data/models/user_model.dart';
 import 'package:healthcare/data/resources/gene/app_colors.dart';
 import 'package:healthcare/router/app_router.dart';
+import '../../components/allergic_medication_selector.dart';
 
 class UserSetupScreen extends ConsumerStatefulWidget {
   final String uid;
@@ -22,6 +23,7 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
   final _phoneController = TextEditingController();
   final _ageController = TextEditingController();
   final _medicalHistoryController = TextEditingController();
+  List<String> _selectedAllergicMedications = [];
   String?
   _selectedGender; // internal codes: 'male','female','other' -> will be converted to Vietnamese label before saving
   // Doctor fields
@@ -61,6 +63,18 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
   Future<void> _completeSetup() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Kiểm tra thuốc dị ứng cho bệnh nhân
+    if (_selectedRole == UserRole.patient &&
+        _selectedAllergicMedications.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng chọn ít nhất một thuốc dị ứng'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -85,6 +99,9 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
             gender: _genderCodeToVietnamese(_selectedGender),
             medicalHistory: _medicalHistoryController.text.trim().isNotEmpty
                 ? _medicalHistoryController.text.trim()
+                : null,
+            allergicMedications: _selectedAllergicMedications.isNotEmpty
+                ? _selectedAllergicMedications
                 : null,
           );
         } else {
@@ -404,6 +421,27 @@ class _UserSetupScreenState extends ConsumerState<UserSetupScreen> {
               }
               if (v.trim().length > 150) return 'Tối đa 150 ký tự';
               return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Thuốc dị ứng (bắt buộc)',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          AllergicMedicationSelector(
+            selectedMedications: _selectedAllergicMedications,
+            onChanged: (medications) {
+              setState(() {
+                _selectedAllergicMedications = medications;
+              });
             },
           ),
         ],

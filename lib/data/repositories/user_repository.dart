@@ -17,6 +17,7 @@ class UserRepository {
     int? age,
     String? gender,
     String? medicalHistory,
+    List<String>? allergicMedications,
     // Doctor
     int? yearsExperience,
     String? description,
@@ -32,6 +33,7 @@ class UserRepository {
       age: age,
       gender: gender,
       medicalHistory: medicalHistory,
+      allergicMedications: allergicMedications,
       yearsExperience: yearsExperience,
       description: description,
     );

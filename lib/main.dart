@@ -70,37 +70,12 @@ void main() async {
           showBadge: true,
         );
 
-    // Medication reminders channel
-    const AndroidNotificationChannel medicationChannel =
-        AndroidNotificationChannel(
-          'medication_reminders', // id
-          'Nhắc uống thuốc', // name
-          description: 'Thông báo nhắc nhở uống thuốc theo lịch',
-          importance: Importance.high,
-          playSound: true,
-          enableVibration: true,
-          showBadge: true,
-        );
-
-    // Goal reminders channel
-    const AndroidNotificationChannel goalChannel = AndroidNotificationChannel(
-      'goal_reminders', // id
-      'Nhắc mục tiêu', // name
-      description: 'Thông báo nhắc nhở về mục tiêu sức khỏe',
-      importance: Importance.high,
-      playSound: true,
-      enableVibration: true,
-      showBadge: true,
-    );
-
     final androidPlugin = flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >();
 
     await androidPlugin?.createNotificationChannel(healthcareChannel);
-    await androidPlugin?.createNotificationChannel(medicationChannel);
-    await androidPlugin?.createNotificationChannel(goalChannel);
   }
 
   // Request notification permissions for Android 13+
@@ -110,13 +85,6 @@ void main() async {
           AndroidFlutterLocalNotificationsPlugin
         >()
         ?.requestNotificationsPermission();
-
-    // Request exact alarm permission for Android 12+ (required for medication reminders)
-    await flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.requestExactAlarmsPermission();
   }
 
   // Request notification permissions for iOS

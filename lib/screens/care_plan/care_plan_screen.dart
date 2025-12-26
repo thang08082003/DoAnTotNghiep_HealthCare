@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../components/care_plan/care_plan_calendar_widget.dart';
-import '../../components/care_plan/create_goal_bottom_sheet.dart';
 import '../../components/care_plan/health_goals_list_widget.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
@@ -37,13 +35,6 @@ class CarePlanScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Calendar widget - Component tách biệt
-                CarePlanCalendarWidget(
-                  selectedDate: viewModel.selectedDate,
-                  onDaySelected: (selectedDay, focusedDay) {
-                    viewModelNotifier.selectDate(selectedDay);
-                  },
-                ),
                 const SizedBox(height: 24),
 
                 // Health Goals Section Header
@@ -74,20 +65,6 @@ class CarePlanScreen extends ConsumerWidget {
             ),
           );
         },
-      ),
-      floatingActionButton: userAsync.when(
-        data: (user) => user != null
-            ? FloatingActionButton.extended(
-                onPressed: () => showCreateGoalWithDatesBottomSheet(
-                  context: context,
-                  userId: user.uid,
-                ),
-                icon: const Icon(Icons.add),
-                label: const Text('Tạo mục tiêu'),
-              )
-            : null,
-        loading: () => null,
-        error: (_, __) => null,
       ),
     );
   }

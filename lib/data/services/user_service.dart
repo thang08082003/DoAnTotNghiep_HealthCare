@@ -55,6 +55,7 @@ class UserService {
     int? age,
     String? gender,
     String? medicalHistory,
+    List<String>? allergicMedications,
     // Doctor specific
     int? yearsExperience,
     String? description,
@@ -94,6 +95,7 @@ class UserService {
           age: age,
           gender: gender,
           medicalHistory: medicalHistory,
+          allergicMedications: allergicMedications,
           createdAt: DateTime.now(),
         );
       }

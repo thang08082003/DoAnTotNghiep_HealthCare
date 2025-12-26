@@ -14,6 +14,7 @@ class DiseaseDoctorSelectionScreen extends ConsumerStatefulWidget {
   final int? age;
   final String? gender;
   final String? medicalHistory;
+  final List<String>? allergicMedications;
 
   const DiseaseDoctorSelectionScreen({
     super.key,
@@ -24,6 +25,7 @@ class DiseaseDoctorSelectionScreen extends ConsumerStatefulWidget {
     this.age,
     this.gender,
     this.medicalHistory,
+    this.allergicMedications,
   });
 
   @override
@@ -240,6 +242,7 @@ class _DiseaseDoctorSelectionScreenState
           age: widget.age,
           gender: widget.gender,
           medicalHistory: widget.medicalHistory,
+          allergicMedications: widget.allergicMedications,
         );
 
     if (mounted) {

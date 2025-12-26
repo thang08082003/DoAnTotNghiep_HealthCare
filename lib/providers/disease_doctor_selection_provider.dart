@@ -74,6 +74,7 @@ class DiseaseDoctorSelectionNotifier
     int? age,
     String? gender,
     String? medicalHistory,
+    List<String>? allergicMedications,
   }) async {
     if (state.selectedDiseaseFocus == null) {
       return const SelectionResult(
@@ -96,6 +97,7 @@ class DiseaseDoctorSelectionNotifier
         age: age,
         gender: gender,
         medicalHistory: medicalHistory,
+        allergicMedications: allergicMedications,
       );
 
       state = state.copyWith(isLoading: false);

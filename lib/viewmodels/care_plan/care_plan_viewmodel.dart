@@ -21,51 +21,6 @@ class CarePlanViewModel extends StateNotifier<CarePlanState> {
   Stream<List<HealthGoal>> getHealthGoalsStream() {
     return _carePlanService.getHealthGoalsForDate(userId, state.selectedDate);
   }
-
-  // Tạo mục tiêu mới
-  Future<void> createHealthGoal({
-    required String title,
-    String? description,
-  }) async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
-
-    try {
-      await _carePlanService.createHealthGoal(
-        userId: userId,
-        title: title,
-        description: description,
-        targetDate: state.selectedDate,
-      );
-
-      state = state.copyWith(isLoading: false);
-    } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: 'Không thể tạo mục tiêu: $e',
-      );
-      rethrow;
-    }
-  }
-
-  // Toggle hoàn thành mục tiêu
-  Future<void> toggleGoalCompletion(String goalId, bool isCompleted) async {
-    try {
-      await _carePlanService.toggleGoalCompletion(goalId, !isCompleted);
-    } catch (e) {
-      state = state.copyWith(errorMessage: 'Không thể cập nhật mục tiêu: $e');
-      rethrow;
-    }
-  }
-
-  // Xóa mục tiêu
-  Future<void> deleteHealthGoal(String goalId) async {
-    try {
-      await _carePlanService.deleteHealthGoal(goalId);
-    } catch (e) {
-      state = state.copyWith(errorMessage: 'Không thể xóa mục tiêu: $e');
-      rethrow;
-    }
-  }
 }
 
 // Provider cho ViewModel

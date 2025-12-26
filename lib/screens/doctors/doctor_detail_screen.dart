@@ -8,10 +8,7 @@ import '../../data/resources/gene/app_dimensions.dart';
 import '../../providers/user_provider.dart';
 import '../../components/chat/chat_thread_view.dart';
 import '../../components/app_bar/chat_app_bar_title.dart';
-import '../../viewmodels/orders/doctor_orders_view_model.dart';
-import '../../data/models/doctor_order.dart';
 import '../../viewmodels/reviews/doctor_reviews_view_model.dart';
-import '../patients/patient_orders_list_screen.dart';
 import '../call/call_waiting_screen.dart';
 import '../../viewmodels/call/call_view_model.dart';
 import 'dart:async';
@@ -19,7 +16,6 @@ import 'doctor_reviews_screen.dart';
 import '../../components/reviews/reviews_summary.dart';
 import '../../components/reviews/reviews_list.dart';
 import '../../components/reviews/review_editor_sheet.dart';
-import '../../viewmodels/follow/follow_request_view_model.dart';
 import '../profile/edit_doctor_profile_screen.dart';
 
 class DoctorDetailScreen extends ConsumerStatefulWidget {
@@ -125,7 +121,7 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
     );
   }
 
-  Widget _buildInfoTab({bool infoOnly = false}) {
+  Widget _buildInfoTab() {
     final name = _user?.name ?? '';
     final email = _user?.email ?? '';
     final isDoctor = _user is DoctorModel;
@@ -173,8 +169,6 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
             _buildDescriptionSection(description, isDoctor),
             const SizedBox(height: 16),
             _buildRatingsSection(),
-            const SizedBox(height: 16),
-            if (!infoOnly) _buildDoctorOrdersSection(),
           ],
         ),
       ),
@@ -303,202 +297,6 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen>
       context: context,
       doctorId: widget.doctorId,
       reviewsVm: reviewsVm,
-    );
-  }
-
-  Widget _buildDoctorOrdersSection() {
-    // Only show for patient role; otherwise hidden
-    return Consumer(
-      builder: (context, ref, _) {
-        return FutureBuilder(
-          future: ref.read(currentUserProvider.future),
-          builder: (context, snap) {
-            if (!snap.hasData) {
-              return const SizedBox.shrink();
-            }
-            final currentUser = snap.data!;
-            if (!currentUser.isPatient) {
-              return const SizedBox.shrink();
-            }
-
-            // Hide orders unless follow request status is accepted
-            final followVm = ref.read(followRequestViewModelProvider);
-            return FutureBuilder<String?>(
-              future: followVm.getRequestStatus(
-                patientId: currentUser.uid,
-                doctorId: widget.doctorId,
-              ),
-              builder: (context, statusSnap) {
-                if (statusSnap.connectionState == ConnectionState.waiting) {
-                  return const SizedBox.shrink();
-                }
-                final status = (statusSnap.data ?? '').toLowerCase();
-                if (status != 'accepted') {
-                  return const SizedBox.shrink();
-                }
-
-                final ordersVm = ref.read(doctorOrdersViewModelProvider);
-                return Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.grey.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Chỉ định của bác sĩ',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      StreamBuilder<List<DoctorOrder>>(
-                        stream: ordersVm.watchOrders(
-                          patientId: currentUser.uid,
-                          doctorId: widget.doctorId,
-                        ),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 8),
-                              child: LinearProgressIndicator(minHeight: 2),
-                            );
-                          }
-                          final orders = snapshot.data ?? const <DoctorOrder>[];
-                          if (orders.isEmpty) {
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: const [
-                                Icon(
-                                  Icons.assignment_turned_in,
-                                  size: 18,
-                                  color: AppColors.textSecondary,
-                                ),
-                                SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'Chưa có chỉ định nào được thêm. Khi bác sĩ đưa ra chỉ định (thuốc, xét nghiệm, chế độ sinh hoạt), nội dung sẽ hiển thị tại đây.',
-                                    style: TextStyle(
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          }
-
-                          // Hiển thị tối đa 3 chỉ định gần nhất
-                          final preview = orders.take(3).toList();
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              ListView.separated(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: preview.length,
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(height: 8),
-                                itemBuilder: (context, i) =>
-                                    _orderTile(preview[i]),
-                              ),
-                              if (orders.length > 3) ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  '+${orders.length - 3} chỉ định khác',
-                                  style: const TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                              const SizedBox(height: 12),
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: OutlinedButton.icon(
-                                  icon: const Icon(Icons.list_alt),
-                                  label: const Text('Xem tất cả'),
-                                  onPressed: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => PatientOrdersListScreen(
-                                          patientId: currentUser.uid,
-                                          doctorId: widget.doctorId,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                );
-              },
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _orderTile(DoctorOrder order) {
-    final created = order.createdAt != null
-        ? '${order.createdAt!.day.toString().padLeft(2, '0')}/${order.createdAt!.month.toString().padLeft(2, '0')}/${order.createdAt!.year}'
-        : '';
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.check_circle_outline, color: Colors.teal, size: 20),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  order.title,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                if ((order.notes ?? '').isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    order.notes!,
-                    style: const TextStyle(color: AppColors.textSecondary),
-                  ),
-                ],
-                if (created.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    created,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 

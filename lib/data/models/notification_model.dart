@@ -7,6 +7,7 @@ enum NotificationType {
   appointment('appointment'),
   reminder('reminder'),
   followRequest('follow_request'),
+  prescription('prescription'),
   other('other');
 
   const NotificationType(this.value);
@@ -26,6 +27,8 @@ enum NotificationType {
         return NotificationType.reminder;
       case 'follow_request':
         return NotificationType.followRequest;
+      case 'prescription':
+        return NotificationType.prescription;
       default:
         return NotificationType.other;
     }

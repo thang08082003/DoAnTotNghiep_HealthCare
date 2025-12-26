@@ -13,6 +13,7 @@ class UserModel {
   final int? age;
   final String? gender;
   final String? medicalHistory;
+  final List<String>? allergicMedications;
   final DateTime createdAt;
 
   UserModel({
@@ -27,6 +28,7 @@ class UserModel {
     this.age,
     this.gender,
     this.medicalHistory,
+    this.allergicMedications,
     required this.createdAt,
   });
 
@@ -48,6 +50,9 @@ class UserModel {
                 : null),
       gender: json['gender'] as String?,
       medicalHistory: json['medicalHistory'] as String?,
+      allergicMedications: json['allergicMedications'] != null
+          ? List<String>.from(json['allergicMedications'] as List)
+          : null,
       createdAt: DateTime.parse(json['createdAt'] as String),
     );
   }
@@ -66,6 +71,7 @@ class UserModel {
       'age': age,
       'gender': gender,
       'medicalHistory': medicalHistory,
+      'allergicMedications': allergicMedications,
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -83,6 +89,7 @@ class UserModel {
     int? age,
     String? gender,
     String? medicalHistory,
+    List<String>? allergicMedications,
     DateTime? createdAt,
   }) {
     return UserModel(
@@ -97,13 +104,14 @@ class UserModel {
       age: age ?? this.age,
       gender: gender ?? this.gender,
       medicalHistory: medicalHistory ?? this.medicalHistory,
+      allergicMedications: allergicMedications ?? this.allergicMedications,
       createdAt: createdAt ?? this.createdAt,
     );
   }
 
   @override
   String toString() {
-    return 'UserModel{uid: $uid, name: $name, email: $email, role: $role, avatarUrl: $avatarUrl, diseaseFocus: $diseaseFocus, assignedDoctorId: $assignedDoctorId, phone: $phone, age: $age, gender: $gender, medicalHistory: $medicalHistory, createdAt: $createdAt}';
+    return 'UserModel{uid: $uid, name: $name, email: $email, role: $role, avatarUrl: $avatarUrl, diseaseFocus: $diseaseFocus, assignedDoctorId: $assignedDoctorId, phone: $phone, age: $age, gender: $gender, medicalHistory: $medicalHistory, allergicMedications: $allergicMedications, createdAt: $createdAt}';
   }
 
   @override
@@ -122,7 +130,17 @@ class UserModel {
           age == other.age &&
           gender == other.gender &&
           medicalHistory == other.medicalHistory &&
+          _listEquals(allergicMedications, other.allergicMedications) &&
           createdAt == other.createdAt;
+
+  bool _listEquals(List<String>? a, List<String>? b) {
+    if (a == null) return b == null;
+    if (b == null || a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
 
   @override
   int get hashCode =>
@@ -137,6 +155,7 @@ class UserModel {
       age.hashCode ^
       gender.hashCode ^
       medicalHistory.hashCode ^
+      allergicMedications.hashCode ^
       createdAt.hashCode;
 
   // Helper methods

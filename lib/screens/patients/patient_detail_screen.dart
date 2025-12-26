@@ -5,8 +5,6 @@ import '../../components/reviews/inline_user_avatar.dart';
 import '../../data/models/user_model.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
-import '../../viewmodels/orders/doctor_orders_view_model.dart';
-import 'patient_orders_list_screen.dart';
 import '../call/call_waiting_screen.dart';
 import '../../viewmodels/call/call_view_model.dart';
 import '../../components/info_section/today_health_info_section.dart';
@@ -15,6 +13,7 @@ import '../../components/app_bar/chat_app_bar_title.dart';
 import 'widgets/patient_mental_health_tab.dart';
 import 'widgets/patient_medications_tab.dart';
 import 'widgets/patient_care_plan_tab.dart';
+import 'widgets/create_options_bottom_sheet.dart';
 
 class PatientDetailScreen extends ConsumerStatefulWidget {
   final String patientId;
@@ -149,6 +148,42 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
                 _buildMessagesTab(),
               ],
             ),
+      floatingActionButton: _buildFloatingActionButton(),
+    );
+  }
+
+  Widget? _buildFloatingActionButton() {
+    // Only show FAB when on Info tab and not in pending state
+    if (_tabController.index != 0 || widget.isPending) {
+      return null;
+    }
+
+    return FloatingActionButton(
+      onPressed: _showCreateOptionsBottomSheet,
+      backgroundColor: AppColors.primaryColor,
+      child: const Icon(Icons.add, color: Colors.white),
+    );
+  }
+
+  void _showCreateOptionsBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => CreateOptionsBottomSheet(
+        patientId: widget.patientId,
+        onCreateCarePlan: _createCarePlan,
+      ),
+    );
+  }
+
+  void _createCarePlan() {
+    // TODO: Navigate to care plan creation screen
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Tạo kế hoạch chăm sóc - Chức năng đang phát triển'),
+      ),
     );
   }
 
@@ -188,6 +223,7 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
               _infoRow('Giới tính', gender),
               _infoRow('Tiền sử bệnh', medicalHistory),
               _infoRow('Bệnh theo dõi', diseaseFocus),
+              _buildAllergicMedicationsSection(),
               const SizedBox(height: 16),
 
               // Hide health info for pending requests
@@ -232,195 +268,10 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
                 ),
 
               const SizedBox(height: 16),
-              _buildDoctorCreateOrderSection(),
-
-              const SizedBox(height: 16),
             ],
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildDoctorCreateOrderSection() {
-    // Only doctors see this section
-    // Hide for pending requests - doctor must accept first
-    if (widget.isPending) return const SizedBox.shrink();
-
-    return Consumer(
-      builder: (context, ref, _) {
-        return FutureBuilder(
-          future: ref.read(currentUserProvider.future),
-          builder: (context, snap) {
-            if (!snap.hasData) return const SizedBox.shrink();
-            final currentUser = snap.data!;
-            if (!currentUser.isDoctor) return const SizedBox.shrink();
-
-            final ordersVm = ref.read(doctorOrdersViewModelProvider);
-
-            return Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Chỉ định',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.add_task),
-                          label: const Text('Tạo chỉ định'),
-                          onPressed: () {
-                            showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-                              shape: const RoundedRectangleBorder(
-                                borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(16),
-                                ),
-                              ),
-                              builder: (ctx) {
-                                final titleController = TextEditingController();
-                                final notesController = TextEditingController();
-                                return Padding(
-                                  padding: EdgeInsets.only(
-                                    bottom: MediaQuery.of(
-                                      ctx,
-                                    ).viewInsets.bottom,
-                                  ),
-                                  child: SingleChildScrollView(
-                                    padding: const EdgeInsets.all(16),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'Tạo chỉ định',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 18,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 12),
-                                        TextField(
-                                          controller: titleController,
-                                          decoration: const InputDecoration(
-                                            labelText:
-                                                'Tiêu đề (Thuốc / Xét nghiệm / Chế độ …)',
-                                            border: OutlineInputBorder(),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        TextField(
-                                          controller: notesController,
-                                          maxLines: 4,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Ghi chú (tuỳ chọn)',
-                                            border: OutlineInputBorder(),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 12),
-                                        Align(
-                                          alignment: Alignment.centerRight,
-                                          child: ElevatedButton(
-                                            onPressed: () async {
-                                              final title = titleController.text
-                                                  .trim();
-                                              final notes = notesController.text
-                                                  .trim();
-                                              if (title.isEmpty) {
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text(
-                                                      'Vui lòng nhập tiêu đề chỉ định',
-                                                    ),
-                                                  ),
-                                                );
-                                                return;
-                                              }
-                                              try {
-                                                await ordersVm.createOrder(
-                                                  patientId: widget.patientId,
-                                                  doctorId: currentUser.uid,
-                                                  title: title,
-                                                  notes: notes.isEmpty
-                                                      ? null
-                                                      : notes,
-                                                );
-                                                if (!mounted) return;
-                                                Navigator.of(ctx).pop();
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text(
-                                                      'Đã tạo chỉ định',
-                                                    ),
-                                                  ),
-                                                );
-                                              } catch (e) {
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                      'Tạo chỉ định thất bại: $e',
-                                                    ),
-                                                  ),
-                                                );
-                                              }
-                                            },
-                                            child: const Text('Lưu'),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      OutlinedButton.icon(
-                        icon: const Icon(Icons.list_alt),
-                        label: const Text('Xem tất cả'),
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => PatientOrdersListScreen(
-                                patientId: widget.patientId,
-                                doctorId: currentUser.uid,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
     );
   }
 
@@ -496,5 +347,65 @@ class _PatientDetailScreenState extends ConsumerState<PatientDetailScreen>
       return texts.isEmpty ? 'Chưa cập nhật' : texts.join(', ');
     }
     return 'Chưa cập nhật';
+  }
+
+  Widget _buildAllergicMedicationsSection() {
+    final allergicMeds = _raw['allergicMedications'];
+    List<String> medications = [];
+
+    if (allergicMeds is List) {
+      medications = allergicMeds
+          .map((e) => e?.toString() ?? '')
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.red.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.warning_amber, color: Colors.red, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Thuốc dị ứng',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (medications.isEmpty)
+            const Text(
+              'Chưa cập nhật',
+              style: TextStyle(color: AppColors.textSecondary),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: medications.map((med) {
+                return Chip(
+                  label: Text(med),
+                  backgroundColor: Colors.white,
+                  side: BorderSide(color: Colors.red.withValues(alpha: 0.3)),
+                  labelStyle: const TextStyle(fontSize: 12),
+                );
+              }).toList(),
+            ),
+        ],
+      ),
+    );
   }
 }
