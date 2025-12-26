@@ -496,8 +496,11 @@ class _CreatePrescriptionBottomSheetState
                             return 'Vui lòng nhập số ngày hợp lệ';
                           }
                           // Validate: renewalWindowDays phải nhỏ hơn durationDays
-                          final durationDays = int.tryParse(_durationController.text);
-                          if (durationDays != null && renewalDays >= durationDays) {
+                          final durationDays = int.tryParse(
+                            _durationController.text,
+                          );
+                          if (durationDays != null &&
+                              renewalDays >= durationDays) {
                             return 'Cửa sổ gia hạn phải nhỏ hơn thời hạn sử dụng ($durationDays ngày)';
                           }
                           return null;
