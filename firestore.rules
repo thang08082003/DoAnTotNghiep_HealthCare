@@ -250,13 +250,31 @@ service cloud.firestore {
         resource.data.userId == request.auth.uid ||
         isDoctorUser(request.auth.uid)
       );
-      // Users can create their own goals
+      
+      // Doctors can create goals for their patients
+      allow create: if request.auth != null && isDoctorUser(request.auth.uid);
+      
+      // Patients can create medication goals (auto-created from approved prescriptions)
+      // Must have: type=medication, prescriptionId, userId matches auth, status=active
       allow create: if request.auth != null && 
-        request.resource.data.userId == request.auth.uid;
-      // Users can update their own goals
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.type == 'medication' &&
+        request.resource.data.prescriptionId is string &&
+        request.resource.data.status == 'active';
+      
+      // Patients can update specific fields (approval workflow)
       allow update: if request.auth != null && 
-        resource.data.userId == request.auth.uid;
-      // Users can delete their own goals
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+          ['status', 'patientResponse', 'modificationRequestCount', 
+           'requiresVideoCall', 'isFinalEdit', 'updatedAt', 'isCompleted']
+        );
+      
+      // Doctors can update goals they created
+      allow update: if request.auth != null && 
+        resource.data.doctorId == request.auth.uid;
+      
+      // Doctors can delete goals they created
       allow delete: if request.auth != null && 
         resource.data.userId == request.auth.uid;
     }

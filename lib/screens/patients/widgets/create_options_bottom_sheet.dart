@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../data/resources/gene/app_colors.dart';
 import 'create_prescription_bottom_sheet.dart';
+import 'create_health_goal_bottom_sheet.dart';
 
 class CreateOptionsBottomSheet extends StatelessWidget {
   final VoidCallback onCreateCarePlan;
@@ -46,17 +47,20 @@ class CreateOptionsBottomSheet extends StatelessWidget {
             },
           ),
           ListTile(
-            leading: const Icon(
-              Icons.calendar_today,
-              color: AppColors.primaryColor,
-            ),
-            title: const Text('Tạo kế hoạch chăm sóc'),
+            leading: const Icon(Icons.task_alt, color: AppColors.primaryColor),
+            title: const Text('Tạo mục tiêu sức khỏe'),
+            subtitle: const Text('Đo chỉ số, tập thể dục, chế độ ăn...'),
             onTap: () {
               Navigator.pop(context);
-              onCreateCarePlan();
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) =>
+                    CreateHealthGoalBottomSheet(patientId: patientId),
+              );
             },
           ),
-          const SizedBox(height: 16),
         ],
       ),
     );

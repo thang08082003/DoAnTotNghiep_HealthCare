@@ -61,6 +61,10 @@ class MedicationPrescription {
   final DateTime endDate; // Ngày kết thúc (auto = startDate + duration)
   final int renewalWindowDays; // Cửa sổ gia hạn (VD: 3 ngày trước khi hết)
 
+  // Reminder settings
+  final List<String>?
+  reminderTimes; // Giờ nhắc uống thuốc (HH:mm format) - VD: ['08:00', '12:00', '20:00']
+
   // Trạng thái
   final PrescriptionStatus status;
   final String?
@@ -89,6 +93,7 @@ class MedicationPrescription {
     required this.durationDays,
     required this.endDate,
     this.renewalWindowDays = 3,
+    this.reminderTimes,
     this.status = PrescriptionStatus.pendingPatientReview,
     this.patientResponse,
     this.version = 1.0,
@@ -116,6 +121,9 @@ class MedicationPrescription {
       durationDays: data['durationDays'] ?? 0,
       endDate: (data['endDate'] as Timestamp).toDate(),
       renewalWindowDays: data['renewalWindowDays'] ?? 3,
+      reminderTimes: data['reminderTimes'] != null
+          ? List<String>.from(data['reminderTimes'])
+          : null,
       status: PrescriptionStatusExtension.fromString(
         data['status'] ?? 'pendingPatientReview',
       ),
@@ -146,6 +154,7 @@ class MedicationPrescription {
       'durationDays': durationDays,
       'endDate': Timestamp.fromDate(endDate),
       'renewalWindowDays': renewalWindowDays,
+      'reminderTimes': reminderTimes,
       'status': status.value,
       'patientResponse': patientResponse,
       'version': version,
@@ -172,6 +181,7 @@ class MedicationPrescription {
     int? durationDays,
     DateTime? endDate,
     int? renewalWindowDays,
+    List<String>? reminderTimes,
     PrescriptionStatus? status,
     String? patientResponse,
     double? version,
@@ -196,6 +206,7 @@ class MedicationPrescription {
       durationDays: durationDays ?? this.durationDays,
       endDate: endDate ?? this.endDate,
       renewalWindowDays: renewalWindowDays ?? this.renewalWindowDays,
+      reminderTimes: reminderTimes ?? this.reminderTimes,
       status: status ?? this.status,
       patientResponse: patientResponse ?? this.patientResponse,
       version: version ?? this.version,

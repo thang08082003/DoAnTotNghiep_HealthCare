@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../components/care_plan/health_goals_list_widget.dart';
-import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
 import '../../viewmodels/care_plan/care_plan_viewmodel.dart';
 
@@ -30,39 +29,10 @@ class CarePlanScreen extends ConsumerWidget {
             carePlanViewModelProvider(user.uid).notifier,
           );
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 24),
-
-                // Health Goals Section Header
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Mục tiêu',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Health Goals List - Component tách biệt
-                // Key giúp widget rebuild khi selectedDate thay đổi
-                HealthGoalsListWidget(
-                  key: ValueKey(viewModel.selectedDate),
-                  userId: user.uid,
-                  goalsStream: viewModelNotifier.getHealthGoalsStream(),
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
+          return HealthGoalsListWidget(
+            key: ValueKey(viewModel.selectedDate),
+            userId: user.uid,
+            goalsStream: viewModelNotifier.getHealthGoalsStream(),
           );
         },
       ),

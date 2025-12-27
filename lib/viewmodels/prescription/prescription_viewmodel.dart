@@ -39,6 +39,7 @@ class PrescriptionViewModel extends ChangeNotifier {
     required DateTime startDate,
     required int durationDays,
     required int renewalWindowDays,
+    List<String>? reminderTimes,
   }) async {
     _isSubmitting = true;
     _error = null;
@@ -72,6 +73,7 @@ class PrescriptionViewModel extends ChangeNotifier {
         durationDays: durationDays,
         endDate: endDate,
         renewalWindowDays: renewalWindowDays,
+        reminderTimes: reminderTimes,
         createdAt: DateTime.now(),
       );
 
@@ -117,6 +119,7 @@ class PrescriptionViewModel extends ChangeNotifier {
     required DateTime startDate,
     required int durationDays,
     required int renewalWindowDays,
+    List<String>? reminderTimes,
     required double currentVersion,
   }) async {
     _isSubmitting = true;
@@ -148,6 +151,7 @@ class PrescriptionViewModel extends ChangeNotifier {
         'durationDays': durationDays,
         'endDate': endDate,
         'renewalWindowDays': renewalWindowDays,
+        'reminderTimes': reminderTimes,
         'version': newVersion,
         'status': PrescriptionStatus.pendingPatientReview.value,
         'patientResponse': null, // Clear previous response

@@ -43,6 +43,7 @@ class _CreatePrescriptionBottomSheetState
   List<String> _availableMedications = [];
   UserModel? _patientData;
   bool _showAllergicWarning = false;
+  List<TimeOfDay> _reminderTimes = []; // Danh sách giờ nhậc
 
   bool get _isEditMode => widget.existingPrescription != null;
 
@@ -68,6 +69,18 @@ class _CreatePrescriptionBottomSheetState
       _durationController.text = prescription.durationDays.toString();
       _renewalWindowController.text = prescription.renewalWindowDays.toString();
       _startDate = prescription.startDate;
+
+      // Load reminder times
+      if (prescription.reminderTimes != null) {
+        _reminderTimes = prescription.reminderTimes!.map((timeStr) {
+          final parts = timeStr.split(':');
+          return TimeOfDay(
+            hour: int.parse(parts[0]),
+            minute: int.parse(parts[1]),
+          );
+        }).toList();
+      }
+
       _checkAllergicMedication(prescription.medicationName);
     }
   }
@@ -136,6 +149,11 @@ class _CreatePrescriptionBottomSheetState
     final durationDays = int.parse(_durationController.text);
     final renewalWindowDays = int.parse(_renewalWindowController.text);
 
+    // Convert TimeOfDay to HH:mm string format
+    final reminderTimesStr = _reminderTimes.map((time) {
+      return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+    }).toList();
+
     bool success;
     if (_isEditMode) {
       // Update existing prescription
@@ -152,6 +170,7 @@ class _CreatePrescriptionBottomSheetState
         startDate: _startDate,
         durationDays: durationDays,
         renewalWindowDays: renewalWindowDays,
+        reminderTimes: reminderTimesStr.isNotEmpty ? reminderTimesStr : null,
         currentVersion: widget.existingPrescription!.version,
       );
     } else {
@@ -168,6 +187,7 @@ class _CreatePrescriptionBottomSheetState
         startDate: _startDate,
         durationDays: durationDays,
         renewalWindowDays: renewalWindowDays,
+        reminderTimes: reminderTimesStr.isNotEmpty ? reminderTimesStr : null,
       );
     }
 
@@ -534,6 +554,123 @@ class _CreatePrescriptionBottomSheetState
                         ),
                       ),
                       const SizedBox(height: 24),
+
+                      // Reminder times section
+                      Text(
+                        'Giờ nhắc uống thuốc (tùy chọn)',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Display selected reminder times
+                      if (_reminderTimes.isNotEmpty) ...[
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _reminderTimes.map((time) {
+                            return Chip(
+                              label: Text(
+                                '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              avatar: const Icon(Icons.access_time, size: 18),
+                              deleteIcon: const Icon(Icons.close, size: 18),
+                              onDeleted: () {
+                                setState(() {
+                                  _reminderTimes.remove(time);
+                                });
+                              },
+                              backgroundColor: AppColors.primaryColor
+                                  .withValues(alpha: 0.1),
+                              deleteIconColor: AppColors.primaryColor,
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      // Add reminder time button
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          final time = await showTimePicker(
+                            context: context,
+                            initialTime: TimeOfDay.now(),
+                            builder: (context, child) {
+                              return MediaQuery(
+                                data: MediaQuery.of(
+                                  context,
+                                ).copyWith(alwaysUse24HourFormat: true),
+                                child: child!,
+                              );
+                            },
+                          );
+                          if (time != null) {
+                            setState(() {
+                              // Check if time already exists
+                              if (!_reminderTimes.any(
+                                (t) =>
+                                    t.hour == time.hour &&
+                                    t.minute == time.minute,
+                              )) {
+                                _reminderTimes.add(time);
+                                // Sort times
+                                _reminderTimes.sort((a, b) {
+                                  if (a.hour != b.hour)
+                                    return a.hour.compareTo(b.hour);
+                                  return a.minute.compareTo(b.minute);
+                                });
+                              }
+                            });
+                          }
+                        },
+                        icon: const Icon(Icons.add_alarm),
+                        label: Text(
+                          _reminderTimes.isEmpty
+                              ? 'Thêm giờ nhắc'
+                              : 'Thêm giờ nhắc khác',
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primaryColor,
+                          side: const BorderSide(color: AppColors.primaryColor),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+
+                      if (_reminderTimes.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.info_outline,
+                                color: Colors.blue,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Bệnh nhân sẽ nhận ${_reminderTimes.length} thông báo mỗi ngày để nhắc uống thuốc',
+                                  style: const TextStyle(
+                                    color: Colors.blue,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
+                      const SizedBox(height: 24),
+
                       ElevatedButton(
                         onPressed: viewModel.isSubmitting ? null : _submit,
                         style: ElevatedButton.styleFrom(

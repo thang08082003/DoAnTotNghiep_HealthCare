@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../data/models/medication_prescription_model.dart';
 import '../../../data/services/prescription_service.dart';
+import '../../../data/services/care_plan_service.dart';
 import '../../../data/resources/gene/app_dimensions.dart';
 import '../../../data/resources/gene/app_text_styles.dart';
 import '../../../screens/patients/widgets/create_prescription_bottom_sheet.dart';
@@ -67,12 +68,42 @@ class _PrescriptionCardState extends ConsumerState<PrescriptionCard> {
         prescriptionId: widget.prescription.id,
         status: PrescriptionStatus.approvedByPatient,
       );
+
+      // Auto-create medication goal if reminder times exist
+      if (widget.prescription.reminderTimes != null &&
+          widget.prescription.reminderTimes!.isNotEmpty) {
+        try {
+          final carePlanService = ref.read(carePlanServiceProvider);
+          final goalId = await carePlanService
+              .createMedicationGoalFromPrescription(
+                userId: widget.prescription.patientId,
+                doctorId: widget.prescription.doctorId,
+                prescriptionId: widget.prescription.id,
+                medicationName: widget.prescription.medicationName,
+                dosage: widget.prescription.dosage,
+                timing: widget.prescription.timing,
+                reminderTimes: widget.prescription.reminderTimes,
+                startDate: widget.prescription.startDate,
+                durationDays: widget.prescription.durationDays,
+              );
+          debugPrint(
+            '✅ Created medication goal: $goalId for patient: ${widget.prescription.patientId}',
+          );
+        } catch (e) {
+          // Log error but don't fail the approval
+          debugPrint('❌ Failed to create medication goal: $e');
+        }
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'Đã chấp nhận đơn thuốc. Hệ thống đang tạo nhắc nhở...',
+              widget.prescription.reminderTimes != null &&
+                      widget.prescription.reminderTimes!.isNotEmpty
+                  ? 'Đã chấp nhận đơn thuốc và tạo lịch nhắc uống thuốc'
+                  : 'Đã chấp nhận đơn thuốc',
             ),
             backgroundColor: Colors.green,
           ),

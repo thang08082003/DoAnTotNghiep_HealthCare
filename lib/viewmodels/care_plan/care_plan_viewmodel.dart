@@ -17,9 +17,9 @@ class CarePlanViewModel extends StateNotifier<CarePlanState> {
     state = state.copyWith(selectedDate: date);
   }
 
-  // Stream để lấy danh sách health goals theo ngày đã chọn
+  // Stream để lấy danh sách health goals
   Stream<List<HealthGoal>> getHealthGoalsStream() {
-    return _carePlanService.getHealthGoalsForDate(userId, state.selectedDate);
+    return _carePlanService.getHealthGoals(userId);
   }
 }
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../components/care_plan/goal_card.dart';
+import '../../../components/care_plan/health_goal_card_with_actions.dart';
 import '../../../data/models/care_plan_model.dart';
 import '../../../data/services/care_plan_service.dart';
 
@@ -50,10 +50,13 @@ class PatientCarePlanTab extends ConsumerWidget {
         return ListView.separated(
           padding: const EdgeInsets.all(16),
           itemCount: goals.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          separatorBuilder: (_, __) => const SizedBox(height: 0),
           itemBuilder: (context, index) {
             final goal = goals[index];
-            return GoalCard(goal: goal);
+            return HealthGoalCardWithActions(
+              goal: goal,
+              isPatientView: false, // Doctor viewing patient's goals
+            );
           },
         );
       },
