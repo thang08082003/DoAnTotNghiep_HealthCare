@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
 import '../../components/info_section/today_health_info_section.dart';
-import '../../components/health/latest_health_alert_widget.dart';
 
 import '../medication/medication_screen.dart';
 
@@ -93,19 +92,6 @@ class PatientDashboardContent extends ConsumerWidget {
               const SizedBox(height: 24),
 
               const TodayHealthInfoSection(),
-
-              const SizedBox(height: 24),
-
-              const Text(
-                'Cảnh báo gần nhất từ hệ thống',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 16),
-              LatestHealthAlertWidget(userId: user!.uid),
 
               const SizedBox(height: 24),
 

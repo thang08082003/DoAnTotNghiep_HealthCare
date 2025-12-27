@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/repositories/auth_repository.dart';
 import '../utilities/cleanup_service.dart';
-import 'health_monitoring_provider.dart';
 
 // Auth Repository Provider
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
@@ -107,7 +106,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await CleanupService.stopAllListeners();
 
       // Stop health monitoring before logout
-      await stopHealthMonitoring();
 
       // Cancel session monitoring before signing out
       // (This will be handled in AuthWrapper when not authenticated state triggers)

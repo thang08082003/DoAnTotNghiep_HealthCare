@@ -10,7 +10,7 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'dart:io' show Platform;
 import 'package:healthcare/data/services/android_passive_listener_service.dart';
-import 'package:healthcare/data/services/health_monitoring_trigger.dart';
+
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:healthcare/data/services/notification_service.dart';
 
@@ -95,9 +95,6 @@ void main() async {
         >()
         ?.requestPermissions(alert: true, badge: true, sound: true);
   }
-
-  // Initialize health monitoring trigger listener
-  HealthMonitoringTrigger.initialize();
 
   // Auto-reapply passive listener if previously enabled (Android only)
   try {

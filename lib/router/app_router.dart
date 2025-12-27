@@ -5,7 +5,6 @@ import 'dart:async';
 import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/health_metrics_providers.dart';
-import '../providers/health_monitoring_provider.dart';
 import '../screens/login/login_screen.dart';
 import '../screens/register/register_screen.dart';
 import '../screens/forgot_password/forgot_password_screen.dart';
@@ -20,8 +19,6 @@ import '../viewmodels/foreground/foreground_service_view_model.dart';
 import '../viewmodels/passive_listener/passive_listener_view_model.dart';
 import '../components/incoming_call_listener.dart';
 import '../data/services/session_service.dart';
-import '../components/health/latest_health_alert_widget.dart';
-import '../screens/health_alerts/health_alerts_screen.dart';
 
 class AppRouter {
   // Route names
@@ -324,8 +321,6 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
                           ref.invalidate(spo2StreamProvider);
                           ref.invalidate(hrvStreamProvider);
                           ref.invalidate(sleepSessionsStreamProvider);
-                          ref.invalidate(latestHealthAlertProvider);
-                          ref.invalidate(healthAlertsProvider);
                         } catch (_) {}
                         // Cancel old session subscription
                         _sessionSubscription?.cancel();
@@ -370,7 +365,6 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
                         // Enable AI health monitoring
                         // Reuses PassiveListener's 15-min WorkManager for data collection
                         // AI checks run every 6 hours after data sync
-                        startHealthMonitoring(user.uid);
                       }
 
                       // Start local notifications listening after first frame

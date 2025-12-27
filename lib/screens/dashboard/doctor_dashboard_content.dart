@@ -2,12 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
-import '../../providers/health_monitoring_provider.dart';
 import '../../data/services/follow_request_service.dart';
 import '../../data/models/user_model.dart';
-import '../../data/models/health_alert_model.dart';
 import '../patients/patient_detail_screen.dart';
-import '../health_alerts/doctor_patient_alerts_screen.dart';
 
 import '../../components/reviews/reviews_list.dart';
 import '../../viewmodels/reviews/doctor_reviews_view_model.dart';
@@ -101,19 +98,6 @@ class DoctorDashboardContent extends ConsumerWidget {
               _ClinicalInfoEntryButton(),
               const SizedBox(height: 12),
               const ChestXrayButton(),
-
-              const SizedBox(height: 24),
-
-              const Text(
-                'Cảnh báo bất thường gần đây',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 12),
-              _AbnormalAlertsPreview(doctorId: user?.uid ?? ''),
 
               const SizedBox(height: 24),
 
@@ -350,193 +334,6 @@ class _FollowedPatientsListState extends ConsumerState<_FollowedPatientsList> {
         );
       },
     );
-  }
-}
-
-class _AbnormalAlertsPreview extends ConsumerWidget {
-  final String doctorId;
-  const _AbnormalAlertsPreview({required this.doctorId});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final alertsAsync = ref.watch(doctorPatientAlertsProvider(doctorId));
-
-    return InkWell(
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => DoctorPatientAlertsScreen(doctorId: doctorId),
-          ),
-        );
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: alertsAsync.when(
-          loading: () => const Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Đang tải cảnh báo...',
-                  style: TextStyle(color: AppColors.textSecondary),
-                ),
-              ),
-            ],
-          ),
-          error: (error, stack) => Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.error_outline, color: Colors.red, size: 24),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Lỗi tải cảnh báo: $error',
-                  style: const TextStyle(color: AppColors.textSecondary),
-                ),
-              ),
-            ],
-          ),
-          data: (alerts) {
-            if (alerts.isEmpty) {
-              return const Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.check_circle_outline,
-                    color: AppColors.success,
-                    size: 24,
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Chưa có cảnh báo nào trong 24h qua.',
-                      style: TextStyle(color: AppColors.textSecondary),
-                    ),
-                  ),
-                ],
-              );
-            }
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.warning_amber_rounded,
-                      color: alerts.any((a) => a.level == AlertLevel.danger)
-                          ? Colors.red
-                          : Colors.orange,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        '${alerts.length} cảnh báo trong 24h qua',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                ...alerts
-                    .take(3)
-                    .map((alert) => _buildAlertItem(context, alert)),
-                if (alerts.length > 3)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      'và ${alerts.length - 3} cảnh báo khác...',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAlertItem(BuildContext context, HealthAlert alert) {
-    final color = alert.level == AlertLevel.danger ? Colors.red : Colors.orange;
-    final icon = alert.level == AlertLevel.danger
-        ? Icons.error
-        : Icons.warning_amber_rounded;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 16),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  alert.message ?? alert.level.description,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textPrimary,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _formatTimestamp(alert.timestamp),
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatTimestamp(DateTime timestamp) {
-    final now = DateTime.now();
-    final diff = now.difference(timestamp);
-
-    if (diff.inMinutes < 60) {
-      return '${diff.inMinutes} phút trước';
-    } else if (diff.inHours < 24) {
-      return '${diff.inHours} giờ trước';
-    } else {
-      return '${diff.inDays} ngày trước';
-    }
   }
 }
 
