@@ -71,7 +71,9 @@ class HealthAnalysisViewModel extends StateNotifier<HealthAnalysisState> {
 
   // Delete a record from history by index
   void deleteRecord(int index) {
-    final updatedHistory = List<HealthAnalysisRecord>.from(state.analysisHistory);
+    final updatedHistory = List<HealthAnalysisRecord>.from(
+      state.analysisHistory,
+    );
     if (index >= 0 && index < updatedHistory.length) {
       updatedHistory.removeAt(index);
       state = state.copyWith(analysisHistory: updatedHistory);

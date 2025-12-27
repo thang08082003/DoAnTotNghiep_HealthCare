@@ -55,41 +55,42 @@ class _HealthWarningsScreenState extends ConsumerState<HealthWarningsScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  ...state.analysisHistory.asMap().entries.map(
-                    (entry) {
-                      final index = entry.key;
-                      final record = entry.value;
-                      return Dismissible(
-                        key: Key('analysis_${record.timestamp.millisecondsSinceEpoch}_$index'),
-                        direction: DismissDirection.endToStart,
-                        onDismissed: (direction) {
-                          ref.read(healthAnalysisViewModelProvider.notifier)
-                              .deleteRecord(index);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Đã xóa kết quả phân tích'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                        },
-                        background: Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(12),
+                  ...state.analysisHistory.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final record = entry.value;
+                    return Dismissible(
+                      key: Key(
+                        'analysis_${record.timestamp.millisecondsSinceEpoch}_$index',
+                      ),
+                      direction: DismissDirection.endToStart,
+                      onDismissed: (direction) {
+                        ref
+                            .read(healthAnalysisViewModelProvider.notifier)
+                            .deleteRecord(index);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Đã xóa kết quả phân tích'),
+                            duration: Duration(seconds: 2),
                           ),
-                          alignment: Alignment.centerRight,
-                          padding: const EdgeInsets.only(right: 20),
-                          child: const Icon(
-                            Icons.delete,
-                            color: Colors.white,
-                            size: 32,
-                          ),
+                        );
+                      },
+                      background: Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: HealthAnalysisResultCard(record: record),
-                      );
-                    },
-                  ),
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 20),
+                        child: const Icon(
+                          Icons.delete,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                      ),
+                      child: HealthAnalysisResultCard(record: record),
+                    );
+                  }),
                 ],
               ],
             ),
