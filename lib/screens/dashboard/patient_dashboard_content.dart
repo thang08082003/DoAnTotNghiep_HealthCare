@@ -4,9 +4,9 @@ import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
 import '../../components/info_section/today_health_info_section.dart';
 import '../../components/health/latest_health_alert_widget.dart';
-import '../../components/quick_access/care_plan_quick_access_widget.dart';
+
 import '../medication/medication_screen.dart';
-import '../mental_health/mental_health_screen.dart';
+
 import '../chat/medical_chat_screen.dart';
 
 class PatientDashboardContent extends ConsumerWidget {
@@ -132,21 +132,7 @@ class PatientDashboardContent extends ConsumerWidget {
                   );
                 },
               ),
-              const SizedBox(height: 12),
-              _buildQuickAccessCard(
-                icon: Icons.favorite,
-                title: 'Sức khỏe tinh thần',
-                subtitle: 'Đánh giá lo âu & trầm cảm',
-                color: Colors.purple.withValues(alpha: 0.08),
-                iconColor: Colors.purple,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const MentalHealthScreen(),
-                    ),
-                  );
-                },
-              ),
+
               const SizedBox(height: 12),
               _buildQuickAccessCard(
                 icon: Icons.medication,
@@ -160,8 +146,6 @@ class PatientDashboardContent extends ConsumerWidget {
                   );
                 },
               ),
-              const SizedBox(height: 12),
-              const CarePlanQuickAccessWidget(),
             ],
           ),
         );
