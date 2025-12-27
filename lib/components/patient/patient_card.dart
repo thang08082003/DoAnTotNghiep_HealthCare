@@ -11,6 +11,8 @@ class PatientCard extends StatelessWidget {
   final String? statusText; // e.g., "Đang theo dõi", "Đang chờ xác nhận"
   final Color? statusColor; // Color for status indicator
   final bool isPending; // true for pending requests
+  final Future<void> Function()? onAccept; // Callback when accepting request
+  final Future<void> Function()? onReject; // Callback when rejecting request
 
   const PatientCard({
     super.key,
@@ -19,6 +21,8 @@ class PatientCard extends StatelessWidget {
     this.statusText,
     this.statusColor,
     this.isPending = false,
+    this.onAccept,
+    this.onReject,
   });
 
   @override
@@ -93,7 +97,34 @@ class PatientCard extends StatelessWidget {
                   ],
                 ),
               ),
-
+              if (isPending) ...[
+                TextButton(
+                  onPressed: onAccept != null
+                      ? () async {
+                          await onAccept!();
+                        }
+                      : null,
+                  child: Text(
+                    'Đồng ý',
+                    style: AppTextStyles.body2.copyWith(
+                      color: onAccept != null ? Colors.green : Colors.grey,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: onReject != null
+                      ? () async {
+                          await onReject!();
+                        }
+                      : null,
+                  child: Text(
+                    'Từ chối',
+                    style: AppTextStyles.body2.copyWith(
+                      color: onReject != null ? Colors.red : Colors.grey,
+                    ),
+                  ),
+                ),
+              ],
               // Arrow icon
               const Icon(
                 Icons.arrow_forward_ios,

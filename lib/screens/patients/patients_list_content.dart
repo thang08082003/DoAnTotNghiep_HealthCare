@@ -271,6 +271,42 @@ class PatientsListContentState extends ConsumerState<PatientsListContent>
                   ),
                 );
               },
+              onAccept: () async {
+                // Accept the follow request
+                await FollowRequestService.acceptRequest(
+                  requestId: r.id,
+                  doctorId: doctorId,
+                  patientId: r.patientId,
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Đã chấp nhận yêu cầu theo dõi'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                  // Refresh the list
+                  setState(() {});
+                }
+              },
+              onReject: () async {
+                // Decline the follow request
+                await FollowRequestService.declineRequest(
+                  requestId: r.id,
+                  doctorId: doctorId,
+                  patientId: r.patientId,
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Đã từ chối yêu cầu theo dõi'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  // Refresh the list
+                  setState(() {});
+                }
+              },
             );
           },
         );

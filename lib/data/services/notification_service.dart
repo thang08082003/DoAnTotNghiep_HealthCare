@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/notification_model.dart';
 
 class NotificationService {
@@ -122,14 +123,17 @@ class NotificationService {
       'createdAt': FieldValue.serverTimestamp(),
     });
 
-    // Show local notification popup
+    // Only show local notification popup if current user is the receiver
     try {
-      await _showLocalNotification(
-        type: type,
-        title: title,
-        body: body,
-        data: data,
-      );
+      final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+      if (currentUserId != null && currentUserId == toUserId) {
+        await _showLocalNotification(
+          type: type,
+          title: title,
+          body: body,
+          data: data,
+        );
+      }
     } catch (_) {
       // Ignore errors in local notification
     }
