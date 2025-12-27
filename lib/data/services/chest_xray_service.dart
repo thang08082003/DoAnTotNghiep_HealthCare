@@ -85,7 +85,7 @@ class ChestXrayService {
               'Server returned status ${response.statusCode}: ${response.body}',
         };
       }
-    } on SocketException catch (e) {
+    } on SocketException {
       return {
         'success': false,
         'error':

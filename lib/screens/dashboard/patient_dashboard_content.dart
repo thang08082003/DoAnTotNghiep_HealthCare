@@ -7,6 +7,7 @@ import '../../components/info_section/today_health_info_section.dart';
 import '../medication/medication_screen.dart';
 
 import '../chat/medical_chat_screen.dart';
+import '../health_warnings/health_warnings_screen.dart';
 
 class PatientDashboardContent extends ConsumerWidget {
   const PatientDashboardContent({super.key});
@@ -129,6 +130,22 @@ class PatientDashboardContent extends ConsumerWidget {
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const MedicationScreen()),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 12),
+              _buildQuickAccessCard(
+                icon: Icons.warning_amber_rounded,
+                title: 'Cảnh báo sức khỏe',
+                subtitle: 'Xem cảnh báo và khuyến nghị',
+                color: Colors.red.withValues(alpha: 0.08),
+                iconColor: Colors.red,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const HealthWarningsScreen(),
+                    ),
                   );
                 },
               ),

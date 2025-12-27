@@ -38,42 +38,6 @@ class _ChestXrayScreenState extends ConsumerState<ChestXrayScreen> {
     }
   }
 
-  Future<void> _checkServer() async {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Đang kiểm tra server...')));
-
-    final result = await ref
-        .read(chestXrayViewModelProvider.notifier)
-        .checkServerHealth();
-
-    if (!mounted) return;
-
-    if (result['success']) {
-      final data = result['data'];
-      final unetLoaded = data['unet_loaded'] ?? false;
-      final maskrcnnLoaded = data['maskrcnn_loaded'] ?? false;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Server OK!\nUNet: ${unetLoaded ? "✓" : "✗"} | Mask R-CNN: ${maskrcnnLoaded ? "✓" : "✗"}',
-          ),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Lỗi: ${result['error']}'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 4),
-        ),
-      );
-    }
-  }
-
   Future<void> _detectPneumonia() async {
     final state = ref.read(chestXrayViewModelProvider);
 

@@ -98,6 +98,8 @@ class DoctorDashboardContent extends ConsumerWidget {
               _ClinicalInfoEntryButton(),
               const SizedBox(height: 12),
               const ChestXrayButton(),
+              const SizedBox(height: 12),
+              _HealthWarningButton(),
 
               const SizedBox(height: 24),
 
@@ -388,6 +390,77 @@ class _ClinicalInfoEntryButton extends StatelessWidget {
                   SizedBox(height: 4),
                   Text(
                     'Truy cập hướng dẫn lâm sàng, phác đồ điều trị, tài liệu y khoa nội bộ',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HealthWarningButton extends StatelessWidget {
+  const _HealthWarningButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        // TODO: Navigate to health warnings screen
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tính năng đang được phát triển')),
+        );
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const CircleAvatar(
+              backgroundColor: Color(0xFFE8F0FE),
+              child: Icon(
+                Icons.warning_amber_rounded,
+                color: AppColors.primaryColor,
+              ),
+            ),
+            const SizedBox(width: 12),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Text(
+                    'Cảnh báo',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Xem cảnh báo sức khỏe và các trường hợp cần xử lý khẩn cấp',
                     style: TextStyle(
                       fontSize: 12,
                       color: AppColors.textSecondary,
