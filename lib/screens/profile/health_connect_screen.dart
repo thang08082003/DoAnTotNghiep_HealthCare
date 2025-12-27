@@ -6,7 +6,6 @@ import 'dart:io' show Platform;
 import 'package:flutter/services.dart';
 import '../../providers/user_provider.dart';
 import '../../viewmodels/profile/health_connect_viewmodel.dart';
-import '../../providers/health_monitoring_provider.dart';
 
 class GoogleFitConnectScreen extends ConsumerStatefulWidget {
   const GoogleFitConnectScreen({super.key});
@@ -23,7 +22,7 @@ class _GoogleFitConnectScreenState
   DateTime? _latestHrTime;
   double? _latestSpo2;
   DateTime? _latestSpo2Time;
-  Duration? _todaySleep;
+  Duration? _lastNightSleep;
   String? _error;
   bool _passiveEnabled = false;
   static const _prefsPassiveKey = 'passive_listener_enabled';
@@ -102,7 +101,7 @@ class _GoogleFitConnectScreenState
       _latestHrTime = snap.hrTime;
       _latestSpo2 = snap.spo2;
       _latestSpo2Time = snap.spo2Time;
-      _todaySleep = snap.todaySleep;
+      _lastNightSleep = snap.lastNightSleep;
 
       if (!mounted) return;
       setState(() {});
@@ -196,30 +195,6 @@ class _GoogleFitConnectScreenState
               icon: const Icon(Icons.bug_report),
               label: const Text('Xuất log dữ liệu (7 ngày)'),
             ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: _loading
-                  ? null
-                  : () async {
-                      final user = await ref.read(currentUserProvider.future);
-                      if (user?.uid == null) return;
-                      await createTestAlert(user!.uid);
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('✅ Đã tạo cảnh báo test!'),
-                            backgroundColor: AppColors.success,
-                          ),
-                        );
-                      }
-                    },
-              icon: const Icon(Icons.notification_add),
-              label: const Text('Tạo cảnh báo test (DEBUG)'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.orange,
-                side: const BorderSide(color: Colors.orange),
-              ),
-            ),
             const SizedBox(height: 24),
             if (_error != null)
               Text(_error!, style: const TextStyle(color: Colors.red)),
@@ -234,8 +209,8 @@ class _GoogleFitConnectScreenState
             ),
             const SizedBox(height: 8),
             _metricRow(
-              'Giấc ngủ (hôm nay)',
-              _formatDuration(_todaySleep ?? Duration.zero),
+              'Giấc ngủ (đêm qua)',
+              _formatDuration(_lastNightSleep ?? Duration.zero),
             ),
           ],
         ),

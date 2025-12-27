@@ -14,7 +14,6 @@ class DiseaseDoctorSelectionScreen extends ConsumerStatefulWidget {
   final int? age;
   final String? gender;
   final String? medicalHistory;
-  final List<String>? allergicMedications;
 
   const DiseaseDoctorSelectionScreen({
     super.key,
@@ -25,7 +24,6 @@ class DiseaseDoctorSelectionScreen extends ConsumerStatefulWidget {
     this.age,
     this.gender,
     this.medicalHistory,
-    this.allergicMedications,
   });
 
   @override
@@ -242,7 +240,6 @@ class _DiseaseDoctorSelectionScreenState
           age: widget.age,
           gender: widget.gender,
           medicalHistory: widget.medicalHistory,
-          allergicMedications: widget.allergicMedications,
         );
 
     if (mounted) {
@@ -267,51 +264,23 @@ class _DiseaseDoctorSelectionScreenState
 
   IconData _getDiseaseIcon(DiseaseFocus disease) {
     switch (disease) {
-      case DiseaseFocus.diabetes:
-        return Icons.water_drop;
-      case DiseaseFocus.hypertension:
-        return Icons.speed;
+      case DiseaseFocus.stress:
+        return Icons.psychology;
       case DiseaseFocus.cardiology:
         return Icons.favorite;
-      case DiseaseFocus.respiratory:
-        return Icons.air;
-      case DiseaseFocus.gastroenterology:
-        return Icons.restaurant;
-      case DiseaseFocus.neurology:
-        return Icons.psychology;
-      case DiseaseFocus.orthopedics:
-        return Icons.accessibility_new;
-      case DiseaseFocus.dermatology:
-        return Icons.face;
-      case DiseaseFocus.mentalHealth:
-        return Icons.self_improvement;
-      case DiseaseFocus.obesity:
-        return Icons.monitor_weight;
+      case DiseaseFocus.diagnosis:
+        return Icons.medical_services;
     }
   }
 
   String _getDiseaseDescription(DiseaseFocus disease) {
     switch (disease) {
-      case DiseaseFocus.diabetes:
-        return 'Theo dõi đường huyết, chế độ ăn uống và kiểm soát tiểu đường';
-      case DiseaseFocus.hypertension:
-        return 'Quản lý huyết áp, phòng ngừa biến chứng tim mạch';
+      case DiseaseFocus.stress:
+        return 'Quản lý căng thẳng và sức khỏe tâm lý';
       case DiseaseFocus.cardiology:
-        return 'Chăm sóc sức khỏe tim mạch, nhịp tim và tuần hoàn';
-      case DiseaseFocus.respiratory:
-        return 'Theo dõi bệnh phổi, hen suyễn và chức năng hô hấp';
-      case DiseaseFocus.gastroenterology:
-        return 'Chăm sóc sức khỏe tiêu hóa, dạ dày và gan mật';
-      case DiseaseFocus.neurology:
-        return 'Theo dõi bệnh thần kinh, đau đầu và rối loạn chức năng';
-      case DiseaseFocus.orthopedics:
-        return 'Chăm sóc xương khớp, cơ và hệ vận động';
-      case DiseaseFocus.dermatology:
-        return 'Theo dõi bệnh da liễu, dị ứng và chăm sóc da';
-      case DiseaseFocus.mentalHealth:
-        return 'Hỗ trợ sức khỏe tâm thần, lo âu và trầm cảm';
-      case DiseaseFocus.obesity:
-        return 'Quản lý cân nặng, dinh dưỡng và lối sống lành mạnh';
+        return 'Chăm sóc sức khỏe tim mạch';
+      case DiseaseFocus.diagnosis:
+        return 'Chẩn đoán và tư vấn y tế tổng quát';
     }
   }
 }

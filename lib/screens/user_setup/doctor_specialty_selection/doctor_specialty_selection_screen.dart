@@ -261,51 +261,23 @@ class _DoctorSpecialtySelectionScreenState
 
   IconData _getSpecialtyIcon(Specialty specialty) {
     switch (specialty) {
-      case Specialty.diabetes:
-        return Icons.water_drop;
-      case Specialty.hypertension:
-        return Icons.speed;
+      case Specialty.stress:
+        return Icons.psychology;
       case Specialty.cardiology:
         return Icons.favorite;
-      case Specialty.respiratory:
-        return Icons.air;
-      case Specialty.gastroenterology:
-        return Icons.restaurant;
-      case Specialty.neurology:
-        return Icons.psychology;
-      case Specialty.orthopedics:
-        return Icons.accessibility_new;
-      case Specialty.dermatology:
-        return Icons.face;
-      case Specialty.mentalHealth:
-        return Icons.self_improvement;
-      case Specialty.obesity:
-        return Icons.monitor_weight;
+      case Specialty.diagnosis:
+        return Icons.medical_services;
     }
   }
 
   String _getSpecialtyDescription(Specialty specialty) {
     switch (specialty) {
-      case Specialty.diabetes:
-        return 'Chuyên về điều trị tiểu đường và rối loạn nội tiết';
-      case Specialty.hypertension:
-        return 'Chuyên về quản lý huyết áp và bệnh nội khoa';
+      case Specialty.stress:
+        return 'Chuyên về tâm lý và quản lý căng thẳng';
       case Specialty.cardiology:
-        return 'Chuyên về tim mạch, nhịp tim và mạch máu';
-      case Specialty.respiratory:
-        return 'Chuyên về phổi, hô hấp và hen phế quản';
-      case Specialty.gastroenterology:
-        return 'Chuyên về tiêu hóa, gan mật và dạ dày';
-      case Specialty.neurology:
-        return 'Chuyên về thần kinh, não bộ và hệ thần kinh';
-      case Specialty.orthopedics:
-        return 'Chuyên về cơ xương khớp và chấn thương chỉnh hình';
-      case Specialty.dermatology:
-        return 'Chuyên về da liễu, mụn và bệnh da';
-      case Specialty.mentalHealth:
-        return 'Chuyên về tâm thần, lo âu và trầm cảm';
-      case Specialty.obesity:
-        return 'Chuyên về dinh dưỡng, giảm cân và béo phì';
+        return 'Chuyên về tim mạch và huyết áp';
+      case Specialty.diagnosis:
+        return 'Chuyên về chẩn đoán và tư vấn tổng quát';
     }
   }
 }

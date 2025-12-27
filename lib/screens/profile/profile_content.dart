@@ -219,7 +219,6 @@ class _PatientInfoCard extends ConsumerWidget {
     final diseaseFocusEnum =
         (user as dynamic).diseaseFocusEnum as DiseaseFocus?;
     final diseaseFocusText = diseaseFocusEnum?.displayName ?? 'Chưa cập nhật';
-    final allergicMedications = user.allergicMedications as List<String>?;
 
     return Container(
       width: double.infinity,
@@ -370,55 +369,6 @@ class _PatientInfoCard extends ConsumerWidget {
             child: Text(
               _displayOrNA(medicalHistory),
               style: AppTextStyles.body2Secondary,
-            ),
-          ),
-          const Divider(height: 24),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.red.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.warning_amber, color: Colors.red, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Thuốc dị ứng',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.red,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                if (allergicMedications == null || allergicMedications.isEmpty)
-                  const Text(
-                    'Chưa cập nhật',
-                    style: TextStyle(color: AppColors.textSecondary),
-                  )
-                else
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: allergicMedications.map((med) {
-                      return Chip(
-                        label: Text(med),
-                        backgroundColor: Colors.white,
-                        side: BorderSide(
-                          color: Colors.red.withValues(alpha: 0.3),
-                        ),
-                        labelStyle: const TextStyle(fontSize: 12),
-                      );
-                    }).toList(),
-                  ),
-              ],
             ),
           ),
         ],

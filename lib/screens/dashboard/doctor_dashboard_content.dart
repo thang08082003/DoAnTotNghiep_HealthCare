@@ -13,7 +13,6 @@ import '../../components/reviews/reviews_list.dart';
 import '../../viewmodels/reviews/doctor_reviews_view_model.dart';
 import '../doctors/doctor_reviews_screen.dart';
 import '../resources/clinical_resources_screen.dart';
-import '../../components/doctor/chest_xray_button.dart';
 
 class DoctorDashboardContent extends ConsumerWidget {
   const DoctorDashboardContent({super.key});
@@ -99,8 +98,6 @@ class DoctorDashboardContent extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
               _ClinicalInfoEntryButton(),
-              const SizedBox(height: 12),
-              const ChestXrayButton(),
 
               const SizedBox(height: 24),
 

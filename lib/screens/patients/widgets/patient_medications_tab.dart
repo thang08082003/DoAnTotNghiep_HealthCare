@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../data/models/medication_prescription_model.dart';
-import '../../../data/services/prescription_service.dart';
-import '../../../components/medication/prescription_card.dart';
-import '../../../providers/user_provider.dart';
+import '../../../data/models/medication_model.dart';
+import '../../../data/services/medication_service.dart';
+import '../../../components/medication/medication_card.dart';
 
 class PatientMedicationsTab extends ConsumerWidget {
   final String patientId;
@@ -21,59 +20,43 @@ class PatientMedicationsTab extends ConsumerWidget {
       return _buildPendingMessage();
     }
 
-    final prescriptionService = ref.watch(prescriptionServiceProvider);
-    final currentUserAsync = ref.watch(currentUserProvider);
+    final medicationService = ref.watch(medicationServiceProvider);
 
-    return currentUserAsync.when(
-      data: (currentUser) {
-        final isPatientView = currentUser?.isPatient ?? false;
+    return StreamBuilder<List<Medication>>(
+      stream: medicationService.getMedications(patientId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-        return StreamBuilder<List<MedicationPrescription>>(
-          stream: prescriptionService.getPrescriptionsForPatient(patientId),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
+        if (snapshot.hasError) {
+          return Center(child: Text('Lỗi: ${snapshot.error}'));
+        }
 
-            if (snapshot.hasError) {
-              return Center(child: Text('Lỗi: ${snapshot.error}'));
-            }
+        final medications = snapshot.data ?? [];
+        if (medications.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.medication_outlined, size: 64, color: Colors.grey),
+                SizedBox(height: 16),
+                Text('Bệnh nhân chưa có thuốc nào'),
+              ],
+            ),
+          );
+        }
 
-            final prescriptions = snapshot.data ?? [];
-
-            if (prescriptions.isEmpty) {
-              return const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.medication_outlined,
-                      size: 64,
-                      color: Colors.grey,
-                    ),
-                    SizedBox(height: 16),
-                    Text('Chưa có chỉ định thuốc nào'),
-                  ],
-                ),
-              );
-            }
-
-            return ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: prescriptions.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                return PrescriptionCard(
-                  prescription: prescriptions[index],
-                  isPatientView: isPatientView,
-                );
-              },
-            );
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: medications.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (context, index) {
+            final medication = medications[index];
+            return MedicationCard(medication: medication);
           },
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(child: Text('Lỗi: $error')),
     );
   }
 

@@ -240,8 +240,6 @@ class _NotificationsListContentState
         return Icons.access_time;
       case NotificationType.followRequest:
         return Icons.person_add_alt_1;
-      case NotificationType.prescription:
-        return Icons.medication;
       case NotificationType.other:
         return Icons.notifications;
     }
@@ -261,8 +259,6 @@ class _NotificationsListContentState
         return AppColors.warning;
       case NotificationType.followRequest:
         return Colors.orange;
-      case NotificationType.prescription:
-        return Colors.green;
       case NotificationType.other:
         return AppColors.textSecondary;
     }

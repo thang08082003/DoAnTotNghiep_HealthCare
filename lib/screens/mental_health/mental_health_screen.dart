@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../depression_risk/depression_risk_screen.dart';
 import '../anxiety_risk/anxiety_risk_screen.dart';
 
 /// Màn hình Sức khỏe tinh thần - trang chính
@@ -40,26 +39,6 @@ class MentalHealthScreen extends ConsumerWidget {
             ),
 
             const SizedBox(height: 16),
-
-            // Depression Risk Card
-            _buildMentalHealthCard(
-              context: context,
-              icon: Icons.psychology,
-              title: 'Nguy cơ trầm cảm',
-              subtitle: 'Đánh giá PHQ-9',
-              description:
-                  'Bộ câu hỏi PHQ-9 gồm 9 câu hỏi để đánh giá mức độ trầm cảm của bạn trong 2 tuần qua.',
-              color: Colors.purple,
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const DepressionRiskScreen(),
-                  ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 24),
 
             // Info section
             _buildInfoSection(context),

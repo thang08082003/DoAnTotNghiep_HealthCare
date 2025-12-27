@@ -4,7 +4,6 @@ import '../../data/resources/gene/app_colors.dart';
 import '../../providers/user_provider.dart';
 import '../../components/info_section/today_health_info_section.dart';
 import '../../components/health/latest_health_alert_widget.dart';
-import '../../components/quick_access/care_plan_quick_access_widget.dart';
 import '../medication/medication_screen.dart';
 import '../mental_health/mental_health_screen.dart';
 import '../chat/medical_chat_screen.dart';
@@ -161,7 +160,6 @@ class PatientDashboardContent extends ConsumerWidget {
                 },
               ),
               const SizedBox(height: 12),
-              const CarePlanQuickAccessWidget(),
             ],
           ),
         );
