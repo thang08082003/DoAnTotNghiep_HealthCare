@@ -1,0 +1,106 @@
+DANH SÁCH 100 TÊN THUỐC ĐẦU TIÊN
+Nguồn: https://dichvucong.dav.gov.vn/congbothuoc/index
+Tổng số bản ghi: 53,526
+Ngày lấy dữ liệu: 26/12/2025
+============================================
+
+1. Empatince
+2. Dorunavir 75
+3. Fabalina 5/25
+4. Fabalina 5/10
+5. Strongfil-40
+6. Viên sủi Pafenol 500mg
+7. Loratadin 10mg Kingphar
+8. Ibuprofen 400 mg Kingphar
+9. Acetylcystein 200mg Kingphar
+10. Glipizid 5 mg
+11. Sitagliptin Plus XR
+12. Lukair
+13. Mzynof
+14. Wedoll - S 100
+15. Mitimipid 100 ODT
+16. Solmebe
+17. Solcoex 600
+18. Solbose 50 ODT
+19. Solfazin
+20. Misoprostol 100
+21. Lercanidipine 20
+22. Histavert ODT
+23. Herouracil
+24. Herolac
+25. Heragemci 200
+26. Heragemci 1000
+27. Heraclovir DT 800
+28. Henobicin
+29. Cytobicil
+30. Doxycyclin
+31. Domperidon
+32. Acyclovir 5%
+33. Supergra 50
+34. Supergra 100
+35. Pira 800-LTF
+36. Mirfan 15
+37. Losartan-LTF 50
+38. Lopramid-LTF
+39. Lipis-LTF 20
+40. Lipis-LTF 10
+41. Lafancol extra
+42. Lacinda 300
+43. Lacele-xib 200
+44. Flozinga 5
+45. Flozinga 10
+46. Fegut 120
+47. Dovran 200
+48. Clopido-LTF
+49. Cobamol 1500
+50. Sitagliptin 25 mg
+51. Cofatorid 50
+52. Amlosali
+53. Tadalafil 20mg
+54. Tadalafil 5mg
+55. Orlistat 120 mg
+56. Ibucodeine STELLA 200/ 12.8
+57. Abiraterone STELLA 250 mg
+58. Hacutrol 5
+59. Furosemid 40
+60. Diosmin Hasan 600
+61. Diosmibe DT
+62. DH-Enamigal 5
+63. DH-Enamigal 10
+64. Captopril Hydroclorothiazid 25/ 12,5
+65. Captocom 25/ 25
+66. Mivifort 850/ 50
+67. Hapizide 10
+68. Vicsoytine
+69. Sulpirid
+70. Plainic
+71. Lopegoric
+72. Eltomax
+73. Vplaxol
+74. Adaflo AG 500
+75. Bilantihis 10 DT
+76. Fexosin 30
+77. Precozil 250
+78. Ecophelic 180
+79. Mexlocap 20
+80. Dromerin 80
+81. Dexchlorpheniramine maleate -Betamethasone 2.0 / 0.25
+82. Debrudan 100
+83. BV Ibugesic Fort
+84. BV Carbocistein 500
+85. Bivogyl
+86. Bivibismol
+87. Aluminum hydroxide-Magnesium hydroxide-Simethicone 175/ 200/ 25
+88. Triflogilse
+89. DRP-Dapa 5
+90. DRP-Dapa 10
+91. PT Micolin
+92. Nimomia
+93. Migesten 200mg
+94. Pamephrin tab
+95. Rafoexplores
+96. Edotin
+97. Duganka
+98. Betamineo
+99. Levocinco
+100. Dealkey
