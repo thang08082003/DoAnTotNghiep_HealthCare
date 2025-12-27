@@ -123,7 +123,7 @@ class _HealthAlertsScreenState extends ConsumerState<HealthAlertsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Cảnh báo sức khỏe AI'),
+        title: const Text('Cảnh báo sức khỏe'),
         centerTitle: true,
         elevation: 0,
       ),

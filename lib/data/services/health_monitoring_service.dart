@@ -350,7 +350,7 @@ class HealthMonitoringService {
     const androidDetails = AndroidNotificationDetails(
       'health_monitoring',
       'Giám sát sức khỏe',
-      channelDescription: 'Thông báo cảnh báo sức khỏe từ AI',
+      channelDescription: 'Thông báo cảnh báo sức khỏe từ hệ thống',
       importance: Importance.high,
       priority: Priority.high,
       icon: '@drawable/ic_stat_notify',

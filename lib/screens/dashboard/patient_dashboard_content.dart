@@ -97,7 +97,7 @@ class PatientDashboardContent extends ConsumerWidget {
               const SizedBox(height: 24),
 
               const Text(
-                'Cảnh báo gần nhất từ AI',
+                'Cảnh báo gần nhất từ hệ thống',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
