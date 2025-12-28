@@ -61,40 +61,34 @@ class AutoAnalysisService {
   }
 
   /// Thực hiện phân tích (được gọi bởi WorkManager)
+  /// CHỈ phân tích dữ liệu đã có trong Firebase, KHÔNG đồng bộ
   static Future<void> performAnalysis() async {
     try {
-      final repository = HealthAnalysisRepository();
+      print('🔍 [AutoAnalysis] Bắt đầu phân tích tự động...');
 
-      // Sync dữ liệu từ Health Connect
-      await repository.syncHealthData();
+      // Thực hiện phân tích dữ liệu có sẵn trong Firebase
+      final repository = HealthAnalysisRepository();
 
       // Phân tích heart rate
       await repository.analyzeHeartRate();
+      print('✅ [AutoAnalysis] Đã phân tích heart rate');
 
       // Phân tích SpO2
       await repository.analyzeSpO2();
+      print('✅ [AutoAnalysis] Đã phân tích SpO2');
 
       // Phân tích sleep
       await repository.analyzeSleep();
+      print('✅ [AutoAnalysis] Đã phân tích sleep');
 
-      print('Auto-analysis completed successfully');
-    } catch (e) {
-      print('Auto-analysis error: $e');
+      print('🎉 [AutoAnalysis] Hoàn tất phân tích tự động');
+    } catch (e, stack) {
+      print('❌ [AutoAnalysis] Lỗi: $e');
+      print('Stack: $stack');
       rethrow;
     }
   }
 }
-
-/// Provider cho AutoAnalysisService
-final autoAnalysisServiceProvider = Provider<AutoAnalysisService>((ref) {
-  return AutoAnalysisService();
-});
-
-/// Provider để theo dõi trạng thái auto-analysis
-final autoAnalysisEnabledProvider =
-    StateNotifierProvider<AutoAnalysisNotifier, bool>((ref) {
-      return AutoAnalysisNotifier(ref.read(autoAnalysisServiceProvider));
-    });
 
 /// StateNotifier để quản lý trạng thái auto-analysis
 class AutoAnalysisNotifier extends StateNotifier<bool> {
@@ -109,7 +103,7 @@ class AutoAnalysisNotifier extends StateNotifier<bool> {
     state = await _service.isEnabled();
   }
 
-  /// Bật/tắt auto-analysis
+  /// Bật/tắt auto-analysis với bool parameter
   Future<void> toggle(bool enabled) async {
     if (enabled) {
       await _service.enable();
@@ -117,5 +111,15 @@ class AutoAnalysisNotifier extends StateNotifier<bool> {
       await _service.disable();
     }
     state = enabled;
+  }
+
+  /// Toggle auto-analysis (bật thành tắt, tắt thành bật)
+  Future<void> toggleSwitch() async {
+    if (state) {
+      await _service.disable();
+    } else {
+      await _service.enable();
+    }
+    state = !state;
   }
 }

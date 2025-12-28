@@ -99,7 +99,7 @@ class _HealthWarningsScreenState extends ConsumerState<HealthWarningsScreen> {
 
   Future<void> _handleAnalyze(BuildContext context) async {
     try {
-      await ref.read(healthAnalysisViewModelProvider.notifier).syncAndAnalyze();
+      await ref.read(healthAnalysisViewModelProvider.notifier).analyzeOnly();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

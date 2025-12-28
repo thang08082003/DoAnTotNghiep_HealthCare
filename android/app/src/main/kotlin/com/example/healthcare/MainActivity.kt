@@ -17,10 +17,8 @@ import io.flutter.plugins.GeneratedPluginRegistrant
 
 class MainActivity : FlutterFragmentActivity(), DefaultLifecycleObserver {
 	private val FOREGROUND_CHANNEL = "com.example.healthcare/foreground"
-	private val PASSIVE_CHANNEL = "com.example.healthcare/passive"
 	private val HEALTH_MONITORING_CHANNEL = "com.example.healthcare/health_monitoring"
 	private var methodChannel: MethodChannel? = null
-	private var passiveChannel: MethodChannel? = null
 	private var healthMonitoringChannel: MethodChannel? = null
 	private var healthMonitoringReceiver: android.content.BroadcastReceiver? = null
 
@@ -118,34 +116,6 @@ class MainActivity : FlutterFragmentActivity(), DefaultLifecycleObserver {
 			}
 			intent?.removeExtra("payload")
 		}
-		passiveChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PASSIVE_CHANNEL)
-		passiveChannel?.setMethodCallHandler { call, result ->
-			when (call.method) {
-				"enablePassiveListener" -> {
-					try {
-						val role = call.argument<String>("role") ?: ""
-						if (role.equals("doctor", ignoreCase = true)) {
-							result.error("PASSIVE", "Passive sync is not allowed for doctor role", null)
-							return@setMethodCallHandler
-						}
-						PassiveHealthConnectManager.enable(this)
-						result.success(true)
-					} catch (e: Exception) {
-						result.error("PASSIVE", e.message, null)
-					}
-				}
-				"disablePassiveListener" -> {
-					try {
-						PassiveHealthConnectManager.disable(this)
-						result.success(true)
-					} catch (e: Exception) {
-						result.error("PASSIVE", e.message, null)
-					}
-				}
-				else -> result.notImplemented()
-			}
-		}
-
 		// Health monitoring channel
 		healthMonitoringChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, HEALTH_MONITORING_CHANNEL)
 		

@@ -16,7 +16,6 @@ import '../screens/permissions/permissions_request_screen.dart';
 import '../viewmodels/notifications/local_notifications_view_model.dart';
 import '../viewmodels/notifications/notifications_view_model.dart';
 import '../viewmodels/foreground/foreground_service_view_model.dart';
-import '../viewmodels/passive_listener/passive_listener_view_model.dart';
 import '../components/incoming_call_listener.dart';
 import '../data/services/session_service.dart';
 
@@ -358,14 +357,6 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
 
                       // Enable passive listener and AI monitoring ONLY for patients
                       // Doctors don't need health tracking
-                      if (user.isPatient) {
-                        // Enable passive listener (handles data collection)
-                        ref.read(passiveListenerViewModelProvider).enable();
-
-                        // Enable AI health monitoring
-                        // Reuses PassiveListener's 15-min WorkManager for data collection
-                        // AI checks run every 6 hours after data sync
-                      }
 
                       // Start local notifications listening after first frame
                       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -407,12 +398,6 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // CRITICAL: Stop all listeners and services to prevent leaking user data
-      // Incoming call listener removed - using background service only
-
-      try {
-        // Disable passive listener
-        ref.read(passiveListenerViewModelProvider).disable();
-      } catch (_) {}
 
       try {
         // Stop local notifications and foreground service

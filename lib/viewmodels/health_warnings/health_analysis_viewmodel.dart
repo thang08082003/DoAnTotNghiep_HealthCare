@@ -9,25 +9,25 @@ class HealthAnalysisViewModel extends StateNotifier<HealthAnalysisState> {
   HealthAnalysisViewModel(this._repository)
     : super(const HealthAnalysisState());
 
-  // Sync and analyze all health data
-  Future<void> syncAndAnalyze() async {
+  // Analyze health data (without syncing)
+  // Phân tích dữ liệu có sẵn trong SQLite (đã được đồng bộ từ Health Connect)
+  // Luồng: Health Connect → SQLite → Firebase (đồng bộ ở màn hình Health Connect)
+  //        SQLite → Phân tích (ở đây)
+  Future<void> analyzeOnly() async {
     try {
-      // Start syncing
+      // Start analyzing
       state = state.copyWith(isSyncing: true, error: null);
 
-      // Step 1: Sync data from Health Connect
-      await _repository.syncHealthData();
-
-      // Step 2: Analyze the synced data
+      // Phân tích dữ liệu từ SQLite (repository sẽ query từ SQLite)
       final now = DateTime.now();
 
-      // Analyze heart rate
+      // Analyze heart rate from SQLite
       final heartRateAnalysis = await _repository.analyzeHeartRate();
 
-      // Analyze SpO2
+      // Analyze SpO2 from SQLite
       final spo2Analysis = await _repository.analyzeSpO2();
 
-      // Analyze sleep
+      // Analyze sleep from SQLite
       final sleepAnalysis = await _repository.analyzeSleep();
 
       // Create new analysis record

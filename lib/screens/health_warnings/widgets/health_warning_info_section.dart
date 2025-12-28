@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/resources/gene/app_colors.dart';
-import '../../../data/services/auto_analysis_service.dart';
+import '../../../providers/auto_analysis_provider.dart';
 
 class HealthWarningInfoSection extends ConsumerWidget {
   final DateTime? lastSyncTime;
@@ -29,7 +29,7 @@ class HealthWarningInfoSection extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Về cảnh báo sức khỏe',
+            'Về phân tích và cảnh báo sức khỏe',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -38,7 +38,7 @@ class HealthWarningInfoSection extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           const Text(
-            'Hệ thống sẽ tự động phân tích dữ liệu sức khỏe của bạn và đưa ra cảnh báo khi phát hiện những chỉ số bất thường hoặc có dấu hiệu cần theo dõi.',
+            'Hệ thống sẽ phân tích dữ liệu đã đồng bộ trên Firebase và đưa ra cảnh báo khi phát hiện chỉ số bất thường.',
             style: TextStyle(
               fontSize: 14,
               color: AppColors.textSecondary,
@@ -79,7 +79,7 @@ class HealthWarningInfoSection extends ConsumerWidget {
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'Phân tích mỗi 30 phút',
+                        'Phân tích dữ liệu mỗi 30 phút (chỉ phân tích, không đồng bộ)',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,

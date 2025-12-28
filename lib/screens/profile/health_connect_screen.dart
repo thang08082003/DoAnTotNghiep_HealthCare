@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/resources/gene/app_colors.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:io' show Platform;
-import 'package:flutter/services.dart';
 import '../../providers/user_provider.dart';
 import '../../viewmodels/profile/health_connect_viewmodel.dart';
+import '../../data/services/passive_sync_service.dart';
 
 class GoogleFitConnectScreen extends ConsumerStatefulWidget {
   const GoogleFitConnectScreen({super.key});
@@ -24,66 +22,48 @@ class _GoogleFitConnectScreenState
   DateTime? _latestSpo2Time;
   Duration? _todaySleep;
   String? _error;
-  bool _passiveEnabled = false;
-  static const _prefsPassiveKey = 'passive_listener_enabled';
-  static const _passiveChannel = MethodChannel(
-    'com.example.healthcare/passive',
-  );
 
-  @override
-  void initState() {
-    super.initState();
-    _loadPassiveToggle();
-  }
+  final PassiveSyncService _passiveSyncService = PassiveSyncService();
 
-  Future<void> _loadPassiveToggle() async {
-    final prefs = await SharedPreferences.getInstance();
-    final on = prefs.getBool(_prefsPassiveKey) ?? false;
-    if (mounted) setState(() => _passiveEnabled = on);
-  }
+  Future<void> _togglePassiveSync(bool value) async {
+    // Block for doctors
+    final user = await ref.read(currentUserProvider.future);
+    if (user != null && user.isDoctor && value) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Bác sĩ không được bật Passive Sync')),
+        );
+      }
+      return;
+    }
 
-  Future<void> _setPassiveToggle(bool value) async {
-    setState(() => _passiveEnabled = value);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_prefsPassiveKey, value);
-    // Call into native to register/unregister
-    if (!Platform.isAndroid) return;
     try {
       if (value) {
-        // Block for doctors
-        final user = await ref.read(currentUserProvider.future);
-        if (user != null && user.isDoctor) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Bác sĩ không được bật Passive Sync'),
-              ),
-            );
-          }
-          setState(() => _passiveEnabled = false);
-          await prefs.setBool(_prefsPassiveKey, false);
-          return;
-        }
-        await _passiveChannel.invokeMethod('enablePassiveListener', {
-          'role': user?.isDoctor == true ? 'doctor' : 'patient',
-        });
+        await _passiveSyncService.enable();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Đã bật đồng bộ thụ động (Passive)')),
+            const SnackBar(
+              content: Text('Đã bật đồng bộ thụ động (mỗi 15 phút)'),
+              backgroundColor: Colors.green,
+            ),
           );
         }
       } else {
-        await _passiveChannel.invokeMethod('disablePassiveListener');
+        await _passiveSyncService.disable();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Đã tắt đồng bộ thụ động (Passive)')),
+            const SnackBar(
+              content: Text('Đã tắt đồng bộ thụ động'),
+              backgroundColor: Colors.orange,
+            ),
           );
         }
       }
-    } on PlatformException catch (e) {
+      setState(() {});
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi Passive listener: ${e.message}')),
+          SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -138,56 +118,174 @@ class _GoogleFitConnectScreenState
             ElevatedButton.icon(
               onPressed: _loading ? null : _connectAndFetch,
               icon: const Icon(Icons.favorite),
-              label: Text(_loading ? 'Đang xử lý...' : 'Tải dữ liệu'),
+              label: Text(_loading ? 'Đang xử lý...' : 'Tải dữ liệu hiện tại'),
             ),
-            const SizedBox(height: 8),
-            // Passive Listener toggle under settings, below connect button
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Đồng bộ thụ động (Passive Listener)',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-                Switch(
-                  value: _passiveEnabled,
-                  onChanged: _loading
-                      ? null
-                      : (v) {
-                          _setPassiveToggle(v);
-                        },
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // Trigger immediate drain now (manual)
-            ElevatedButton.icon(
-              onPressed: _loading
-                  ? null
-                  : () async {
-                      try {
-                        await _passiveChannel.invokeMethod(
-                          'enablePassiveListener',
-                        );
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Đã kích hoạt đồng bộ ngay'),
+            const SizedBox(height: 24),
+
+            // Sync Section
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.cloud_sync,
+                          color: Theme.of(context).primaryColor,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Đồng bộ dữ liệu lên Firebase',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Lấy dữ liệu từ Health Connect, lưu vào SQLite, sau đó đẩy lên Firebase.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 8),
+
+                    // Passive Sync Toggle
+                    FutureBuilder<bool>(
+                      future: _passiveSyncService.isEnabled(),
+                      builder: (context, snapshot) {
+                        final isEnabled = snapshot.data ?? false;
+                        return SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text(
+                            'Đồng bộ thụ động',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          subtitle: Text(
+                            isEnabled
+                                ? 'Tự động lấy dữ liệu từ Health Connect mỗi 15 phút và đẩy lên Firebase'
+                                : 'Tắt - chỉ đồng bộ khi bạn nhấn nút đồng bộ ngay',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 13,
                             ),
-                          );
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Lỗi kích hoạt: $e')),
-                          );
-                        }
-                      }
-                    },
-              icon: const Icon(Icons.play_circle_fill),
-              label: const Text('Đồng bộ ngay (chạy 1 lần)'),
+                          ),
+                          value: isEnabled,
+                          onChanged: _loading ? null : _togglePassiveSync,
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // Sync Now Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _loading
+                            ? null
+                            : () async {
+                                setState(() => _loading = true);
+
+                                try {
+                                  debugPrint('🔄 [UI] Bắt đầu đồng bộ ngay...');
+                                  final result = await _passiveSyncService
+                                      .syncNow();
+
+                                  debugPrint('✅ [UI] Kết quả: $result');
+
+                                  if (mounted) {
+                                    if (result.success) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Đã đồng bộ (24h gần nhất):\n'
+                                            'HR: ${result.heartRateCount}, '
+                                            'SpO2: ${result.spo2Count}, '
+                                            'Sleep: ${result.sleepCount}\n'
+                                            'Uploaded: ${result.uploadedToFirebase} records',
+                                          ),
+                                          backgroundColor: Colors.green,
+                                          duration: const Duration(seconds: 4),
+                                        ),
+                                      );
+                                      // Refresh data
+                                      await _connectAndFetch();
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Lỗi: ${result.message}'),
+                                          backgroundColor: Colors.orange,
+                                          duration: const Duration(seconds: 3),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                } catch (e, stack) {
+                                  debugPrint('❌ [UI] Lỗi đồng bộ: $e');
+                                  debugPrint('Stack: $stack');
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Lỗi đồng bộ: $e'),
+                                        backgroundColor: Colors.red,
+                                        duration: const Duration(seconds: 3),
+                                      ),
+                                    );
+                                  }
+                                } finally {
+                                  if (mounted) setState(() => _loading = false);
+                                }
+                              },
+                        icon: const Icon(Icons.sync_rounded),
+                        label: const Text('Đồng bộ ngay (24h gần nhất)'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Info banner
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            color: Colors.blue.shade700,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Lưu ý: Chức năng này chỉ đồng bộ dữ liệu, không phân tích. Để phân tích sức khỏe, vào trang "Cảnh báo sức khỏe"',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.blue.shade700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(

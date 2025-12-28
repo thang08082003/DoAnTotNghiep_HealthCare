@@ -5,34 +5,50 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:healthcare/data/resources/gene/app_colors.dart';
 import 'package:healthcare/router/app_router.dart';
 import 'package:healthcare/router/navigation_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'dart:io' show Platform;
-import 'package:healthcare/data/services/android_passive_listener_service.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:healthcare/data/services/auto_analysis_service.dart';
+import 'package:healthcare/data/services/passive_sync_service.dart';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:healthcare/data/services/notification_service.dart';
 
 /// Callback dispatcher cho WorkManager
+/// Xử lý 2 tasks:
+/// 1. passive_health_sync - Đồng bộ thụ động mỗi 15 phút
+/// 2. health_auto_analysis_task - Phân tích tự động mỗi 30 phút
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     try {
+      debugPrint('🔔 [WorkManager] Đang thực thi task: $task');
+
       // Khởi tạo Firebase nếu chưa có
       await Firebase.initializeApp();
 
-      // Kiểm tra nếu đây là task auto-analysis
-      if (task == 'health_auto_analysis_task') {
-        await AutoAnalysisService.performAnalysis();
-        return Future.value(true);
-      }
+      // Xử lý theo loại task
+      switch (task) {
+        case 'passive_health_sync':
+          // Đồng bộ thụ động: Health Connect → SQLite → Firebase
+          await PassiveSyncService.performPassiveSync();
+          debugPrint('✅ [WorkManager] Passive sync hoàn tất');
+          return Future.value(true);
 
-      return Future.value(true);
-    } catch (e) {
-      debugPrint('WorkManager task error: $e');
+        case 'health_auto_analysis_task':
+          // Phân tích tự động
+          await AutoAnalysisService.performAnalysis();
+          debugPrint('✅ [WorkManager] Auto analysis hoàn tất');
+          return Future.value(true);
+
+        default:
+          debugPrint('⚠️ [WorkManager] Unknown task: $task');
+          return Future.value(false);
+      }
+    } catch (e, stack) {
+      debugPrint('❌ [WorkManager] Task error: $e');
+      debugPrint('Stack: $stack');
       return Future.value(false);
     }
   });
@@ -124,16 +140,7 @@ void main() async {
   }
 
   // Auto-reapply passive listener if previously enabled (Android only)
-  try {
-    if (Platform.isAndroid) {
-      final prefs = await SharedPreferences.getInstance();
-      final on = prefs.getBool('passive_listener_enabled') ?? false;
-      if (on) {
-        // Fire-and-forget; WorkManager will schedule periodic + immediate drain
-        await AndroidPassiveListenerService.enable();
-      }
-    }
-  } catch (_) {}
+  try {} catch (_) {}
 
   runApp(const ProviderScope(child: HealthCareApp()));
 }
