@@ -1,10 +1,12 @@
 import 'package:health/health.dart';
 import '../database/health_data_database.dart';
 import '../services/health_connect_service.dart';
+import '../services/sleep_analysis_service.dart';
 
 class HealthAnalysisRepository {
   final HealthDataDatabase _database = HealthDataDatabase.instance;
   final GoogleFitService _healthService = GoogleFitService();
+  final SleepAnalysisService _sleepAnalysisService = SleepAnalysisService();
 
   // Sync all health data from Health Connect and store in local database
   Future<void> syncHealthData() async {
@@ -333,11 +335,12 @@ class HealthAnalysisRepository {
     };
   }
 
-  // Query and analyze sleep data
+  // Query and analyze sleep data with advanced analysis
   Future<Map<String, dynamic>> analyzeSleep() async {
     final now = DateTime.now();
     final startOfToday = DateTime(now.year, now.month, now.day);
 
+    // Get today's sleep data
     final data = await _database.querySleepSessions(
       startTime: startOfToday.millisecondsSinceEpoch,
       endTime: now.millisecondsSinceEpoch,
@@ -352,9 +355,13 @@ class HealthAnalysisRepository {
         'deepMinutes': 0,
         'remMinutes': 0,
         'awakeMinutes': 0,
+        'status': 'unknown',
+        'issues': ['Không có dữ liệu giấc ngủ'],
+        'recommendations': [],
       };
     }
 
+    // Calculate totals for today
     int totalLight = 0;
     int totalDeep = 0;
     int totalRem = 0;
@@ -373,15 +380,62 @@ class HealthAnalysisRepository {
       totalMinutes += duration;
     }
 
+    // Get 7-day baseline for personalized comparison
+    final baseline = await _calculate7DayBaseline(startOfToday);
+
+    // Perform advanced analysis
+    final analysis = _sleepAnalysisService.analyzeSleepQuality(
+      lightMinutes: totalLight,
+      deepMinutes: totalDeep,
+      remMinutes: totalRem,
+      awakeMinutes: totalAwake,
+      baseline: baseline,
+    );
+
+    // Merge with basic data
     return {
       'count': data.length,
       'totalMinutes': totalMinutes,
-      'averageMinutes': totalMinutes / data.length,
+      'averageMinutes': data.isNotEmpty ? totalMinutes / data.length : 0.0,
       'lightMinutes': totalLight,
       'deepMinutes': totalDeep,
       'remMinutes': totalRem,
       'awakeMinutes': totalAwake,
+      ...analysis, // Include status, issues, recommendations, percentages
     };
+  }
+
+  /// Calculate 7-day baseline for sleep stages
+  /// Returns average percentages for light, deep, and REM sleep
+  Future<Map<String, double>> _calculate7DayBaseline(DateTime today) async {
+    final List<Map<String, int>> last7Days = [];
+
+    // Query each of the past 7 days
+    for (int i = 1; i <= 7; i++) {
+      final dayStart = today.subtract(Duration(days: i));
+      final dayEnd = dayStart.add(const Duration(days: 1));
+
+      final dayData = await _database.querySleepSessions(
+        startTime: dayStart.millisecondsSinceEpoch,
+        endTime: dayEnd.millisecondsSinceEpoch,
+      );
+
+      if (dayData.isNotEmpty) {
+        int light = 0;
+        int deep = 0;
+        int rem = 0;
+
+        for (final session in dayData) {
+          light += (session['light_minutes'] as int?) ?? 0;
+          deep += (session['deep_minutes'] as int?) ?? 0;
+          rem += (session['rem_minutes'] as int?) ?? 0;
+        }
+
+        last7Days.add({'light': light, 'deep': deep, 'rem': rem});
+      }
+    }
+
+    return _sleepAnalysisService.calculateBaseline(last7Days);
   }
 
   // ============================================================================
@@ -565,18 +619,6 @@ class HealthAnalysisRepository {
     }
 
     return null;
-  }
-
-  /// Detect SpO2 context (SpO2 doesn't vary much by activity, mainly by altitude/health)
-  String _detectSpO2Context(double percentage, DateTime time) {
-    final hour = time.hour;
-
-    // Sleep hours
-    if (hour >= 23 || hour < 6) {
-      return 'sleeping';
-    }
-
-    return 'awake';
   }
 
   /// Calculate baseline for SpO2 (less context-dependent than heart rate)

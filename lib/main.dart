@@ -10,13 +10,40 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'dart:io' show Platform;
 import 'package:healthcare/data/services/android_passive_listener_service.dart';
+import 'package:workmanager/workmanager.dart';
+import 'package:healthcare/data/services/auto_analysis_service.dart';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:healthcare/data/services/notification_service.dart';
 
+/// Callback dispatcher cho WorkManager
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    try {
+      // Khởi tạo Firebase nếu chưa có
+      await Firebase.initializeApp();
+
+      // Kiểm tra nếu đây là task auto-analysis
+      if (task == 'health_auto_analysis_task') {
+        await AutoAnalysisService.performAnalysis();
+        return Future.value(true);
+      }
+
+      return Future.value(true);
+    } catch (e) {
+      debugPrint('WorkManager task error: $e');
+      return Future.value(false);
+    }
+  });
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+
+  // Initialize WorkManager first (before any usage)
+  await Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
 
   // Initialize timezone for scheduled notifications
   tz.initializeTimeZones();
@@ -107,6 +134,7 @@ void main() async {
       }
     }
   } catch (_) {}
+
   runApp(const ProviderScope(child: HealthCareApp()));
 }
 

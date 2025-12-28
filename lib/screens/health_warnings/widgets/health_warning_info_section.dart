@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/resources/gene/app_colors.dart';
+import '../../../data/services/auto_analysis_service.dart';
 
-class HealthWarningInfoSection extends StatelessWidget {
+class HealthWarningInfoSection extends ConsumerWidget {
   final DateTime? lastSyncTime;
   final bool isSyncing;
   final VoidCallback onAnalyze;
@@ -14,7 +16,9 @@ class HealthWarningInfoSection extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final autoAnalysisEnabled = ref.watch(autoAnalysisEnabledProvider);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -34,29 +38,99 @@ class HealthWarningInfoSection extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           const Text(
-            'Hệ thống sẽ tự động phân tích dữ liệu sức khỏe của bạn và đưa ra cảnh báo khi:\n\n'
-            'Phát hiện chỉ số bất thường\n'
-            'Có dấu hiệu cần theo dõi\n'
-            'Cần tái khám hoặc kiểm tra sức khỏe\n'
-            'Có khuyến nghị từ bác sĩ điều trị',
+            'Hệ thống sẽ tự động phân tích dữ liệu sức khỏe của bạn và đưa ra cảnh báo khi phát hiện những chỉ số bất thường hoặc có dấu hiệu cần theo dõi.',
             style: TextStyle(
               fontSize: 14,
               color: AppColors.textSecondary,
               height: 1.5,
             ),
           ),
-          if (lastSyncTime != null) ...[
-            const SizedBox(height: 12),
-            Text(
-              'Lần đồng bộ gần nhất: ${_formatDateTime(lastSyncTime!)}',
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-                fontStyle: FontStyle.italic,
+          const SizedBox(height: 16),
+
+          // Auto-analysis switch
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: AppColors.primaryColor.withValues(alpha: 0.2),
               ),
             ),
-          ],
-          const SizedBox(height: 16),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.autorenew,
+                  color: AppColors.primaryColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Phân tích tự động',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Phân tích mỗi 30 phút',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: autoAnalysisEnabled,
+                  onChanged: (value) async {
+                    try {
+                      await ref
+                          .read(autoAnalysisEnabledProvider.notifier)
+                          .toggle(value);
+
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              value
+                                  ? 'Đã bật phân tích tự động'
+                                  : 'Đã tắt phân tích tự động',
+                            ),
+                            duration: const Duration(seconds: 2),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      // Revert state on error
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Lỗi: Không thể ${value ? "bật" : "tắt"} phân tích tự động',
+                            ),
+                            duration: const Duration(seconds: 3),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  activeColor: AppColors.primaryColor,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -90,9 +164,5 @@ class HealthWarningInfoSection extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String _formatDateTime(DateTime dateTime) {
-    return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 }
