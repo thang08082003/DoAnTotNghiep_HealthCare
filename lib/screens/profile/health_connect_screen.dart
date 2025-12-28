@@ -204,7 +204,9 @@ class _GoogleFitConnectScreenState
 
                                   if (mounted) {
                                     if (result.success) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         SnackBar(
                                           content: Text(
                                             'Đã đồng bộ (24h gần nhất):\n'
@@ -220,9 +222,13 @@ class _GoogleFitConnectScreenState
                                       // Refresh data
                                       await _connectAndFetch();
                                     } else {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         SnackBar(
-                                          content: Text('Lỗi: ${result.message}'),
+                                          content: Text(
+                                            'Lỗi: ${result.message}',
+                                          ),
                                           backgroundColor: Colors.orange,
                                           duration: const Duration(seconds: 3),
                                         ),
