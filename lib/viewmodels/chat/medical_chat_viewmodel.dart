@@ -17,7 +17,14 @@ class MedicalChatViewModel extends StateNotifier<MedicalChatState> {
   final MedicalChatRepository _repository;
 
   MedicalChatViewModel(this._repository) : super(const MedicalChatState()) {
+    _initSession();
     _addWelcomeMessage();
+  }
+
+  void _initSession() {
+    // Simple session ID generation
+    final sessionId = DateTime.now().millisecondsSinceEpoch.toString();
+    state = state.copyWith(sessionId: sessionId);
   }
 
   void _addWelcomeMessage() {
@@ -46,7 +53,7 @@ class MedicalChatViewModel extends StateNotifier<MedicalChatState> {
       // Send to API with retry
       final response = await _repository.sendMessageWithRetry(
         message: message.trim(),
-        mode: state.currentMode,
+        sessionId: state.sessionId,
       );
 
       // Add bot response - chỉ hiển thị answer
@@ -77,6 +84,7 @@ class MedicalChatViewModel extends StateNotifier<MedicalChatState> {
   /// Clear all messages and reset
   void clearChat() {
     state = const MedicalChatState();
+    _initSession();
     _addWelcomeMessage();
   }
 

@@ -1,28 +1,22 @@
 // Model for Medical Chatbot API
 
-enum ChatMode {
-  thongtin('thongtin'),
-  problem('problem');
-
-  final String value;
-  const ChatMode(this.value);
-
-  static ChatMode fromString(String value) {
-    return ChatMode.values.firstWhere(
-      (e) => e.value == value,
-      orElse: () => ChatMode.thongtin,
-    );
-  }
-}
-
 class MedicalChatRequest {
   final String message;
-  final ChatMode mode;
+  final String? sessionId;
+  final bool debug;
 
-  const MedicalChatRequest({required this.message, required this.mode});
+  const MedicalChatRequest({
+    required this.message,
+    this.sessionId,
+    this.debug = true,
+  });
 
   Map<String, dynamic> toJson() {
-    return {'message': message, 'mode': mode.value};
+    return {
+      'message': message,
+      if (sessionId != null) 'session_id': sessionId,
+      'debug': debug,
+    };
   }
 }
 

@@ -10,10 +10,14 @@ class MedicalChatRepository {
   /// Send a message to the medical chatbot API
   Future<MedicalChatResponse> sendMessage({
     required String message,
-    required ChatMode mode,
+    String? sessionId,
   }) async {
     try {
-      // Chỉ gửi message, không gửi mode
+      final request = MedicalChatRequest(
+        message: message,
+        sessionId: sessionId,
+      );
+
       final response = await http
           .post(
             Uri.parse(_baseUrl),
@@ -21,7 +25,7 @@ class MedicalChatRepository {
               'Content-Type': 'application/json',
               'Accept': 'application/json',
             },
-            body: jsonEncode({'message': message}),
+            body: jsonEncode(request.toJson()),
           )
           .timeout(_timeout);
 
@@ -43,7 +47,7 @@ class MedicalChatRepository {
   /// Send message with automatic retry on failure
   Future<MedicalChatResponse> sendMessageWithRetry({
     required String message,
-    required ChatMode mode,
+    String? sessionId,
     int maxRetries = 2,
   }) async {
     int attempts = 0;
@@ -51,7 +55,7 @@ class MedicalChatRepository {
 
     while (attempts < maxRetries) {
       try {
-        return await sendMessage(message: message, mode: mode);
+        return await sendMessage(message: message, sessionId: sessionId);
       } catch (e) {
         lastError = e is Exception ? e : Exception(e.toString());
         attempts++;

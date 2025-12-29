@@ -6,26 +6,26 @@ class MedicalChatState {
   final List<ChatMessage> messages;
   final bool isLoading;
   final String? error;
-  final ChatMode currentMode;
+  final String? sessionId;
 
   const MedicalChatState({
     this.messages = const [],
     this.isLoading = false,
     this.error,
-    this.currentMode = ChatMode.thongtin,
+    this.sessionId,
   });
 
   MedicalChatState copyWith({
     List<ChatMessage>? messages,
     bool? isLoading,
     String? error,
-    ChatMode? currentMode,
+    String? sessionId,
   }) {
     return MedicalChatState(
       messages: messages ?? this.messages,
       isLoading: isLoading ?? this.isLoading,
       error: error,
-      currentMode: currentMode ?? this.currentMode,
+      sessionId: sessionId ?? this.sessionId,
     );
   }
 
