@@ -98,7 +98,9 @@ class HealthWarningInfoSection extends ConsumerWidget {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Chức năng này chỉ dành cho bệnh nhân'),
+                            content: Text(
+                              'Chức năng này chỉ dành cho bệnh nhân',
+                            ),
                             backgroundColor: Colors.orange,
                             duration: Duration(seconds: 2),
                           ),
