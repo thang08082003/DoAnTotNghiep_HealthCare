@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/resources/gene/app_colors.dart';
 import '../../../providers/auto_analysis_provider.dart';
+import '../../../providers/user_provider.dart';
 
 class HealthWarningInfoSection extends ConsumerWidget {
   final DateTime? lastSyncTime;
@@ -38,7 +39,7 @@ class HealthWarningInfoSection extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           const Text(
-            'Hệ thống sẽ phân tích dữ liệu đã đồng bộ trên Firebase và đưa ra cảnh báo khi phát hiện chỉ số bất thường.',
+            'Hệ thống sẽ phân tích dữ liệu trực tiếp từ Firebase và đưa ra cảnh báo khi phát hiện chỉ số bất thường.',
             style: TextStyle(
               fontSize: 14,
               color: AppColors.textSecondary,
@@ -79,7 +80,7 @@ class HealthWarningInfoSection extends ConsumerWidget {
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'Phân tích dữ liệu mỗi 30 phút (chỉ phân tích, không đồng bộ)',
+                        'Phân tích dữ liệu từ Firebase mỗi 30 phút (tự động)',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
@@ -91,6 +92,21 @@ class HealthWarningInfoSection extends ConsumerWidget {
                 Switch(
                   value: autoAnalysisEnabled,
                   onChanged: (value) async {
+                    // Block cho bác sĩ - chỉ bệnh nhân mới được dùng auto analysis
+                    final user = await ref.read(currentUserProvider.future);
+                    if (user != null && user.isDoctor) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Chức năng này chỉ dành cho bệnh nhân'),
+                            backgroundColor: Colors.orange,
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                      return;
+                    }
+
                     try {
                       await ref
                           .read(autoAnalysisEnabledProvider.notifier)

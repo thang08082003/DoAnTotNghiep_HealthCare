@@ -26,12 +26,15 @@ class _GoogleFitConnectScreenState
   final PassiveSyncService _passiveSyncService = PassiveSyncService();
 
   Future<void> _togglePassiveSync(bool value) async {
-    // Block for doctors
+    // Block for doctors - chỉ bệnh nhân mới được dùng Passive Sync
     final user = await ref.read(currentUserProvider.future);
-    if (user != null && user.isDoctor && value) {
+    if (user != null && user.isDoctor) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Bác sĩ không được bật Passive Sync')),
+          const SnackBar(
+            content: Text('Chức năng này chỉ dành cho bệnh nhân'),
+            backgroundColor: Colors.orange,
+          ),
         );
       }
       return;

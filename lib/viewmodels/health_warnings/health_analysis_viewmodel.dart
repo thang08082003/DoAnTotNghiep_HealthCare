@@ -9,26 +9,33 @@ class HealthAnalysisViewModel extends StateNotifier<HealthAnalysisState> {
   HealthAnalysisViewModel(this._repository)
     : super(const HealthAnalysisState());
 
-  // Analyze health data (without syncing)
-  // Phân tích dữ liệu có sẵn trong SQLite (đã được đồng bộ từ Health Connect)
+  // Analyze health data from Firebase (no syncing needed)
+  // Phân tích dữ liệu trực tiếp từ Firebase
   // Luồng: Health Connect → SQLite → Firebase (đồng bộ ở màn hình Health Connect)
-  //        SQLite → Phân tích (ở đây)
+  //        Firebase → Phân tích (ở đây) - đọc trực tiếp từ Firebase
   Future<void> analyzeOnly() async {
     try {
       // Start analyzing
       state = state.copyWith(isSyncing: true, error: null);
 
-      // Phân tích dữ liệu từ SQLite (repository sẽ query từ SQLite)
+      // Phân tích dữ liệu từ Firebase (repository sẽ query từ Firebase)
       final now = DateTime.now();
 
-      // Analyze heart rate from SQLite
+      // Analyze heart rate from Firebase
       final heartRateAnalysis = await _repository.analyzeHeartRate();
 
-      // Analyze SpO2 from SQLite
+      // Analyze SpO2 from Firebase
       final spo2Analysis = await _repository.analyzeSpO2();
 
-      // Analyze sleep from SQLite
+      // Analyze sleep from Firebase
       final sleepAnalysis = await _repository.analyzeSleep();
+
+      // Lưu kết quả phân tích lên Firebase
+      await _repository.saveAnalysisResult(
+        heartRateAnalysis: heartRateAnalysis,
+        spo2Analysis: spo2Analysis,
+        sleepAnalysis: sleepAnalysis,
+      );
 
       // Create new analysis record
       final newRecord = HealthAnalysisRecord(
@@ -58,8 +65,11 @@ class HealthAnalysisViewModel extends StateNotifier<HealthAnalysisState> {
   Future<void> loadExistingData() async {
     try {
       state = state.copyWith(isLoading: true, error: null);
-      // Just load, don't create new records
-      state = state.copyWith(isLoading: false);
+
+      // Load lịch sử phân tích từ Firebase
+      final history = await _repository.loadAnalysisHistory();
+
+      state = state.copyWith(isLoading: false, analysisHistory: history);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
@@ -70,13 +80,24 @@ class HealthAnalysisViewModel extends StateNotifier<HealthAnalysisState> {
   }
 
   // Delete a record from history by index
-  void deleteRecord(int index) {
-    final updatedHistory = List<HealthAnalysisRecord>.from(
-      state.analysisHistory,
-    );
-    if (index >= 0 && index < updatedHistory.length) {
+  Future<void> deleteRecord(int index) async {
+    if (index < 0 || index >= state.analysisHistory.length) return;
+
+    try {
+      final recordToDelete = state.analysisHistory[index];
+
+      // Xóa trên Firebase
+      await _repository.deleteAnalysisResult(recordToDelete.id);
+
+      // Xóa trong state
+      final updatedHistory = List<HealthAnalysisRecord>.from(
+        state.analysisHistory,
+      );
       updatedHistory.removeAt(index);
       state = state.copyWith(analysisHistory: updatedHistory);
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+      rethrow;
     }
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/repositories/auth_repository.dart';
 import '../utilities/cleanup_service.dart';
+import '../data/database/health_data_database.dart';
 
 // Auth Repository Provider
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
@@ -109,6 +110,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       // Cancel session monitoring before signing out
       // (This will be handled in AuthWrapper when not authenticated state triggers)
+
+      // Clear SQLite health data before logout
+      try {
+        final healthDb = HealthDataDatabase.instance;
+        await healthDb.clearAllData();
+        print('✅ [Logout] Đã xóa dữ liệu SQLite');
+      } catch (e) {
+        print('⚠️ [Logout] Lỗi khi xóa SQLite: $e');
+      }
 
       // Sign out from Firebase
       await _authRepository.signOut();

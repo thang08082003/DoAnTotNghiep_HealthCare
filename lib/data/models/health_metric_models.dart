@@ -187,7 +187,7 @@ class SleepStageDetail {
     return SleepStageDetail(
       start: _fromTs(data['start']),
       end: _fromTs(data['end']),
-      durationMinutes: data['durationMinutes'] as int,
+      durationMinutes: (data['durationMinutes'] as num).toInt(),
       stage: data['stage'] as String,
     );
   }

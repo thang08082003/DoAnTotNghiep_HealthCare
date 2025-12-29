@@ -3,7 +3,7 @@ import 'package:health/health.dart';
 // No explicit Google Sign-In needed for Health Connect reads; the health plugin handles auth.
 import 'package:permission_handler/permission_handler.dart';
 
-class GoogleFitService {
+class HealthConnectService {
   // Health API entry
   final Health _health = Health();
 

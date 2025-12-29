@@ -70,16 +70,24 @@ class AutoAnalysisService {
       final repository = HealthAnalysisRepository();
 
       // Phân tích heart rate
-      await repository.analyzeHeartRate();
+      final heartRateAnalysis = await repository.analyzeHeartRate();
       print('✅ [AutoAnalysis] Đã phân tích heart rate');
 
       // Phân tích SpO2
-      await repository.analyzeSpO2();
+      final spo2Analysis = await repository.analyzeSpO2();
       print('✅ [AutoAnalysis] Đã phân tích SpO2');
 
       // Phân tích sleep
-      await repository.analyzeSleep();
+      final sleepAnalysis = await repository.analyzeSleep();
       print('✅ [AutoAnalysis] Đã phân tích sleep');
+
+      // Lưu kết quả phân tích vào Firebase
+      await repository.saveAnalysisResult(
+        heartRateAnalysis: heartRateAnalysis,
+        spo2Analysis: spo2Analysis,
+        sleepAnalysis: sleepAnalysis,
+      );
+      print('✅ [AutoAnalysis] Đã lưu kết quả vào Firebase');
 
       print('🎉 [AutoAnalysis] Hoàn tất phân tích tự động');
     } catch (e, stack) {

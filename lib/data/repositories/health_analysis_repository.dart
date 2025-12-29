@@ -1,11 +1,16 @@
 import 'package:health/health.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../database/health_data_database.dart';
 import '../services/health_connect_service.dart';
+import '../services/health_metrics_service.dart';
 import '../services/sleep_analysis_service.dart';
+import '../models/health_analysis_record.dart';
 
 class HealthAnalysisRepository {
   final HealthDataDatabase _database = HealthDataDatabase.instance;
-  final GoogleFitService _healthService = GoogleFitService();
+  final HealthConnectService _healthService = HealthConnectService();
+  final HealthMetricsService _firebaseService = HealthMetricsService();
   final SleepAnalysisService _sleepAnalysisService = SleepAnalysisService();
 
   // Sync all health data from Health Connect and store in local database
@@ -182,16 +187,44 @@ class HealthAnalysisRepository {
     }
   }
 
-  // Query and analyze heart rate data
+  // Query and analyze heart rate data from Firebase
   Future<Map<String, dynamic>> analyzeHeartRate() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User chưa đăng nhập');
+    }
+
     final now = DateTime.now();
     final startOfToday = DateTime(now.year, now.month, now.day);
 
-    // Get today's data
-    final data = await _database.queryHeartRate(
-      startTime: startOfToday.millisecondsSinceEpoch,
-      endTime: now.millisecondsSinceEpoch,
-    );
+    // Get today's data from Firebase
+    final samples = await _firebaseService
+        .heartRateStream(user.uid, from: startOfToday)
+        .first;
+
+    if (samples.isEmpty) {
+      return {
+        'count': 0,
+        'average': 0.0,
+        'min': 0.0,
+        'max': 0.0,
+        'latest': null,
+        'baseline': 75.0,
+        'context': 'unknown',
+        'anomaly': null,
+      };
+    }
+
+    // Convert Firebase samples to Map format for compatibility
+    final data = samples
+        .map(
+          (s) => {
+            'timestamp': s.ts.millisecondsSinceEpoch,
+            'bpm': s.bpm,
+            'source': s.source,
+          },
+        )
+        .toList();
 
     if (data.isEmpty) {
       return {
@@ -261,16 +294,47 @@ class HealthAnalysisRepository {
     };
   }
 
-  // Query and analyze SpO2 data
+  // Query and analyze SpO2 data from Firebase
   Future<Map<String, dynamic>> analyzeSpO2() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User chưa đăng nhập');
+    }
+
     final now = DateTime.now();
     final startOfToday = DateTime(now.year, now.month, now.day);
 
-    // Get today's data
-    final data = await _database.querySpO2(
-      startTime: startOfToday.millisecondsSinceEpoch,
-      endTime: now.millisecondsSinceEpoch,
-    );
+    // Get today's data from Firebase
+    final samples = await _firebaseService
+        .spo2Stream(user.uid, from: startOfToday)
+        .first;
+
+    print('DEBUG SpO2: samples count = ${samples.length}');
+
+    if (samples.isEmpty) {
+      print('DEBUG SpO2: No data available, returning default values');
+      return {
+        'count': 0,
+        'average': 0.0,
+        'min': 0.0,
+        'max': 0.0,
+        'latest': null,
+        'baseline': 97.0,
+        'context': 'unknown',
+        'anomaly': null,
+      };
+    }
+
+    // Convert Firebase samples to Map format for compatibility
+    final data = samples
+        .map(
+          (s) => {
+            'timestamp': s.ts.millisecondsSinceEpoch,
+            'percentage': s.percentage,
+            'source': s.source,
+          },
+        )
+        .toList();
 
     if (data.isEmpty) {
       return {
@@ -323,6 +387,10 @@ class HealthAnalysisRepository {
     // Context-aware anomaly detection
     final anomaly = _detectSpO2Anomaly(average, baseline, currentContext);
 
+    print(
+      'DEBUG SpO2: average=$average, baseline=$baseline, context=$currentContext, anomaly=$anomaly',
+    );
+
     return {
       'count': wakingHoursData.length,
       'average': average,
@@ -337,14 +405,69 @@ class HealthAnalysisRepository {
 
   // Query and analyze sleep data with advanced analysis
   Future<Map<String, dynamic>> analyzeSleep() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User chưa đăng nhập');
+    }
+
     final now = DateTime.now();
     final startOfToday = DateTime(now.year, now.month, now.day);
 
-    // Get today's sleep data
-    final data = await _database.querySleepSessions(
-      startTime: startOfToday.millisecondsSinceEpoch,
-      endTime: now.millisecondsSinceEpoch,
-    );
+    // Get today's sleep data from Firebase
+    final sessions = await _firebaseService
+        .sleepStream(user.uid, from: startOfToday)
+        .first;
+
+    if (sessions.isEmpty) {
+      return {
+        'count': 0,
+        'totalMinutes': 0,
+        'averageMinutes': 0.0,
+        'lightMinutes': 0,
+        'deepMinutes': 0,
+        'remMinutes': 0,
+        'awakeMinutes': 0,
+        'status': 'unknown',
+        'issues': ['Không có dữ liệu giấc ngủ'],
+        'recommendations': [],
+      };
+    }
+
+    // Convert Firebase sessions to Map format for compatibility
+    final data = sessions.map((s) {
+      int lightMin = 0;
+      int deepMin = 0;
+      int remMin = 0;
+      int awakeMin = 0;
+
+      for (final stage in s.stages ?? []) {
+        final duration = stage.durationMinutes as int;
+        switch (stage.stage.toLowerCase()) {
+          case 'light':
+            lightMin += duration;
+            break;
+          case 'deep':
+            deepMin += duration;
+            break;
+          case 'rem':
+            remMin += duration;
+            break;
+          case 'awake':
+            awakeMin += duration;
+            break;
+        }
+      }
+
+      return {
+        'start_time': s.start.millisecondsSinceEpoch,
+        'end_time': s.end.millisecondsSinceEpoch,
+        'light_minutes': lightMin,
+        'deep_minutes': deepMin,
+        'rem_minutes': remMin,
+        'awake_minutes': awakeMin,
+        'source': s.source,
+      };
+    }).toList();
 
     if (data.isEmpty) {
       return {
@@ -405,30 +528,52 @@ class HealthAnalysisRepository {
     };
   }
 
-  /// Calculate 7-day baseline for sleep stages
+  /// Calculate 7-day baseline for sleep stages from Firebase
   /// Returns average percentages for light, deep, and REM sleep
   Future<Map<String, double>> _calculate7DayBaseline(DateTime today) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return {'light': 50.0, 'deep': 30.0, 'rem': 20.0};
+    }
+
+    final sevenDaysAgo = today.subtract(const Duration(days: 7));
+
+    // Get past 7 days sleep data from Firebase
+    final sessions = await _firebaseService
+        .sleepStream(user.uid, from: sevenDaysAgo)
+        .first;
+
     final List<Map<String, int>> last7Days = [];
 
-    // Query each of the past 7 days
+    // Group by day
     for (int i = 1; i <= 7; i++) {
       final dayStart = today.subtract(Duration(days: i));
       final dayEnd = dayStart.add(const Duration(days: 1));
 
-      final dayData = await _database.querySleepSessions(
-        startTime: dayStart.millisecondsSinceEpoch,
-        endTime: dayEnd.millisecondsSinceEpoch,
-      );
+      final daySessions = sessions
+          .where((s) => s.start.isAfter(dayStart) && s.start.isBefore(dayEnd))
+          .toList();
 
-      if (dayData.isNotEmpty) {
+      if (daySessions.isNotEmpty) {
         int light = 0;
         int deep = 0;
         int rem = 0;
 
-        for (final session in dayData) {
-          light += (session['light_minutes'] as int?) ?? 0;
-          deep += (session['deep_minutes'] as int?) ?? 0;
-          rem += (session['rem_minutes'] as int?) ?? 0;
+        for (final session in daySessions) {
+          for (final stage in session.stages ?? []) {
+            final duration = stage.durationMinutes as int;
+            switch (stage.stage.toLowerCase()) {
+              case 'light':
+                light += duration;
+                break;
+              case 'deep':
+                deep += duration;
+                break;
+              case 'rem':
+                rem += duration;
+                break;
+            }
+          }
         }
 
         last7Days.add({'light': light, 'deep': deep, 'rem': rem});
@@ -502,13 +647,21 @@ class HealthAnalysisRepository {
     String context,
     DateTime startOfToday,
   ) async {
-    final sevenDaysAgo = startOfToday.subtract(const Duration(days: 7));
-    final yesterday = startOfToday.subtract(const Duration(days: 1));
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return 75.0;
 
-    final baselineData = await _database.queryHeartRate(
-      startTime: sevenDaysAgo.millisecondsSinceEpoch,
-      endTime: yesterday.millisecondsSinceEpoch,
-    );
+    final sevenDaysAgo = startOfToday.subtract(const Duration(days: 7));
+    startOfToday.subtract(const Duration(days: 1));
+
+    // Get baseline data from Firebase
+    final samples = await _firebaseService
+        .heartRateStream(user.uid, from: sevenDaysAgo)
+        .first;
+
+    final baselineData = samples
+        .where((s) => s.ts.isBefore(startOfToday))
+        .map((s) => {'timestamp': s.ts.millisecondsSinceEpoch, 'bpm': s.bpm})
+        .toList();
 
     if (baselineData.isEmpty) {
       // Return default baseline by context
@@ -626,13 +779,26 @@ class HealthAnalysisRepository {
     String context,
     DateTime startOfToday,
   ) async {
-    final sevenDaysAgo = startOfToday.subtract(const Duration(days: 7));
-    final yesterday = startOfToday.subtract(const Duration(days: 1));
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return 97.0;
 
-    final baselineData = await _database.querySpO2(
-      startTime: sevenDaysAgo.millisecondsSinceEpoch,
-      endTime: yesterday.millisecondsSinceEpoch,
-    );
+    final sevenDaysAgo = startOfToday.subtract(const Duration(days: 7));
+    startOfToday.subtract(const Duration(days: 1));
+
+    // Get baseline data from Firebase
+    final samples = await _firebaseService
+        .spo2Stream(user.uid, from: sevenDaysAgo)
+        .first;
+
+    final baselineData = samples
+        .where((s) => s.ts.isBefore(startOfToday))
+        .map(
+          (s) => {
+            'timestamp': s.ts.millisecondsSinceEpoch,
+            'percentage': s.percentage,
+          },
+        )
+        .toList();
 
     if (baselineData.isEmpty) {
       return 97.0; // Healthy default
@@ -672,5 +838,91 @@ class HealthAnalysisRepository {
     }
 
     return null;
+  }
+
+  /// Lưu kết quả phân tích vào Firebase
+  Future<void> saveAnalysisResult({
+    required Map<String, dynamic> heartRateAnalysis,
+    required Map<String, dynamic> spo2Analysis,
+    required Map<String, dynamic> sleepAnalysis,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User chưa đăng nhập');
+    }
+
+    final now = DateTime.now();
+    final record = {
+      'id': now.millisecondsSinceEpoch.toString(),
+      'timestamp': Timestamp.fromDate(now),
+      'userId': user.uid,
+      'heartRateAnalysis': heartRateAnalysis,
+      'spo2Analysis': spo2Analysis,
+      'sleepAnalysis': sleepAnalysis,
+      'createdAt': Timestamp.fromDate(now),
+    };
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('health_analysis')
+        .doc(now.millisecondsSinceEpoch.toString())
+        .set(record);
+
+    print('💾 [Repository] Đã lưu analysis record vào Firebase');
+  }
+
+  /// Load lịch sử phân tích từ Firebase
+  Future<List<HealthAnalysisRecord>> loadAnalysisHistory() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User chưa đăng nhập');
+    }
+
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('health_analysis')
+          .orderBy('timestamp', descending: true)
+          .limit(50) // Lấy tối đa 50 bản ghi gần nhất
+          .get();
+
+      final records = querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        return HealthAnalysisRecord(
+          id: data['id'] as String,
+          timestamp: (data['timestamp'] as Timestamp).toDate(),
+          heartRateAnalysis: data['heartRateAnalysis'] as Map<String, dynamic>?,
+          spo2Analysis: data['spo2Analysis'] as Map<String, dynamic>?,
+          sleepAnalysis: data['sleepAnalysis'] as Map<String, dynamic>?,
+        );
+      }).toList();
+
+      print(
+        '📥 [Repository] Đã load ${records.length} analysis records từ Firebase',
+      );
+      return records;
+    } catch (e) {
+      print('❌ [Repository] Lỗi khi load analysis history: $e');
+      return [];
+    }
+  }
+
+  /// Xóa kết quả phân tích trên Firebase
+  Future<void> deleteAnalysisResult(String recordId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User chưa đăng nhập');
+    }
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('health_analysis')
+        .doc(recordId)
+        .delete();
+
+    print('🗑️ [Repository] Đã xóa analysis record $recordId từ Firebase');
   }
 }

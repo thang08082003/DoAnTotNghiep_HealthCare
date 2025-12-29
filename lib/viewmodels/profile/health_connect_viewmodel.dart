@@ -41,7 +41,7 @@ class HealthConnectViewModel extends StateNotifier<AsyncValue<void>> {
     })
   >
   fetchLatestMetrics() async {
-    final svc = GoogleFitService();
+    final svc = HealthConnectService();
     try {
       await svc.ensureConnected();
     } catch (_) {}
@@ -153,7 +153,7 @@ class HealthConnectViewModel extends StateNotifier<AsyncValue<void>> {
 
   /// Dump Health Connect data logs for troubleshooting
   Future<void> dumpHealthLog({int days = 7}) async {
-    final svc = GoogleFitService();
+    final svc = HealthConnectService();
     try {
       await svc.ensureConnected();
     } catch (_) {}
