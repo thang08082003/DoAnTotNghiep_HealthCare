@@ -909,6 +909,42 @@ class HealthAnalysisRepository {
     }
   }
 
+  /// Load lịch sử phân tích cho một user cụ thể (dùng cho bác sĩ xem bệnh nhân)
+  Future<List<HealthAnalysisRecord>> loadAnalysisHistoryForUser(
+    String userId,
+  ) async {
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('health_analysis')
+          .orderBy('timestamp', descending: true)
+          .limit(50)
+          .get();
+
+      final records = querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        return HealthAnalysisRecord(
+          id: data['id'] as String,
+          timestamp: (data['timestamp'] as Timestamp).toDate(),
+          heartRateAnalysis: data['heartRateAnalysis'] as Map<String, dynamic>?,
+          spo2Analysis: data['spo2Analysis'] as Map<String, dynamic>?,
+          sleepAnalysis: data['sleepAnalysis'] as Map<String, dynamic>?,
+        );
+      }).toList();
+
+      print(
+        '📥 [Repository] Đã load ${records.length} analysis records cho user $userId',
+      );
+      return records;
+    } catch (e) {
+      print(
+        '❌ [Repository] Lỗi khi load analysis history cho user $userId: $e',
+      );
+      rethrow;
+    }
+  }
+
   /// Xóa kết quả phân tích trên Firebase
   Future<void> deleteAnalysisResult(String recordId) async {
     final user = FirebaseAuth.instance.currentUser;

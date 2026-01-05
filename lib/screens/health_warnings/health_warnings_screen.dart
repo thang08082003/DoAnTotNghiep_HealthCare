@@ -30,6 +30,7 @@ class _HealthWarningsScreenState extends ConsumerState<HealthWarningsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Cảnh báo sức khỏe'),
+        centerTitle: true,
         backgroundColor: AppColors.primaryColor,
         foregroundColor: Colors.white,
       ),

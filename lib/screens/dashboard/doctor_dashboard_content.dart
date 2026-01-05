@@ -11,6 +11,7 @@ import '../../viewmodels/reviews/doctor_reviews_view_model.dart';
 import '../doctors/doctor_reviews_screen.dart';
 import '../resources/clinical_resources_screen.dart';
 import '../../components/doctor/chest_xray_button.dart';
+import '../health_warnings/doctor_patient_warnings_screen.dart';
 
 class DoctorDashboardContent extends ConsumerWidget {
   const DoctorDashboardContent({super.key});
@@ -413,9 +414,8 @@ class _HealthWarningButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () {
-        // TODO: Navigate to health warnings screen
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tính năng đang được phát triển')),
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const DoctorPatientWarningsScreen()),
         );
       },
       borderRadius: BorderRadius.circular(12),
