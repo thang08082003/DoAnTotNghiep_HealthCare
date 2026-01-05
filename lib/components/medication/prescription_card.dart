@@ -323,24 +323,12 @@ class _PrescriptionCardState extends ConsumerState<PrescriptionCard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildInfoRow(
-          Icons.medical_services,
-          'Liều dùng',
-          widget.prescription.dosage,
-        ),
+        _buildInfoRow('Liều dùng', widget.prescription.dosage),
         const SizedBox(height: 6),
-        _buildInfoRow(
-          Icons.local_hospital,
-          'Đường dùng',
-          widget.prescription.route,
-        ),
+        _buildInfoRow('Đường dùng', widget.prescription.route),
         if (widget.prescription.timing != null) ...[
           const SizedBox(height: 6),
-          _buildInfoRow(
-            Icons.access_time,
-            'Thời điểm',
-            widget.prescription.timing!,
-          ),
+          _buildInfoRow('Thời điểm', widget.prescription.timing!),
         ],
       ],
     );
@@ -352,43 +340,26 @@ class _PrescriptionCardState extends ConsumerState<PrescriptionCard> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (prescription.quantity != null)
-          _buildInfoRow(Icons.inventory_2, 'Số lượng', prescription.quantity!),
-        if (prescription.specialInstructions != null) ...[
-          const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.warning_amber, size: 16, color: Colors.grey[600]),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  prescription.specialInstructions!,
-                  style: AppTextStyles.caption.copyWith(color: Colors.orange),
-                ),
-              ),
-            ],
-          ),
+          _buildInfoRow('Số lượng', prescription.quantity!),
+        const SizedBox(height: 8),
+        if (prescription.specialInstructions != null &&
+            prescription.specialInstructions!.isNotEmpty) ...[
+          _buildInfoRow('Chú ý', prescription.specialInstructions!),
         ],
         const SizedBox(height: 8),
         _buildInfoRow(
-          Icons.calendar_today,
           'Thời gian',
           '${DateFormat('dd/MM/yyyy').format(prescription.startDate)} - ${DateFormat('dd/MM/yyyy').format(prescription.endDate)}',
         ),
         const SizedBox(height: 6),
-        _buildInfoRow(
-          Icons.timer,
-          'Thời hạn',
-          '${prescription.durationDays} ngày',
-        ),
+        _buildInfoRow('Thời hạn', '${prescription.durationDays} ngày'),
       ],
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
+  Widget _buildInfoRow(String label, String value) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: Colors.grey[600]),
         const SizedBox(width: 6),
         Text('$label: ', style: AppTextStyles.caption),
         Expanded(
@@ -414,41 +385,28 @@ class _PrescriptionCardState extends ConsumerState<PrescriptionCard> {
       child: Row(
         children: [
           Expanded(
-            child: OutlinedButton.icon(
+            child: OutlinedButton(
+              // Bỏ .icon
               onPressed: _handleReject,
-              icon: const Icon(Icons.close, size: 18),
-              label: const Text('Từ chối'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.red,
-                side: const BorderSide(color: Colors.red),
-              ),
+              child: const Text('Từ chối'), // Chỉ dùng Text
+              // ...
             ),
           ),
           // Chỉ hiện nút "Chỉnh sửa" nếu chưa qua video call
           if (!isAfterVideoCall) ...[
             const SizedBox(width: 8),
             Expanded(
-              child: OutlinedButton.icon(
+              child: OutlinedButton(
                 onPressed: _handleRequestEdit,
-                icon: const Icon(Icons.edit, size: 18),
-                label: const Text('Chỉnh sửa'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.blue,
-                  side: const BorderSide(color: Colors.blue),
-                ),
+                child: const Text('chỉnh sửa'),
               ),
             ),
           ],
           const SizedBox(width: 8),
           Expanded(
-            child: ElevatedButton.icon(
+            child: OutlinedButton(
               onPressed: _handleAccept,
-              icon: const Icon(Icons.check, size: 18),
-              label: const Text('Chấp nhận'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-              ),
+              child: const Text('Đồng ý'),
             ),
           ),
         ],
@@ -658,7 +616,7 @@ class _PrescriptionCardState extends ConsumerState<PrescriptionCard> {
                 ),
               );
             },
-            icon: const Icon(Icons.edit, size: 18),
+            icon: const Icon(Icons.edit, size: 5),
             label: const Text('Chỉnh sửa'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,

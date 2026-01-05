@@ -45,18 +45,6 @@ class CreateOptionsBottomSheet extends StatelessWidget {
               );
             },
           ),
-          ListTile(
-            leading: const Icon(
-              Icons.calendar_today,
-              color: AppColors.primaryColor,
-            ),
-            title: const Text('Tạo kế hoạch chăm sóc'),
-            onTap: () {
-              Navigator.pop(context);
-              onCreateCarePlan();
-            },
-          ),
-          const SizedBox(height: 16),
         ],
       ),
     );
