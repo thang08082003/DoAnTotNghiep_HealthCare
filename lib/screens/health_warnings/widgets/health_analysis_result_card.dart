@@ -167,8 +167,9 @@ class HealthAnalysisResultCard extends StatelessWidget {
   String _formatSleep(Map<String, dynamic> data) {
     final count = data['count'] as int;
     if (count == 0) return '--';
-    final avgMinutes = data['averageMinutes'] as double;
-    return (avgMinutes / 60).toStringAsFixed(1);
+    // Show total sleep duration of the day instead of per-session average
+    final totalMinutes = (data['totalMinutes'] as num).toDouble();
+    return (totalMinutes / 60).toStringAsFixed(1);
   }
 
   String? _getAnomaly(Map<String, dynamic> data) {
