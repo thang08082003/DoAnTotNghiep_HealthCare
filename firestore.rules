@@ -1,0 +1,350 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper: check if a user (by uid) is a doctor
+    function isDoctorUser(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.role == 'doctor';
+    }
+    // Users collection - users can read/write their own data
+    // Also allow authenticated users to read all users for doctor selection
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null; // Allow reading all users for doctor queries
+    }
+
+    // Subcollections under users (health metric collections, reviews, etc.)
+    // Allow the owner (patient) full access; allow doctors read-only to view metrics.
+    match /users/{userId}/{document=**} {
+      // Owner can read & write
+      allow write: if request.auth != null && request.auth.uid == userId;
+      // Read if owner OR authenticated doctor
+      allow read: if request.auth != null && (
+        request.auth.uid == userId || isDoctorUser(request.auth.uid)
+      );
+    }
+    
+    // Doctors collection - authenticated users can read all doctors
+    match /doctors/{doctorId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == doctorId;
+    }
+    
+    // Patients collection - authenticated users can read/write based on user ID
+    match /patients/{patientId} {
+      allow read, write: if request.auth != null && request.auth.uid == patientId;
+    }
+    
+    // Patient-Doctor assignments - both patient and doctor can read/write
+    match /patient_doctor_assignments/{assignmentId} {
+      allow read, write: if request.auth != null && 
+        (resource.data.patientId == request.auth.uid || 
+         resource.data.doctorId == request.auth.uid);
+      allow create: if request.auth != null;
+    }
+    
+    // Appointments - both patient and doctor can read/write their appointments
+    match /appointments/{appointmentId} {
+      allow read, write: if request.auth != null && 
+        (resource.data.patientId == request.auth.uid || 
+         resource.data.doctorId == request.auth.uid);
+      allow create: if request.auth != null;
+    }
+    
+    // Medical records - both patient and doctor can read/write
+    match /medical_records/{recordId} {
+      allow read, write: if request.auth != null && 
+        (resource.data.patientId == request.auth.uid || 
+         resource.data.doctorId == request.auth.uid);
+      allow create: if request.auth != null;
+    }
+    
+    // Notifications - users can read their own notifications
+    // But ANYONE authenticated can CREATE notifications for others (e.g., patient → doctor)
+    match /notifications/{notificationId} {
+      // Read only your own notifications
+      allow read: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      // Update/delete only your own notifications
+      allow update, delete: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      // ✅ CREATE: Allow authenticated users to send notifications to anyone
+      // (e.g., patient sends follow request to doctor)
+      allow create: if request.auth != null;
+      // Allow query with where userId == currentUser
+      allow list: if request.auth != null && 
+        request.query.limit <= 100;
+    }
+
+    // Follow requests between patients and doctors
+    // Document ID format: {patientId}_{doctorId}
+    match /follow_requests/{requestId} {
+      // Only the patient can create a request document
+      allow create: if request.auth != null &&
+        request.resource.data.patientId == request.auth.uid;
+
+      // Allow reading if the doc id references the current user
+      // This works even when the doc does not exist (for transaction get()).
+      allow read: if request.auth != null && (
+        // Access by docId for direct lookups or non-existent docs
+        requestId.matches('^' + request.auth.uid + '_.+') ||
+        requestId.matches('.+_' + request.auth.uid + '$') ||
+        // Access by document fields for queries (e.g., where doctorId == uid)
+        resource.data.patientId == request.auth.uid ||
+        resource.data.doctorId == request.auth.uid
+      );
+
+      // Updates/deletes only allowed for participants on the doc
+      allow update, delete: if request.auth != null && (
+        resource.data.patientId == request.auth.uid ||
+        resource.data.doctorId == request.auth.uid
+      );
+    }
+
+    // Conversations (chat) - only participants can read/write
+    // conversationId format: {userA}_{userB}
+    function isConvParticipant(convId) {
+      return request.auth != null && (
+        convId.matches('^' + request.auth.uid + '_.+') ||
+        convId.matches('.+_' + request.auth.uid + '$')
+      );
+    }
+
+    match /conversations/{convId} {
+      // Optionally allow creating a conversation doc; messages live in subcollection
+      allow read, write: if isConvParticipant(convId);
+
+      match /messages/{messageId} {
+        // Allow participants to read messages in their conversation
+        allow read: if isConvParticipant(convId);
+
+        // Allow creating messages if the sender is the authenticated user and is a participant
+        allow create: if isConvParticipant(convId) && request.resource.data.senderId == request.auth.uid;
+
+        // Allow updates/deletes by participants (e.g., mark as read)
+        allow update, delete: if isConvParticipant(convId) && (
+          resource.data.senderId == request.auth.uid ||
+          resource.data.receiverId == request.auth.uid
+        );
+      }
+
+      // Doctor orders (chỉ định) subcollection
+      function isDoctor(uid) {
+        return get(/databases/$(database)/documents/users/$(uid)).data.role == 'doctor';
+      }
+
+      match /orders/{orderId} {
+        // Participants can read all orders in their conversation
+        allow read: if isConvParticipant(convId);
+
+        // Only a doctor participant can create/update orders and doctorId must match the writer
+        allow create, update: if isConvParticipant(convId) && isDoctor(request.auth.uid) &&
+          request.resource.data.doctorId == request.auth.uid;
+
+        // Optionally allow delete by doctor as well
+        allow delete: if isConvParticipant(convId) && isDoctor(request.auth.uid) &&
+          resource.data.doctorId == request.auth.uid;
+      }
+    }
+    // Allow doctor reviews under users/{doctorId}/reviews/{patientId}
+    match /users/{doctorId}/reviews/{patientId} {
+      allow read: if true; // anyone can see reviews
+      // Allow patients to create/update their own review for a doctor (1 review per patient)
+      // Keep identity and rating constraints to prevent abuse; relax follow_request strict check to avoid false denials
+      allow create, update: if request.auth != null
+        && request.auth.uid == patientId
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && request.resource.data.doctorId == doctorId
+        && request.resource.data.patientId == request.auth.uid;
+
+      // Optionally allow patient to delete their own review
+      allow delete: if request.auth != null && request.auth.uid == patientId;
+    }
+
+    // Call sessions for video calling
+    function isCallParticipant() {
+      return request.auth != null && (
+        request.auth.uid == resource.data.callerId ||
+        request.auth.uid == resource.data.calleeId
+      );
+    }
+
+    match /call_sessions/{callId} {
+      // Participants can read their call session
+      allow read: if isCallParticipant();
+
+      // Caller creates a new ringing session
+      allow create: if request.auth != null
+        && request.resource.data.callerId == request.auth.uid
+        && request.resource.data.calleeId is string
+        && request.resource.data.channelName is string
+        && request.resource.data.status == 'ringing';
+
+      // Updates: enforce immutables and controlled status transitions
+      allow update: if isCallParticipant()
+        // Immutable fields must not change
+        && request.resource.data.callerId == resource.data.callerId
+        && request.resource.data.calleeId == resource.data.calleeId
+        && request.resource.data.channelName == resource.data.channelName
+        // Allowed transitions:
+        && (
+          // Callee accepts or declines
+          ((request.resource.data.status == 'accepted' || request.resource.data.status == 'declined')
+            && request.auth.uid == resource.data.calleeId)
+          // Either side can end the call
+          || (request.resource.data.status == 'ended')
+        );
+
+      // Optional: allow delete only to participants after ended
+      allow delete: if isCallParticipant() && resource.data.status == 'ended';
+    }
+
+    // User sessions for single-device login enforcement
+    match /user_sessions/{userId} {
+      // Users can only read/write their own session
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Health alerts - AI-generated health warnings
+    match /health_alerts/{alertId} {
+      // Allow users to list and read their own alerts
+      // Allow doctors to read all alerts
+      allow read: if request.auth != null && (
+        resource == null || // Allow list queries (resource doesn't exist for list)
+        resource.data.userId == request.auth.uid ||
+        isDoctorUser(request.auth.uid)
+      );
+      // System can create alerts (authenticated service account or user creating their own)
+      allow create: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
+      // Users can update their own alerts (e.g., mark as read)
+      allow update: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      // Optionally allow delete for cleanup
+      allow delete: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+    }
+
+    // Care plan tasks - daily health tasks
+    match /care_plan_tasks/{taskId} {
+      // Users can read their own tasks OR doctors can read their patients' tasks
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        isDoctorUser(request.auth.uid)
+      );
+      // Users can create their own tasks
+      allow create: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
+      // Users can update their own tasks
+      allow update: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      // Users can delete their own tasks
+      allow delete: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+    }
+
+    // Health goals - long-term health objectives
+    match /health_goals/{goalId} {
+      // Users can read their own goals OR doctors can read their patients' goals
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        isDoctorUser(request.auth.uid)
+      );
+      // Users can create their own goals
+      allow create: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
+      // Users can update their own goals
+      allow update: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      // Users can delete their own goals
+      allow delete: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+    }
+
+    // Goal tasks - scheduled tasks for health goals (uống thuốc, đo huyết áp, etc.)
+    match /goal_tasks/{taskId} {
+      // Allow authenticated users to query and read their own tasks
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      allow update, delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+    }
+
+    // Medications - quản lý thuốc của người dùng
+    match /medications/{medicationId} {
+      // Users can read their own medications OR doctors can read their patients' medications
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        isDoctorUser(request.auth.uid)
+      );
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      allow update, delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+    }
+
+    // Medication reminders - lịch nhắc thuốc
+    match /medication_reminders/{reminderId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      allow update, delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+    }
+
+    // Depression risk assessments - đánh giá nguy cơ trầm cảm
+    match /depression_risks/{assessmentId} {
+      // Users can read their own assessments OR doctors can read their patients' assessments
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        isDoctorUser(request.auth.uid)
+      );
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      allow update, delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+    }
+
+    // Anxiety risk assessments - đánh giá nguy cơ lo âu
+    match /anxiety_risks/{assessmentId} {
+      // Users can read their own assessments OR doctors can read their patients' assessments
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        isDoctorUser(request.auth.uid)
+      );
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+      allow update, delete: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+    }
+
+    // Medication prescriptions - chỉ định thuốc từ bác sĩ
+    match /medication_prescriptions/{prescriptionId} {
+      // Patients can read their own prescriptions
+      // Doctors can read prescriptions for patients they follow OR prescriptions they created
+      // Allow list queries when filtering by patientId or doctorId
+      allow read: if request.auth != null && (
+        resource == null || // Allow queries (resource doesn't exist for list)
+        resource.data.patientId == request.auth.uid ||
+        resource.data.doctorId == request.auth.uid ||
+        (isDoctorUser(request.auth.uid)) // Any doctor can query prescriptions for their patients
+      );
+      // Only doctors can create prescriptions
+      allow create: if request.auth != null && 
+        isDoctorUser(request.auth.uid) &&
+        request.resource.data.doctorId == request.auth.uid;
+      // Doctors can update prescriptions they created OR prescriptions for patients they follow
+      // Patients can update status (accept/reject/request edit), patientResponse, modificationRequestCount, and requiresVideoCall
+      allow update: if request.auth != null && (
+        (isDoctorUser(request.auth.uid)) || // Any doctor can update prescriptions for their patients
+        (resource.data.patientId == request.auth.uid && 
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'patientResponse', 'modificationRequestCount', 'requiresVideoCall', 'updatedAt']))
+      );
+      // Only doctors can delete prescriptions they created
+      allow delete: if request.auth != null && 
+        isDoctorUser(request.auth.uid) &&
+        resource.data.doctorId == request.auth.uid;
+    }
+  }
+}

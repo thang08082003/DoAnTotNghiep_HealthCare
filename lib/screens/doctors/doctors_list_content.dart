@@ -1,0 +1,330 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../components/doctor/doctor_card.dart';
+import '../../components/loading/loading_widget.dart';
+import '../../data/models/doctor_model.dart';
+import '../../data/resources/gene/app_colors.dart';
+import '../../data/services/follow_request_service.dart';
+import '../../data/models/user_model.dart';
+import '../../providers/user_provider.dart';
+import 'doctor_detail_screen.dart';
+
+class DoctorsListContent extends ConsumerStatefulWidget {
+  const DoctorsListContent({super.key});
+
+  @override
+  DoctorsListContentState createState() => DoctorsListContentState();
+}
+
+class DoctorsListContentState extends ConsumerState<DoctorsListContent> {
+  List<DoctorModel> _doctors = [];
+  bool _isLoading = false;
+  String? _errorMessage;
+  String _searchQuery = '';
+  Map<String, String> _requestStatuses = {}; // doctorId -> status
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDoctors();
+  }
+
+  Future<void> _loadDoctors() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final userRepo = ref.read(userRepositoryProvider);
+      final users = await userRepo.getUsersByRole(UserRole.doctor);
+      final doctors = users.whereType<DoctorModel>().toList();
+
+      try {
+        final currentUser = await ref.read(currentUserProvider.future);
+        if (currentUser != null && currentUser.isPatient) {
+          _requestStatuses = await _fetchStatusesForDoctors(
+            currentUser.uid,
+            doctors,
+          );
+        } else {
+          _requestStatuses = {};
+        }
+      } catch (_) {
+        _requestStatuses = {};
+      }
+
+      if (mounted) {
+        setState(() {
+          _doctors = doctors;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Có lỗi xảy ra khi tải danh sách bác sĩ: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<Map<String, String>> _fetchStatusesForDoctors(
+    String patientId,
+    List<DoctorModel> doctors,
+  ) async {
+    final futures = doctors.map((d) async {
+      try {
+        final status = await FollowRequestService.getRequestStatus(
+          patientId: patientId,
+          doctorId: d.uid,
+        );
+        return MapEntry(d.uid, status);
+      } catch (_) {
+        return const MapEntry<String, String?>('', null);
+      }
+    }).toList();
+
+    final results = await Future.wait(futures);
+    final map = <String, String>{};
+    for (final entry in results) {
+      if (entry.key.isEmpty) continue;
+      final status = entry.value;
+      if (status != null) map[entry.key] = status;
+    }
+    return map;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 3,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            color: Colors.white,
+            child: Column(
+              children: [
+                TextField(
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Tìm kiếm bác sĩ...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.refresh),
+                      onPressed: _loadDoctors,
+                      tooltip: 'Tải lại danh sách',
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: AppColors.primaryColor.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.primaryColor),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const TabBar(
+                  labelColor: AppColors.primaryColor,
+                  unselectedLabelColor: AppColors.textSecondary,
+                  indicatorColor: AppColors.primaryColor,
+                  tabs: [
+                    Tab(text: 'Yêu cầu'),
+                    Tab(text: 'Theo dõi'),
+                    Tab(text: 'Đang chờ'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                _buildDoctorsList(category: _DoctorCategory.requestable),
+                _buildDoctorsList(category: _DoctorCategory.accepted),
+                _buildDoctorsList(category: _DoctorCategory.pending),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDoctorsList({required _DoctorCategory category}) {
+    if (_isLoading) {
+      return const Center(child: LoadingWidget());
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error, size: 64, color: AppColors.error),
+            const SizedBox(height: 16),
+            Text(_errorMessage!),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadDoctors,
+              child: const Text('Thử lại'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final filteredDoctors = _doctors.where((doctor) {
+      final matchesSearch = doctor.name.toLowerCase().contains(
+        _searchQuery.toLowerCase(),
+      );
+      if (!matchesSearch) return false;
+      final status = _requestStatuses[doctor.uid];
+      switch (category) {
+        case _DoctorCategory.requestable:
+          // Not requested yet or previously rejected/cancelled
+          return status == null ||
+              status == 'rejected' ||
+              status == 'cancelled';
+        case _DoctorCategory.pending:
+          return status == 'pending';
+        case _DoctorCategory.accepted:
+          return status == 'accepted';
+      }
+    }).toList();
+
+    if (filteredDoctors.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off, size: 64, color: AppColors.textSecondary),
+            SizedBox(height: 16),
+            Text(
+              'Không tìm thấy bác sĩ nào',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: filteredDoctors.length,
+      itemBuilder: (context, index) {
+        final doctor = filteredDoctors[index];
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: DoctorCard(
+            doctor: doctor,
+            showBookButton: false,
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => DoctorDetailScreen(
+                    doctorId: doctor.uid,
+                    initialTab: 0,
+                    // Only hide chat tab for requestable doctors (not yet requested)
+                    // Show chat for both pending and accepted
+                    infoOnly: category == _DoctorCategory.requestable,
+                  ),
+                ),
+              );
+            },
+
+            primaryActionText: () {
+              switch (category) {
+                case _DoctorCategory.accepted:
+                  return 'Đang theo dõi';
+                case _DoctorCategory.pending:
+                  return 'Đã gửi yêu cầu';
+                case _DoctorCategory.requestable:
+                  return 'Yêu cầu theo dõi';
+              }
+            }(),
+            primaryActionDisabled: category != _DoctorCategory.requestable,
+            onPrimaryAction: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final currentUser = await ref.read(currentUserProvider.future);
+              if (currentUser == null || !currentUser.isPatient) {
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Bạn cần đăng nhập bằng tài khoản bệnh nhân.',
+                    ),
+                  ),
+                );
+                return;
+              }
+              try {
+                final ok = await FollowRequestService.requestFollow(
+                  patientId: currentUser.uid,
+                  doctorId: doctor.uid,
+                  patientName: currentUser.name,
+                );
+                if (ok) {
+                  if (!mounted) return;
+                  try {
+                    final currentUser = await ref.read(
+                      currentUserProvider.future,
+                    );
+                    if (currentUser != null) {
+                      final latest =
+                          await FollowRequestService.getRequestStatus(
+                            patientId: currentUser.uid,
+                            doctorId: doctor.uid,
+                          );
+                      setState(() {
+                        if (latest != null) {
+                          _requestStatuses[doctor.uid] = latest;
+                        } else {
+                          _requestStatuses.remove(doctor.uid);
+                        }
+                      });
+                    }
+                  } catch (_) {
+                    setState(() {
+                      _requestStatuses[doctor.uid] = 'pending';
+                    });
+                  }
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('Đã gửi yêu cầu theo dõi đến bác sĩ.'),
+                    ),
+                  );
+                }
+              } catch (e) {
+                messenger.showSnackBar(
+                  SnackBar(content: Text('Gửi yêu cầu thất bại: $e')),
+                );
+              }
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+enum _DoctorCategory { requestable, pending, accepted }
